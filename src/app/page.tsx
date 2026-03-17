@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 /* ─── Course Data ─── */
 interface Course {
@@ -562,7 +563,7 @@ export default function BookingPage() {
         }}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <SnowflakeIcon className="opacity-70" />
             <span
               className="text-lg font-semibold tracking-tight"
@@ -570,17 +571,17 @@ export default function BookingPage() {
             >
               Kylutbildningen
             </span>
-          </div>
+          </Link>
           <div className="flex items-center gap-8">
-            <a
-              href="#utbildningar"
+            <Link
+              href="/kurser"
               className="text-sm font-medium transition-colors"
               style={{ color: "var(--slate-light)" }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "var(--frost)")}
               onMouseLeave={(e) => (e.currentTarget.style.color = "var(--slate-light)")}
             >
-              Utbildningar
-            </a>
+              Kurskatalog
+            </Link>
             <a
               href="#utbildningar"
               className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
