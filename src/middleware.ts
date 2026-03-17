@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
     request: { headers: request.headers },
   });
 
-  // If a Supabase auth code lands on root, redirect to /auth/callback
+  // If auth code lands on root, redirect to /auth/callback (preserving params)
   if (request.nextUrl.pathname === "/") {
     const code = request.nextUrl.searchParams.get("code");
     if (code) {
@@ -17,8 +17,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // Protect dashboard routes
-  const isProtected = request.nextUrl.pathname.startsWith("/dashboard");
-  if (!isProtected) return response;
+  if (!request.nextUrl.pathname.startsWith("/dashboard")) {
+    return response;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,7 +31,7 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value, options as Record<string, string>);
           });
         },
       },
