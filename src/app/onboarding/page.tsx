@@ -22,7 +22,7 @@ export default function OnboardingPage() {
       const { error: authError } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/onboarding/verify`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding/company`,
         },
       });
 

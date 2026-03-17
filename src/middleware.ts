@@ -1,17 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PATHS = ["/dashboard"];
-
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({
     request: { headers: request.headers },
   });
 
-  const isProtected = PROTECTED_PATHS.some((path) =>
-    request.nextUrl.pathname.startsWith(path),
-  );
+  // If a Supabase auth code lands on root, redirect to /auth/callback
+  if (request.nextUrl.pathname === "/") {
+    const code = request.nextUrl.searchParams.get("code");
+    if (code) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/callback";
+      return NextResponse.redirect(url);
+    }
+  }
 
+  // Protect dashboard routes
+  const isProtected = request.nextUrl.pathname.startsWith("/dashboard");
   if (!isProtected) return response;
 
   const supabase = createServerClient(
@@ -38,6 +44,7 @@ export async function middleware(request: NextRequest) {
   if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = "/logga-in";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 
@@ -45,5 +52,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/", "/dashboard/:path*"],
 };
