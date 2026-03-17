@@ -251,29 +251,29 @@ export interface EduAdminCustomer {
   City: string;
   Phone: string;
   Email: string;
-  InvoiceEmail: string;
-  CustomerContacts?: EduAdminCustomerContact[];
 }
 
-export interface EduAdminCustomerContact {
-  ContactId: number;
+export interface EduAdminPerson {
+  PersonId: number;
+  CustomerId: number;
   FirstName: string;
   LastName: string;
   Email: string;
   Phone: string;
   Mobile: string;
+  IsContactPerson: boolean;
+  CanLogin: boolean;
 }
 
 /**
  * Look up a customer by organisation number in EduAdmin.
- * Expands CustomerContacts to get contact person details.
+ * Then fetches contact persons from the Persons endpoint.
  */
 export async function lookupCustomerByOrgNr(
   orgNr: string,
-): Promise<EduAdminCustomer | null> {
+): Promise<(EduAdminCustomer & { Persons: EduAdminPerson[] }) | null> {
   try {
     const clean = orgNr.replace(/\D/g, "");
-    // Try both with and without dash format
     const withDash = clean.length === 10
       ? `${clean.slice(0, 6)}-${clean.slice(6)}`
       : orgNr;
@@ -282,16 +282,27 @@ export async function lookupCustomerByOrgNr(
       "Customers",
       {
         $filter: `OrganisationNumber eq '${withDash}' or OrganisationNumber eq '${clean}'`,
-        $expand: "CustomerContacts",
         $top: "1",
       },
       60,
     );
 
-    if (data.value.length > 0) {
-      return data.value[0];
-    }
-    return null;
+    if (data.value.length === 0) return null;
+
+    const customer = data.value[0];
+
+    // Fetch persons (contacts) separately
+    const persons = await odata<ODataResponse<EduAdminPerson>>(
+      "Persons",
+      {
+        $filter: `CustomerId eq ${customer.CustomerId}`,
+        $select: "PersonId,CustomerId,FirstName,LastName,Email,Phone,Mobile,IsContactPerson,CanLogin",
+        $top: "10",
+      },
+      60,
+    );
+
+    return { ...customer, Persons: persons.value };
   } catch {
     return null;
   }

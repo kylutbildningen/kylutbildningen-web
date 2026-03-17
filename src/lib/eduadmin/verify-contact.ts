@@ -1,26 +1,24 @@
 /**
  * Verify that an email address is registered as a contact
  * on a specific customer account in EduAdmin.
+ *
+ * Uses the Persons endpoint (not CustomerContacts — that doesn't exist).
  */
 
 import { eduAdminFetch } from "./client";
 
-interface CustomerContact {
-  ContactId: number;
+interface ODataResponse<T> {
+  value: T[];
+}
+
+interface EduAdminPerson {
+  PersonId: number;
+  CustomerId: number;
   FirstName: string;
   LastName: string;
   Email: string;
-  ContactPerson: boolean;
-  LoginAccount: boolean;
-  Phone: string;
-  Mobile: string;
-}
-
-interface CustomerWithContacts {
-  CustomerId: number;
-  CustomerName: string;
-  OrganisationNumber: string;
-  CustomerContacts: CustomerContact[];
+  IsContactPerson: boolean;
+  CanLogin: boolean;
 }
 
 export interface VerifyResult {
@@ -32,23 +30,32 @@ export interface VerifyResult {
 }
 
 /**
- * Check if the given email exists as a contact on the given EduAdmin customer.
+ * Check if the given email exists as a person on the given EduAdmin customer.
  */
 export async function verifyEmailOnCustomer(
   email: string,
   customerId: number,
 ): Promise<VerifyResult> {
-  const customer = await eduAdminFetch<CustomerWithContacts>(
-    `/v1/odata/Customers(${customerId})`,
+  // Get customer name
+  const customer = await eduAdminFetch<{
+    CustomerId: number;
+    CustomerName: string;
+  }>(`/v1/odata/Customers(${customerId})`, {
+    $select: "CustomerId,CustomerName",
+  });
+
+  // Get all persons for this customer
+  const persons = await eduAdminFetch<ODataResponse<EduAdminPerson>>(
+    "/v1/odata/Persons",
     {
-      $expand:
-        "CustomerContacts($select=ContactId,FirstName,LastName,Email,ContactPerson)",
-      $select: "CustomerId,CustomerName,OrganisationNumber",
+      $filter: `CustomerId eq ${customerId}`,
+      $select:
+        "PersonId,FirstName,LastName,Email,IsContactPerson,CanLogin,CustomerId",
     },
   );
 
-  const contact = customer.CustomerContacts?.find(
-    (c) => c.Email?.toLowerCase() === email.toLowerCase(),
+  const contact = persons.value.find(
+    (p) => p.Email?.toLowerCase() === email.toLowerCase(),
   );
 
   if (!contact) {
@@ -61,9 +68,25 @@ export async function verifyEmailOnCustomer(
 
   return {
     verified: true,
-    isContactPerson: contact.ContactPerson === true,
-    contactId: contact.ContactId,
+    isContactPerson: contact.IsContactPerson === true,
+    contactId: contact.PersonId,
     contactName: `${contact.FirstName} ${contact.LastName}`.trim(),
     companyName: customer.CustomerName,
   };
+}
+
+/**
+ * Get all persons for a customer (used for team management).
+ */
+export async function getPersonsForCustomer(customerId: number) {
+  const persons = await eduAdminFetch<ODataResponse<EduAdminPerson>>(
+    "/v1/odata/Persons",
+    {
+      $filter: `CustomerId eq ${customerId}`,
+      $select:
+        "PersonId,CustomerId,FirstName,LastName,Email,IsContactPerson,CanLogin",
+      $orderby: "LastName asc",
+    },
+  );
+  return persons.value;
 }

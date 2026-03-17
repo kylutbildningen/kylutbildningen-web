@@ -23,16 +23,6 @@ export interface CustomerDetail {
   City: string;
   Phone: string;
   Email: string;
-  CustomerContacts: Array<{
-    ContactId: number;
-    FirstName: string;
-    LastName: string;
-    Email: string;
-    Phone: string;
-    Mobile: string;
-    ContactPerson: boolean;
-    LoginAccount: boolean;
-  }>;
 }
 
 /**
@@ -43,7 +33,6 @@ export async function searchCustomers(
 ): Promise<CustomerSearchResult[]> {
   if (query.length < 2) return [];
 
-  // Escape single quotes in OData filter
   const escaped = query.replace(/'/g, "''");
 
   const data = await eduAdminFetch<ODataResponse<CustomerSearchResult>>(
@@ -60,7 +49,7 @@ export async function searchCustomers(
 }
 
 /**
- * Get a single customer with all contacts expanded.
+ * Get a single customer by ID.
  */
 export async function getCustomerWithContacts(
   customerId: number,
@@ -68,8 +57,6 @@ export async function getCustomerWithContacts(
   return eduAdminFetch<CustomerDetail>(
     `/v1/odata/Customers(${customerId})`,
     {
-      $expand:
-        "CustomerContacts($select=ContactId,FirstName,LastName,Email,Phone,Mobile,ContactPerson,LoginAccount)",
       $select:
         "CustomerId,CustomerName,OrganisationNumber,Address,Zip,City,Phone,Email",
     },

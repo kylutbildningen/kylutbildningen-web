@@ -13,11 +13,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 1. Check EduAdmin first (with contact persons)
+    // 1. Check EduAdmin first (with persons/contacts)
     const eduCustomer = await lookupCustomerByOrgNr(orgNr);
 
     if (eduCustomer) {
-      const contact = eduCustomer.CustomerContacts?.[0];
+      const contact = eduCustomer.Persons?.find((p) => p.IsContactPerson) ??
+        eduCustomer.Persons?.[0];
 
       return NextResponse.json({
         found: true,
@@ -27,8 +28,8 @@ export async function GET(request: NextRequest) {
         streetAddress: eduCustomer.Address || "",
         postalCode: eduCustomer.Zip || "",
         city: eduCustomer.City || "",
-        email: eduCustomer.Email || eduCustomer.InvoiceEmail || "",
-        phone: eduCustomer.Phone || "",
+        email: eduCustomer.Email || contact?.Email || "",
+        phone: eduCustomer.Phone || contact?.Phone || "",
         contactFirstName: contact?.FirstName || "",
         contactLastName: contact?.LastName || "",
         contactEmail: contact?.Email || eduCustomer.Email || "",
