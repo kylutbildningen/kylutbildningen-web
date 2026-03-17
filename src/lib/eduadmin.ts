@@ -238,6 +238,65 @@ export async function getUniqueCategories(): Promise<string[]> {
   return Array.from(cats).sort();
 }
 
+/* ─── Customer lookup ─── */
+
+export interface EduAdminCustomer {
+  CustomerId: number;
+  CustomerNumber: string;
+  CustomerName: string;
+  OrganisationNumber: string;
+  Address: string;
+  Address2: string;
+  Zip: string;
+  City: string;
+  Phone: string;
+  Email: string;
+  InvoiceEmail: string;
+  CustomerContacts?: EduAdminCustomerContact[];
+}
+
+export interface EduAdminCustomerContact {
+  ContactId: number;
+  FirstName: string;
+  LastName: string;
+  Email: string;
+  Phone: string;
+  Mobile: string;
+}
+
+/**
+ * Look up a customer by organisation number in EduAdmin.
+ * Expands CustomerContacts to get contact person details.
+ */
+export async function lookupCustomerByOrgNr(
+  orgNr: string,
+): Promise<EduAdminCustomer | null> {
+  try {
+    const clean = orgNr.replace(/\D/g, "");
+    // Try both with and without dash format
+    const withDash = clean.length === 10
+      ? `${clean.slice(0, 6)}-${clean.slice(6)}`
+      : orgNr;
+
+    const data = await odata<ODataResponse<EduAdminCustomer>>(
+      "Customers",
+      {
+        $filter: `OrganisationNumber eq '${withDash}' or OrganisationNumber eq '${clean}'`,
+        $expand: "CustomerContacts",
+        $top: "1",
+      },
+      60,
+    );
+
+    if (data.value.length > 0) {
+      return data.value[0];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /* ─── Booking API ─── */
 
 export async function createBooking(body: {
