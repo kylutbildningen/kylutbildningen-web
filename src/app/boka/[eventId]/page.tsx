@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { EventCard } from "@/types/eduadmin";
@@ -92,6 +92,65 @@ export default function BookingPage() {
 
   const customerType = watch("customerType");
   const isCompany = customerType === "company";
+
+  // Org number lookup state
+  const [orgLookupLoading, setOrgLookupLoading] = useState(false);
+  const [orgLookupResult, setOrgLookupResult] = useState<string | null>(null);
+  const orgLookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const orgNumber = watch("company.organizationNumber");
+
+  // Debounced org number lookup
+  useEffect(() => {
+    if (!isCompany) return;
+
+    // Clean and check length
+    const clean = (orgNumber || "").replace(/\D/g, "");
+    if (clean.length < 10) {
+      setOrgLookupResult(null);
+      return;
+    }
+
+    if (orgLookupTimer.current) clearTimeout(orgLookupTimer.current);
+
+    orgLookupTimer.current = setTimeout(async () => {
+      setOrgLookupLoading(true);
+      setOrgLookupResult(null);
+
+      try {
+        const res = await fetch(
+          `/api/company/lookup?orgNr=${encodeURIComponent(orgNumber)}`,
+        );
+        const data = await res.json();
+
+        if (data.found) {
+          // Auto-fill all company fields
+          if (data.companyName) setValue("company.companyName", data.companyName);
+          if (data.streetAddress) setValue("company.streetAddress", data.streetAddress);
+          if (data.postalCode) setValue("company.postalCode", data.postalCode);
+          if (data.city) setValue("company.city", data.city);
+          if (data.contactFirstName) setValue("company.contactFirstName", data.contactFirstName);
+          if (data.contactLastName) setValue("company.contactLastName", data.contactLastName);
+          if (data.contactEmail) setValue("company.contactEmail", data.contactEmail);
+          if (data.contactPhone) setValue("company.contactPhone", data.contactPhone);
+
+          setOrgLookupResult(
+            `Hittade ${data.companyName}${data.source === "fortnox" ? " (befintlig kund)" : ""}`,
+          );
+        } else {
+          setOrgLookupResult("Inget företag hittades — fyll i uppgifterna manuellt");
+        }
+      } catch {
+        setOrgLookupResult(null);
+      } finally {
+        setOrgLookupLoading(false);
+      }
+    }, 600);
+
+    return () => {
+      if (orgLookupTimer.current) clearTimeout(orgLookupTimer.current);
+    };
+  }, [orgNumber, isCompany, setValue]);
 
   // Fetch event data
   useEffect(() => {
@@ -382,16 +441,43 @@ export default function BookingPage() {
                   Företagsuppgifter
                 </h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <FormField
-                    label="Organisationsnummer"
-                    error={errors.company?.organizationNumber?.message}
-                  >
-                    <input
-                      {...register("company.organizationNumber")}
-                      placeholder="556000-4615"
-                      className="form-input"
-                    />
-                  </FormField>
+                  <div>
+                    <FormField
+                      label="Organisationsnummer"
+                      error={errors.company?.organizationNumber?.message}
+                    >
+                      <div className="relative">
+                        <input
+                          {...register("company.organizationNumber")}
+                          placeholder="556000-4615"
+                          className="form-input"
+                        />
+                        {orgLookupLoading && (
+                          <span
+                            className="absolute right-3 top-1/2 -translate-y-1/2"
+                            style={{ color: "var(--frost)" }}
+                          >
+                            <LoaderIcon className="animate-spin" />
+                          </span>
+                        )}
+                      </div>
+                    </FormField>
+                    {orgLookupResult && !orgLookupLoading && (
+                      <p
+                        className="mt-1.5 text-xs"
+                        style={{
+                          color: orgLookupResult.startsWith("Hittade")
+                            ? "var(--success)"
+                            : "var(--slate-light)",
+                        }}
+                      >
+                        {orgLookupResult.startsWith("Hittade") && (
+                          <span className="mr-1">✓</span>
+                        )}
+                        {orgLookupResult}
+                      </p>
+                    )}
+                  </div>
                   <FormField
                     label="Företagsnamn"
                     error={errors.company?.companyName?.message}
