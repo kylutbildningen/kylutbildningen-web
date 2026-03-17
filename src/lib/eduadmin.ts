@@ -5,6 +5,13 @@
  * Data: OData v4 endpoints under /v1/odata/
  */
 
+import type {
+  CourseTemplate,
+  CourseEvent,
+  EventCard,
+  ODataResponse,
+} from "@/types/eduadmin";
+
 const API_URL = process.env.EDUADMIN_API_BASE ?? "https://api.eduadmin.se";
 const API_USER = process.env.EDUADMIN_USERNAME ?? "";
 const API_PASS = process.env.EDUADMIN_PASSWORD ?? "";
@@ -32,7 +39,6 @@ async function getToken(): Promise<string> {
 
   const data = await res.json();
   cachedToken = data.access_token;
-  // Expire 1 hour before actual expiry to be safe
   tokenExpiry = Date.now() + (data.expires_in - 3600) * 1000;
   return cachedToken!;
 }
@@ -40,6 +46,7 @@ async function getToken(): Promise<string> {
 async function odata<T>(
   endpoint: string,
   params?: Record<string, string>,
+  revalidate = 300,
 ): Promise<T> {
   const token = await getToken();
   const url = new URL(`/v1/odata/${endpoint}`, API_URL);
@@ -49,86 +56,80 @@ async function odata<T>(
     }
   }
 
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `bearer ${token}` },
-    next: { revalidate: 300 }, // cache 5 min
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
 
-  if (!res.ok) {
-    throw new Error(
-      `EduAdmin OData ${endpoint}: ${res.status} ${res.statusText}`,
-    );
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `bearer ${token}` },
+      next: { revalidate },
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      throw new Error(
+        `EduAdmin OData ${endpoint}: ${res.status} ${res.statusText}`,
+      );
+    }
+
+    return res.json();
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return res.json();
 }
 
-/* ─── Types ─── */
-export interface CourseTemplate {
-  CourseTemplateId: number;
-  CourseName: string;
-  CourseDescription: string;
-  CourseDescriptionShort: string;
-  CourseGoal: string;
-  TargetGroup: string;
-  Prerequisites: string;
-  Days: number;
-  StartTime: string;
-  EndTime: string;
-  ImageUrl: string;
-  CategoryId: number;
-  CategoryName: string;
-  ShowOnWeb: boolean;
-  MinParticipantNumber: number;
-  MaxParticipantNumber: number;
-  CourseLevelId: number;
-  Events?: CourseEvent[];
-  PriceNames?: CoursePriceName[];
-  Subjects?: CourseSubject[];
+/* ─── Helpers ─── */
+
+export function getSpotsLeft(event: CourseEvent): number {
+  return event.MaxParticipantNumber - event.NumberOfBookedParticipants;
 }
 
-export interface CourseEvent {
-  EventId: number;
-  CourseTemplateId: number;
-  CourseName: string;
-  EventName: string;
-  City: string;
-  StartDate: string;
-  EndDate: string;
-  MaxParticipantNumber: number;
-  NumberOfBookedParticipants: number;
-  LastApplicationDate: string;
-  StatusText: string;
-  HasPublicPriceName: boolean;
-  PriceNames?: EventPriceName[];
+export function isFullyBooked(event: CourseEvent): boolean {
+  return getSpotsLeft(event) <= 0;
 }
 
-export interface CoursePriceName {
-  PriceNameId: number;
-  PriceNameDescription: string;
-  Price: number;
-  PublicPriceName: boolean;
-  PriceNameVat: number;
+export function getLowestPrice(
+  priceNames?: Array<{ Price: number; PublicPriceName: boolean; PriceNameVat: number }>,
+): { price: number; priceIncVat: number } | null {
+  const prices = priceNames?.filter((p) => p.PublicPriceName) ?? [];
+  if (prices.length === 0) return null;
+  const cheapest = prices.reduce((a, b) => (a.Price < b.Price ? a : b));
+  return {
+    price: cheapest.Price,
+    priceIncVat: cheapest.Price * (1 + cheapest.PriceNameVat / 100),
+  };
 }
 
-export interface EventPriceName {
-  PriceNameId: number;
-  PriceNameDescription: string;
-  Price: number;
-  PublicPriceName: boolean;
-  DiscountPercent: number;
-  MaxParticipantNumber: number;
-  NumberOfParticipants: number;
-  PriceNameVat: number;
+export function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, "").trim();
 }
 
-export interface CourseSubject {
-  SubjectId: number;
-  SubjectName: string;
-}
+/** Convert a CourseEvent to a flat EventCard for the frontend */
+export function toEventCard(
+  event: CourseEvent,
+  course?: CourseTemplate,
+): EventCard {
+  const priceInfo = getLowestPrice(event.PriceNames) ??
+    (course ? getLowestPrice(course.PriceNames) : null);
 
-interface ODataResponse<T> {
-  value: T[];
+  return {
+    eventId: event.EventId,
+    courseTemplateId: event.CourseTemplateId,
+    courseName: event.CourseName || course?.CourseName || "",
+    categoryName: event.CategoryName || course?.CategoryName || "",
+    city: event.City || "",
+    startDate: event.StartDate,
+    endDate: event.EndDate,
+    startTime: event.StartTime || course?.StartTime || "",
+    endTime: event.EndTime || course?.EndTime || "",
+    spotsLeft: getSpotsLeft(event),
+    maxParticipants: event.MaxParticipantNumber,
+    bookedParticipants: event.NumberOfBookedParticipants,
+    isFullyBooked: isFullyBooked(event),
+    lowestPrice: priceInfo?.price ?? null,
+    lowestPriceIncVat: priceInfo?.priceIncVat ?? null,
+    cancelled: event.Cancelled ?? false,
+  };
 }
 
 /* ─── Public API ─── */
@@ -138,13 +139,17 @@ interface ODataResponse<T> {
  */
 export async function getCourseTemplates(): Promise<CourseTemplate[]> {
   const now = new Date().toISOString();
-  const data = await odata<ODataResponse<CourseTemplate>>("CourseTemplates", {
-    $filter: "ShowOnWeb eq true",
-    $expand: `Events($filter=StartDate ge ${now};$orderby=StartDate asc;$expand=PriceNames),PriceNames,Subjects`,
-    $orderby: "CourseName asc",
-    $select:
-      "CourseTemplateId,CourseName,CourseDescription,CourseDescriptionShort,CourseGoal,TargetGroup,Prerequisites,Days,StartTime,EndTime,ImageUrl,CategoryId,CategoryName,ShowOnWeb,MinParticipantNumber,MaxParticipantNumber",
-  });
+  const data = await odata<ODataResponse<CourseTemplate>>(
+    "CourseTemplates",
+    {
+      $filter: "ShowOnWeb eq true",
+      $expand: `Events($filter=StartDate ge ${now};$orderby=StartDate asc;$expand=PriceNames),PriceNames,Subjects`,
+      $orderby: "CourseName asc",
+      $select:
+        "CourseTemplateId,CourseName,CourseDescription,CourseDescriptionShort,CourseGoal,TargetGroup,Prerequisites,Days,StartTime,EndTime,ImageUrl,CategoryId,CategoryName,ShowOnWeb,MinParticipantNumber,MaxParticipantNumber",
+    },
+    60,
+  );
   return data.value;
 }
 
@@ -155,9 +160,13 @@ export async function getCourseTemplate(
   id: number,
 ): Promise<CourseTemplate | null> {
   try {
-    const data = await odata<CourseTemplate>(`CourseTemplates(${id})`, {
-      $expand: `Events($filter=StartDate ge ${new Date().toISOString()};$orderby=StartDate asc;$expand=PriceNames),PriceNames,Subjects`,
-    });
+    const data = await odata<CourseTemplate>(
+      `CourseTemplates(${id})`,
+      {
+        $expand: `Events($filter=StartDate ge ${new Date().toISOString()};$orderby=StartDate asc;$expand=PriceNames),PriceNames,Subjects`,
+      },
+      300,
+    );
     return data;
   } catch {
     return null;
@@ -165,17 +174,128 @@ export async function getCourseTemplate(
 }
 
 /**
- * Fetch upcoming events for a specific course template.
+ * Fetch all upcoming events across all courses, flattened into EventCard[].
  */
-export async function getEventsForCourse(
-  courseTemplateId: number,
-): Promise<CourseEvent[]> {
-  const data = await odata<ODataResponse<CourseEvent>>("Events", {
-    $filter: `CourseTemplateId eq ${courseTemplateId} and StartDate ge ${new Date().toISOString()}`,
-    $orderby: "StartDate asc",
-    $expand: "PriceNames",
-    $select:
-      "EventId,CourseTemplateId,CourseName,EventName,City,StartDate,EndDate,MaxParticipantNumber,NumberOfBookedParticipants,LastApplicationDate,StatusText,HasPublicPriceName",
+export async function getUpcomingEvents(): Promise<EventCard[]> {
+  const courses = await getCourseTemplates();
+  const events: EventCard[] = [];
+
+  for (const course of courses) {
+    for (const event of course.Events ?? []) {
+      if (event.Cancelled) continue;
+      events.push(toEventCard(event, course));
+    }
+  }
+
+  events.sort(
+    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+  );
+
+  return events;
+}
+
+/**
+ * Fetch a single event by ID with full details.
+ */
+export async function getEvent(eventId: number): Promise<{
+  event: CourseEvent;
+  course: CourseTemplate;
+  eventCard: EventCard;
+} | null> {
+  try {
+    const courses = await getCourseTemplates();
+    for (const course of courses) {
+      const event = course.Events?.find((e) => e.EventId === eventId);
+      if (event) {
+        return {
+          event,
+          course,
+          eventCard: toEventCard(event, course),
+        };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get unique cities from all upcoming events.
+ */
+export async function getUniqueCities(): Promise<string[]> {
+  const events = await getUpcomingEvents();
+  const cities = new Set(events.map((e) => e.city).filter(Boolean));
+  return Array.from(cities).sort();
+}
+
+/**
+ * Get unique category names from all upcoming events.
+ */
+export async function getUniqueCategories(): Promise<string[]> {
+  const events = await getUpcomingEvents();
+  const cats = new Set(events.map((e) => e.categoryName).filter(Boolean));
+  return Array.from(cats).sort();
+}
+
+/* ─── Booking API ─── */
+
+export async function createBooking(body: {
+  eventId: number;
+  customerName: string;
+  customerEmail: string;
+  invoiceReference?: string;
+  paymentMethodId?: number;
+}): Promise<{ BookingId: number; BookingNumber: string }> {
+  const token = await getToken();
+  const res = await fetch(`${API_URL}/v1/odata/Bookings`, {
+    method: "POST",
+    headers: {
+      Authorization: `bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      EventId: body.eventId,
+      CustomerName: body.customerName,
+      CustomerEmail: body.customerEmail,
+      InvoiceReference: body.invoiceReference,
+      PaymentMethodId: body.paymentMethodId,
+    }),
   });
-  return data.value;
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`EduAdmin create booking failed: ${res.status} ${text}`);
+  }
+
+  return res.json();
+}
+
+export async function addBookingParticipant(body: {
+  bookingId: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+}): Promise<void> {
+  const token = await getToken();
+  const res = await fetch(`${API_URL}/v1/odata/BookingParticipants`, {
+    method: "POST",
+    headers: {
+      Authorization: `bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      BookingId: body.bookingId,
+      FirstName: body.firstName,
+      LastName: body.lastName,
+      Email: body.email,
+      Phone: body.phone,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`EduAdmin add participant failed: ${res.status} ${text}`);
+  }
 }
