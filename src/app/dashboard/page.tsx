@@ -172,6 +172,28 @@ export default function DashboardPage() {
             </Link>
           )}
 
+          <Link
+            href="/dashboard/foretag"
+            className="rounded-xl border bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-md"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <h3
+              className="mb-2 text-lg font-medium"
+              style={{
+                fontFamily: "var(--font-serif)",
+                color: "var(--slate-deep)",
+              }}
+            >
+              Företagsöversikt
+            </h3>
+            <p
+              className="text-sm leading-relaxed"
+              style={{ color: "var(--slate-light)" }}
+            >
+              Kontaktpersoner, deltagare och företagsuppgifter.
+            </p>
+          </Link>
+
           {canManageMembers(role) && (
             <Link
               href="/dashboard/team"

@@ -35,16 +35,22 @@ async function getToken(): Promise<string> {
 
 /**
  * Authenticated fetch against the EduAdmin API.
- * Path should start with `/v1/odata/...`
+ *
+ * For GET requests: pass OData params as Record<string, string>.
+ * For POST/PATCH/DELETE: include __method and __body in params.
  */
 export async function eduAdminFetch<T>(
   path: string,
   params?: Record<string, string>,
 ): Promise<T> {
   const token = await getToken();
+  const method = params?.__method ?? "GET";
+  const body = params?.__body;
   const url = new URL(path, API_URL);
+
   if (params) {
     for (const [k, v] of Object.entries(params)) {
+      if (k.startsWith("__")) continue;
       url.searchParams.set(k, v);
     }
   }
@@ -53,17 +59,33 @@ export async function eduAdminFetch<T>(
   const timeout = setTimeout(() => controller.abort(), 10000);
 
   try {
+    const headers: Record<string, string> = {
+      Authorization: `bearer ${token}`,
+    };
+    if (body) {
+      headers["Content-Type"] = "application/json";
+    }
+
     const res = await fetch(url.toString(), {
-      headers: { Authorization: `bearer ${token}` },
-      next: { revalidate: 0 },
+      method,
+      headers,
+      body: body || undefined,
+      next: method === "GET" ? { revalidate: 0 } : undefined,
       signal: controller.signal,
     });
 
     if (!res.ok) {
-      throw new Error(`EduAdmin ${path}: ${res.status} ${res.statusText}`);
+      const text = await res.text();
+      throw new Error(`EduAdmin ${method} ${path}: ${res.status} ${text}`);
     }
 
-    return res.json();
+    if (method === "DELETE" || res.status === 204) {
+      return undefined as T;
+    }
+
+    const text = await res.text();
+    if (!text) return undefined as T;
+    return JSON.parse(text);
   } finally {
     clearTimeout(timeout);
   }
