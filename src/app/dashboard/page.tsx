@@ -148,6 +148,28 @@ export default function DashboardPage() {
 
         {/* Action cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Link
+            href="/dashboard/bokningar"
+            className="rounded-xl border bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-md"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <h3
+              className="mb-2 text-lg font-medium"
+              style={{
+                fontFamily: "var(--font-serif)",
+                color: "var(--slate-deep)",
+              }}
+            >
+              Bokningar
+            </h3>
+            <p
+              className="text-sm leading-relaxed"
+              style={{ color: "var(--slate-light)" }}
+            >
+              Se, ändra och flytta era bokningar.
+            </p>
+          </Link>
+
           {canBook(role) && (
             <Link
               href="/kurser"
