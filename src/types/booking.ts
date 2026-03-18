@@ -8,6 +8,7 @@ export interface Participant {
   lastName: string;
   email: string;
   phone: string;
+  civicRegistrationNumber: string;
   isPrimaryContact: boolean;
 }
 

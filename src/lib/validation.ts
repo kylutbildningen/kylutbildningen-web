@@ -22,6 +22,7 @@ const participantSchema = z.object({
   lastName: z.string().min(1, "Efternamn krävs"),
   email: z.string().email("Ogiltig e-postadress"),
   phone: z.string().min(1, "Telefon krävs"),
+  civicRegistrationNumber: z.string().min(1, "Personnummer krävs"),
   isPrimaryContact: z.boolean(),
 });
 

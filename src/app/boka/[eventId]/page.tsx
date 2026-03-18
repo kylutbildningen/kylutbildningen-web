@@ -44,6 +44,7 @@ const emptyParticipant = {
   lastName: "",
   email: "",
   phone: "",
+  civicRegistrationNumber: "",
   isPrimaryContact: false,
 };
 
@@ -186,6 +187,7 @@ export default function BookingPage() {
             setValue("participants.0.lastName", myPerson.LastName?.trim() || "");
             setValue("participants.0.email", myPerson.Email || "");
             setValue("participants.0.phone", myPerson.Phone || myPerson.Mobile || "");
+            setValue("participants.0.civicRegistrationNumber", myPerson.CivicRegistrationNumber || "");
             setValue("participants.0.isPrimaryContact", true);
           }
         }
@@ -239,6 +241,7 @@ export default function BookingPage() {
       lastName: person.LastName?.trim() || "",
       email: person.Email || "",
       phone: person.Phone || person.Mobile || "",
+      civicRegistrationNumber: person.CivicRegistrationNumber || "",
       isPrimaryContact: false,
     });
     setShowPersonPicker(false);

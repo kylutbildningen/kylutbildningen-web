@@ -88,6 +88,16 @@ export function ParticipantForm({
             className="form-input"
           />
         </FieldGroup>
+        <FieldGroup
+          label="Personnummer"
+          error={participantErrors?.civicRegistrationNumber?.message}
+        >
+          <input
+            {...register(`participants.${index}.civicRegistrationNumber`)}
+            placeholder="YYYYMMDD-XXXX"
+            className="form-input"
+          />
+        </FieldGroup>
       </div>
 
       {showPrimaryContact && (

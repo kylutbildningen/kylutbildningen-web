@@ -85,6 +85,7 @@ export async function POST(request: Request) {
         LastName: p.lastName,
         Email: p.email,
         Phone: p.phone,
+        CivicRegistrationNumber: p.civicRegistrationNumber || "",
       })),
       SendConfirmationEmail: {
         SendToCustomerContact: true,
