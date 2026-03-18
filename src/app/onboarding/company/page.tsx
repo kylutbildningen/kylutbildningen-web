@@ -75,21 +75,66 @@ export default function CompanyPage() {
   }
 
   async function handleContinue() {
-    if (!selected) return;
+    if (!selected || !userEmail) return;
     setCreating(true);
     setError(null);
 
     try {
-      const res = await fetch("/api/auth/create-membership", {
+      const supabase = createSupabaseBrowser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/onboarding");
+        return;
+      }
+
+      // Check if an admin already exists for this company
+      const { data: existingAdmin } = await supabase
+        .from("company_memberships")
+        .select("id")
+        .eq("edu_customer_id", selected.CustomerId)
+        .eq("role", "company_admin")
+        .limit(1)
+        .maybeSingle();
+
+      const role = existingAdmin ? "contact_person" : "company_admin";
+
+      // Re-verify against EduAdmin before creating
+      const verifyRes = await fetch("/api/auth/verify-contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId: selected.CustomerId }),
+        body: JSON.stringify({
+          email: userEmail,
+          customerId: selected.CustomerId,
+        }),
       });
+      const verifyData = await verifyRes.json();
 
-      const data = await res.json();
+      if (!verifyData.verified || !verifyData.isContactPerson) {
+        throw new Error("Verifieringen misslyckades. Försök igen.");
+      }
 
-      if (!res.ok) {
-        throw new Error(data.error || "Kunde inte skapa koppling");
+      // Create membership directly from client
+      const { error: insertError } = await supabase
+        .from("company_memberships")
+        .upsert(
+          {
+            user_id: user.id,
+            edu_customer_id: selected.CustomerId,
+            edu_contact_id: verifyData.contactId || null,
+            company_name: selected.CustomerName,
+            org_number: selected.OrganisationNumber || null,
+            role,
+            is_contact_person: true,
+          },
+          { onConflict: "user_id,edu_customer_id" },
+        );
+
+      if (insertError) {
+        console.error("Membership insert error:", insertError);
+        throw new Error(insertError.message);
       }
 
       router.push("/onboarding/profile");

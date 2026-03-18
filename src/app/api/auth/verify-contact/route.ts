@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       verified: result.verified,
       isContactPerson: result.isContactPerson,
+      contactId: result.contactId,
       contactName: result.contactName,
       companyName: result.companyName,
     });
