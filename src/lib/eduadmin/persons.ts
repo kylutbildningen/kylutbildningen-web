@@ -53,6 +53,7 @@ export async function createPerson(person: {
   phone?: string;
   mobile?: string;
   jobTitle?: string;
+  civicRegistrationNumber?: string;
   isContactPerson?: boolean;
 }): Promise<EduAdminPerson> {
   return eduAdminFetch<EduAdminPerson>("/v1/odata/Persons", {
@@ -65,6 +66,7 @@ export async function createPerson(person: {
       Phone: person.phone || "",
       Mobile: person.mobile || "",
       JobTitle: person.jobTitle || "",
+      CivicRegistrationNumber: person.civicRegistrationNumber || "",
       IsContactPerson: person.isContactPerson ?? false,
     }),
   });
@@ -79,6 +81,7 @@ export async function updatePerson(
     phone: string;
     mobile: string;
     jobTitle: string;
+    civicRegistrationNumber: string;
     isContactPerson: boolean;
   }>,
 ): Promise<void> {
@@ -89,6 +92,7 @@ export async function updatePerson(
   if (updates.phone !== undefined) body.Phone = updates.phone;
   if (updates.mobile !== undefined) body.Mobile = updates.mobile;
   if (updates.jobTitle !== undefined) body.JobTitle = updates.jobTitle;
+  if (updates.civicRegistrationNumber !== undefined) body.CivicRegistrationNumber = updates.civicRegistrationNumber;
   if (updates.isContactPerson !== undefined) body.IsContactPerson = updates.isContactPerson;
 
   await eduAdminFetch(`/v1/odata/Persons(${personId})`, {
