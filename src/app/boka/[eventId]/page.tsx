@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +14,7 @@ import { BookingSteps } from "@/components/bokning/BookingSteps";
 import { ParticipantForm } from "@/components/bokning/ParticipantForm";
 import { PaymentSelector } from "@/components/bokning/PaymentSelector";
 import { BookingSummary } from "@/components/bokning/BookingSummary";
+import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import {
   CalendarIcon,
   MapPinIcon,
@@ -27,6 +28,17 @@ import {
 
 type BookingStep = 1 | 2 | 3;
 
+interface CompanyPerson {
+  PersonId: number;
+  FirstName: string;
+  LastName: string;
+  Email: string;
+  Phone: string;
+  Mobile: string;
+  CivicRegistrationNumber: string;
+  IsContactPerson: boolean;
+}
+
 const emptyParticipant = {
   firstName: "",
   lastName: "",
@@ -37,8 +49,10 @@ const emptyParticipant = {
 
 export default function BookingPage() {
   const { eventId } = useParams<{ eventId: string }>();
+  const router = useRouter();
   const [event, setEvent] = useState<EventCard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<BookingStep>(1);
   const [submitting, setSubmitting] = useState(false);
@@ -46,6 +60,10 @@ export default function BookingPage() {
     bookingId: number;
     bookingNumber: string;
   } | null>(null);
+
+  // Company persons from EduAdmin (for participant picker)
+  const [companyPersons, setCompanyPersons] = useState<CompanyPerson[]>([]);
+  const [showPersonPicker, setShowPersonPicker] = useState(false);
 
   const form = useForm<BookingStep1Data>({
     resolver: zodResolver(bookingStep1Schema),
@@ -93,64 +111,91 @@ export default function BookingPage() {
   const customerType = watch("customerType");
   const isCompany = customerType === "company";
 
-  // Org number lookup state
-  const [orgLookupLoading, setOrgLookupLoading] = useState(false);
-  const [orgLookupResult, setOrgLookupResult] = useState<string | null>(null);
-  const orgLookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const orgNumber = watch("company.organizationNumber");
-
-  // Debounced org number lookup
+  // ─── Auth check + prefill from EduAdmin ───
   useEffect(() => {
-    if (!isCompany) return;
+    async function checkAuthAndPrefill() {
+      const supabase = createSupabaseBrowser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    // Clean and check length
-    const clean = (orgNumber || "").replace(/\D/g, "");
-    if (clean.length < 10) {
-      setOrgLookupResult(null);
-      return;
+      if (!user) {
+        // Not logged in → redirect to onboarding with return URL
+        router.replace(`/onboarding?redirect=/boka/${eventId}`);
+        return;
+      }
+
+      // Get membership
+      const { data: membership } = await supabase
+        .from("company_memberships")
+        .select("edu_customer_id, company_name, org_number")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!membership) {
+        router.replace(`/onboarding/company?redirect=/boka/${eventId}`);
+        return;
+      }
+
+      // Fetch customer details from EduAdmin
+      try {
+        const custRes = await fetch(
+          `/api/edu/customers/${membership.edu_customer_id}`,
+        );
+        if (custRes.ok) {
+          const custData = await custRes.json();
+          // Prefill company fields
+          setValue("company.organizationNumber", custData.OrganisationNumber || "");
+          setValue("company.companyName", custData.CustomerName || "");
+          setValue("company.streetAddress",
+            [custData.Address, custData.Address2].filter(Boolean).join(", ") || "");
+          setValue("company.postalCode", custData.Zip || "");
+          setValue("company.city", custData.City || "");
+
+          // Prefill billing address if available
+          if (custData.BillingInfo) {
+            const bi = custData.BillingInfo;
+            if (bi.Email) setValue("company.contactEmail", bi.Email);
+          }
+        }
+      } catch { /* continue without prefill */ }
+
+      // Fetch persons from the company
+      try {
+        const persRes = await fetch(
+          `/api/edu/persons?customerId=${membership.edu_customer_id}`,
+        );
+        if (persRes.ok) {
+          const persons: CompanyPerson[] = await persRes.json();
+          setCompanyPersons(persons);
+
+          // Find the logged-in user's person record and prefill as contact
+          const myPerson = persons.find(
+            (p) => p.Email?.toLowerCase() === user.email?.toLowerCase(),
+          );
+          if (myPerson) {
+            setValue("company.contactFirstName", myPerson.FirstName?.trim() || "");
+            setValue("company.contactLastName", myPerson.LastName?.trim() || "");
+            setValue("company.contactEmail", myPerson.Email || "");
+            setValue("company.contactPhone", myPerson.Phone || myPerson.Mobile || "");
+
+            // Prefill first participant as the contact person
+            setValue("participants.0.firstName", myPerson.FirstName?.trim() || "");
+            setValue("participants.0.lastName", myPerson.LastName?.trim() || "");
+            setValue("participants.0.email", myPerson.Email || "");
+            setValue("participants.0.phone", myPerson.Phone || myPerson.Mobile || "");
+            setValue("participants.0.isPrimaryContact", true);
+          }
+        }
+      } catch { /* continue */ }
+
+      setAuthChecked(true);
     }
 
-    if (orgLookupTimer.current) clearTimeout(orgLookupTimer.current);
-
-    orgLookupTimer.current = setTimeout(async () => {
-      setOrgLookupLoading(true);
-      setOrgLookupResult(null);
-
-      try {
-        const res = await fetch(
-          `/api/company/lookup?orgNr=${encodeURIComponent(orgNumber)}`,
-        );
-        const data = await res.json();
-
-        if (data.found) {
-          // Auto-fill all company fields
-          if (data.companyName) setValue("company.companyName", data.companyName);
-          if (data.streetAddress) setValue("company.streetAddress", data.streetAddress);
-          if (data.postalCode) setValue("company.postalCode", data.postalCode);
-          if (data.city) setValue("company.city", data.city);
-          if (data.contactFirstName) setValue("company.contactFirstName", data.contactFirstName);
-          if (data.contactLastName) setValue("company.contactLastName", data.contactLastName);
-          if (data.contactEmail) setValue("company.contactEmail", data.contactEmail);
-          if (data.contactPhone) setValue("company.contactPhone", data.contactPhone);
-
-          setOrgLookupResult(
-            `Hittade ${data.companyName}${data.source === "fortnox" ? " (befintlig kund)" : ""}`,
-          );
-        } else {
-          setOrgLookupResult("Inget företag hittades — fyll i uppgifterna manuellt");
-        }
-      } catch {
-        setOrgLookupResult(null);
-      } finally {
-        setOrgLookupLoading(false);
-      }
-    }, 600);
-
-    return () => {
-      if (orgLookupTimer.current) clearTimeout(orgLookupTimer.current);
-    };
-  }, [orgNumber, isCompany, setValue]);
+    checkAuthAndPrefill();
+  }, [eventId, router, setValue]);
 
   // Fetch event data
   useEffect(() => {
@@ -171,22 +216,38 @@ export default function BookingPage() {
     fetchEvent();
   }, [eventId]);
 
-  // Switch to card if private is selected (invoice not available for private)
+  // Switch to card if private is selected
   useEffect(() => {
     if (!isCompany) {
       setValue("paymentMethod", "card");
     }
   }, [isCompany, setValue]);
 
+  // Add person from company picker
+  function addPersonFromCompany(person: CompanyPerson) {
+    // Check if already added
+    const existing = fields.some(
+      (_, i) => {
+        const email = watch(`participants.${i}.email`);
+        return email?.toLowerCase() === person.Email?.toLowerCase();
+      },
+    );
+    if (existing) return;
+
+    append({
+      firstName: person.FirstName?.trim() || "",
+      lastName: person.LastName?.trim() || "",
+      email: person.Email || "",
+      phone: person.Phone || person.Mobile || "",
+      isPrimaryContact: false,
+    });
+    setShowPersonPicker(false);
+  }
+
   const onStep1Submit = useCallback(
     (data: BookingStep1Data) => {
-      // Store in session storage for GDPR
-      sessionStorage.setItem(
-        `booking_${eventId}`,
-        JSON.stringify(data),
-      );
+      sessionStorage.setItem(`booking_${eventId}`, JSON.stringify(data));
       setStep(2);
-      // Focus management
       setTimeout(() => {
         document.getElementById("step-heading")?.focus();
       }, 100);
@@ -241,50 +302,31 @@ export default function BookingPage() {
     }
   }, [eventId, event]);
 
-  // Loading state
-  if (loading) {
+  // Loading / auth check
+  if (loading || !authChecked) {
     return (
-      <div
-        className="min-h-screen"
-        style={{ backgroundColor: "var(--warm-white)" }}
-      >
+      <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
         <SiteHeader />
         <div className="flex items-center justify-center py-32">
           <LoaderIcon className="animate-spin" />
           <span className="ml-3 text-sm" style={{ color: "var(--slate-light)" }}>
-            Laddar kursdata...
+            {!authChecked ? "Kontrollerar inloggning..." : "Laddar kursdata..."}
           </span>
         </div>
       </div>
     );
   }
 
-  // Error state
   if (error && !event) {
     return (
-      <div
-        className="min-h-screen"
-        style={{ backgroundColor: "var(--warm-white)" }}
-      >
+      <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
         <SiteHeader />
         <div className="mx-auto max-w-2xl px-6 py-20 text-center">
-          <h2
-            className="mb-4 text-2xl"
-            style={{
-              fontFamily: "var(--font-serif)",
-              color: "var(--slate-deep)",
-            }}
-          >
+          <h2 className="mb-4 text-2xl" style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}>
             Något gick fel
           </h2>
-          <p className="mb-6" style={{ color: "var(--slate-light)" }}>
-            {error}
-          </p>
-          <a
-            href="/kurser"
-            className="inline-block rounded-lg px-6 py-3 text-sm font-semibold text-white"
-            style={{ backgroundColor: "var(--frost)" }}
-          >
+          <p className="mb-6" style={{ color: "var(--slate-light)" }}>{error}</p>
+          <a href="/kurser" className="inline-block rounded-lg px-6 py-3 text-sm font-semibold text-white" style={{ backgroundColor: "var(--frost)" }}>
             Tillbaka till kurskatalogen
           </a>
         </div>
@@ -307,11 +349,16 @@ export default function BookingPage() {
     ? JSON.parse(storedData)
     : null;
 
+  // Persons not yet added as participants
+  const availablePersons = companyPersons.filter((p) => {
+    return !fields.some((_, i) => {
+      const email = watch(`participants.${i}.email`);
+      return email?.toLowerCase() === p.Email?.toLowerCase();
+    });
+  });
+
   return (
-    <div
-      className="min-h-screen"
-      style={{ backgroundColor: "var(--warm-white)" }}
-    >
+    <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
       <SiteHeader />
 
       {/* Event summary bar */}
@@ -319,21 +366,14 @@ export default function BookingPage() {
         className="border-b"
         style={{
           borderColor: "var(--border)",
-          background:
-            "linear-gradient(160deg, var(--slate-deep) 0%, #1e3a4c 50%, var(--slate-mid) 100%)",
+          background: "linear-gradient(160deg, var(--slate-deep) 0%, #1e3a4c 50%, var(--slate-mid) 100%)",
         }}
       >
         <div className="mx-auto max-w-3xl px-6 py-8">
-          <p
-            className="mb-1 text-xs font-semibold uppercase tracking-[0.2em]"
-            style={{ color: "var(--frost)" }}
-          >
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: "var(--frost)" }}>
             Boka kurs
           </p>
-          <h1
-            className="text-2xl text-white sm:text-3xl"
-            style={{ fontFamily: "var(--font-serif)" }}
-          >
+          <h1 className="text-2xl text-white sm:text-3xl" style={{ fontFamily: "var(--font-serif)" }}>
             {event.courseName}
           </h1>
           <div className="mt-3 flex flex-wrap gap-4 text-sm text-white/60">
@@ -362,7 +402,7 @@ export default function BookingPage() {
         </div>
       </div>
 
-      {/* Steps indicator */}
+      {/* Steps */}
       <div className="border-b bg-white py-4" style={{ borderColor: "var(--border)" }}>
         <div className="mx-auto max-w-3xl px-6">
           <BookingSteps currentStep={step} />
@@ -374,10 +414,7 @@ export default function BookingPage() {
         <h2
           id="step-heading"
           className="mb-6 text-xl font-medium outline-none"
-          style={{
-            fontFamily: "var(--font-serif)",
-            color: "var(--slate-deep)",
-          }}
+          style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}
           tabIndex={-1}
         >
           {step === 1 && "Fyll i uppgifter"}
@@ -386,14 +423,7 @@ export default function BookingPage() {
         </h2>
 
         {error && step !== 3 && (
-          <div
-            className="mb-6 rounded-lg border p-4 text-sm"
-            style={{
-              borderColor: "var(--danger)",
-              backgroundColor: "#fef2f2",
-              color: "var(--danger)",
-            }}
-          >
+          <div className="mb-6 rounded-lg border p-4 text-sm" style={{ borderColor: "var(--danger)", backgroundColor: "#fef2f2", color: "var(--danger)" }}>
             {error}
           </div>
         )}
@@ -403,173 +433,64 @@ export default function BookingPage() {
           <form onSubmit={handleSubmit(onStep1Submit)} className="space-y-8">
             {/* Customer type tabs */}
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setValue("customerType", "company")}
+              <button type="button" onClick={() => setValue("customerType", "company")}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg border py-3 text-sm font-medium transition-all"
-                style={{
-                  borderColor: isCompany ? "var(--frost)" : "var(--border)",
-                  backgroundColor: isCompany ? "var(--frost-light)" : "transparent",
-                  color: isCompany ? "var(--frost-dark)" : "var(--slate-light)",
-                }}
-              >
-                <BuildingIcon />
-                Företag
+                style={{ borderColor: isCompany ? "var(--frost)" : "var(--border)", backgroundColor: isCompany ? "var(--frost-light)" : "transparent", color: isCompany ? "var(--frost-dark)" : "var(--slate-light)" }}>
+                <BuildingIcon /> Företag
               </button>
-              <button
-                type="button"
-                onClick={() => setValue("customerType", "private")}
+              <button type="button" onClick={() => setValue("customerType", "private")}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg border py-3 text-sm font-medium transition-all"
-                style={{
-                  borderColor: !isCompany ? "var(--frost)" : "var(--border)",
-                  backgroundColor: !isCompany ? "var(--frost-light)" : "transparent",
-                  color: !isCompany ? "var(--frost-dark)" : "var(--slate-light)",
-                }}
-              >
-                <UserIcon />
-                Privatperson
+                style={{ borderColor: !isCompany ? "var(--frost)" : "var(--border)", backgroundColor: !isCompany ? "var(--frost-light)" : "transparent", color: !isCompany ? "var(--frost-dark)" : "var(--slate-light)" }}>
+                <UserIcon /> Privatperson
               </button>
             </div>
 
-            {/* Company fields */}
+            {/* Company fields (prefilled from EduAdmin) */}
             {isCompany && (
               <div className="space-y-4">
-                <h3
-                  className="text-sm font-semibold"
-                  style={{ color: "var(--slate-deep)" }}
-                >
-                  Företagsuppgifter
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
+                    Företagsuppgifter
+                  </h3>
+                  <span className="text-xs" style={{ color: "var(--success)" }}>
+                    Förifyllt från EduAdmin
+                  </span>
+                </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <FormField
-                      label="Organisationsnummer"
-                      error={errors.company?.organizationNumber?.message}
-                    >
-                      <div className="relative">
-                        <input
-                          {...register("company.organizationNumber")}
-                          placeholder="556000-4615"
-                          className="form-input"
-                        />
-                        {orgLookupLoading && (
-                          <span
-                            className="absolute right-3 top-1/2 -translate-y-1/2"
-                            style={{ color: "var(--frost)" }}
-                          >
-                            <LoaderIcon className="animate-spin" />
-                          </span>
-                        )}
-                      </div>
-                    </FormField>
-                    {orgLookupResult && !orgLookupLoading && (
-                      <p
-                        className="mt-1.5 text-xs"
-                        style={{
-                          color: orgLookupResult.startsWith("Hittade")
-                            ? "var(--success)"
-                            : "var(--slate-light)",
-                        }}
-                      >
-                        {orgLookupResult.startsWith("Hittade") && (
-                          <span className="mr-1">✓</span>
-                        )}
-                        {orgLookupResult}
-                      </p>
-                    )}
-                  </div>
-                  <FormField
-                    label="Företagsnamn"
-                    error={errors.company?.companyName?.message}
-                  >
-                    <input
-                      {...register("company.companyName")}
-                      placeholder="AB Kylteknik"
-                      className="form-input"
-                    />
+                  <FormField label="Organisationsnummer" error={errors.company?.organizationNumber?.message}>
+                    <input {...register("company.organizationNumber")} placeholder="556000-4615" className="form-input" />
+                  </FormField>
+                  <FormField label="Företagsnamn" error={errors.company?.companyName?.message}>
+                    <input {...register("company.companyName")} placeholder="AB Kylteknik" className="form-input" />
                   </FormField>
                 </div>
-                <FormField
-                  label="Gatuadress"
-                  error={errors.company?.streetAddress?.message}
-                >
-                  <input
-                    {...register("company.streetAddress")}
-                    placeholder="Industrigatan 1"
-                    className="form-input"
-                  />
+                <FormField label="Gatuadress" error={errors.company?.streetAddress?.message}>
+                  <input {...register("company.streetAddress")} placeholder="Industrigatan 1" className="form-input" />
                 </FormField>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <FormField
-                    label="Postnummer"
-                    error={errors.company?.postalCode?.message}
-                  >
-                    <input
-                      {...register("company.postalCode")}
-                      placeholder="411 01"
-                      className="form-input"
-                    />
+                  <FormField label="Postnummer" error={errors.company?.postalCode?.message}>
+                    <input {...register("company.postalCode")} placeholder="411 01" className="form-input" />
                   </FormField>
-                  <FormField
-                    label="Stad"
-                    error={errors.company?.city?.message}
-                  >
-                    <input
-                      {...register("company.city")}
-                      placeholder="Göteborg"
-                      className="form-input"
-                    />
+                  <FormField label="Stad" error={errors.company?.city?.message}>
+                    <input {...register("company.city")} placeholder="Göteborg" className="form-input" />
                   </FormField>
                 </div>
 
-                <h3
-                  className="mt-6 text-sm font-semibold"
-                  style={{ color: "var(--slate-deep)" }}
-                >
+                <h3 className="mt-6 text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
                   Kontaktperson
                 </h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <FormField
-                    label="Förnamn"
-                    error={errors.company?.contactFirstName?.message}
-                  >
-                    <input
-                      {...register("company.contactFirstName")}
-                      placeholder="Anna"
-                      className="form-input"
-                    />
+                  <FormField label="Förnamn" error={errors.company?.contactFirstName?.message}>
+                    <input {...register("company.contactFirstName")} placeholder="Anna" className="form-input" />
                   </FormField>
-                  <FormField
-                    label="Efternamn"
-                    error={errors.company?.contactLastName?.message}
-                  >
-                    <input
-                      {...register("company.contactLastName")}
-                      placeholder="Svensson"
-                      className="form-input"
-                    />
+                  <FormField label="Efternamn" error={errors.company?.contactLastName?.message}>
+                    <input {...register("company.contactLastName")} placeholder="Svensson" className="form-input" />
                   </FormField>
-                  <FormField
-                    label="E-post"
-                    error={errors.company?.contactEmail?.message}
-                  >
-                    <input
-                      type="email"
-                      {...register("company.contactEmail")}
-                      placeholder="anna@foretag.se"
-                      className="form-input"
-                    />
+                  <FormField label="E-post" error={errors.company?.contactEmail?.message}>
+                    <input type="email" {...register("company.contactEmail")} placeholder="anna@foretag.se" className="form-input" />
                   </FormField>
-                  <FormField
-                    label="Telefon"
-                    error={errors.company?.contactPhone?.message}
-                  >
-                    <input
-                      type="tel"
-                      {...register("company.contactPhone")}
-                      placeholder="070-123 45 67"
-                      className="form-input"
-                    />
+                  <FormField label="Telefon" error={errors.company?.contactPhone?.message}>
+                    <input type="tel" {...register("company.contactPhone")} placeholder="070-123 45 67" className="form-input" />
                   </FormField>
                 </div>
               </div>
@@ -578,86 +499,30 @@ export default function BookingPage() {
             {/* Private fields */}
             {!isCompany && (
               <div className="space-y-4">
-                <h3
-                  className="text-sm font-semibold"
-                  style={{ color: "var(--slate-deep)" }}
-                >
-                  Dina uppgifter
-                </h3>
+                <h3 className="text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>Dina uppgifter</h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <FormField
-                    label="Förnamn"
-                    error={errors.private?.firstName?.message}
-                  >
-                    <input
-                      {...register("private.firstName")}
-                      placeholder="Anna"
-                      className="form-input"
-                    />
+                  <FormField label="Förnamn" error={errors.private?.firstName?.message}>
+                    <input {...register("private.firstName")} placeholder="Anna" className="form-input" />
                   </FormField>
-                  <FormField
-                    label="Efternamn"
-                    error={errors.private?.lastName?.message}
-                  >
-                    <input
-                      {...register("private.lastName")}
-                      placeholder="Svensson"
-                      className="form-input"
-                    />
+                  <FormField label="Efternamn" error={errors.private?.lastName?.message}>
+                    <input {...register("private.lastName")} placeholder="Svensson" className="form-input" />
                   </FormField>
-                  <FormField
-                    label="E-post"
-                    error={errors.private?.email?.message}
-                  >
-                    <input
-                      type="email"
-                      {...register("private.email")}
-                      placeholder="anna@foretag.se"
-                      className="form-input"
-                    />
+                  <FormField label="E-post" error={errors.private?.email?.message}>
+                    <input type="email" {...register("private.email")} placeholder="anna@foretag.se" className="form-input" />
                   </FormField>
-                  <FormField
-                    label="Telefon"
-                    error={errors.private?.phone?.message}
-                  >
-                    <input
-                      type="tel"
-                      {...register("private.phone")}
-                      placeholder="070-123 45 67"
-                      className="form-input"
-                    />
+                  <FormField label="Telefon" error={errors.private?.phone?.message}>
+                    <input type="tel" {...register("private.phone")} placeholder="070-123 45 67" className="form-input" />
                   </FormField>
                 </div>
-                <FormField
-                  label="Gatuadress"
-                  error={errors.private?.streetAddress?.message}
-                >
-                  <input
-                    {...register("private.streetAddress")}
-                    placeholder="Storgatan 1"
-                    className="form-input"
-                  />
+                <FormField label="Gatuadress" error={errors.private?.streetAddress?.message}>
+                  <input {...register("private.streetAddress")} placeholder="Storgatan 1" className="form-input" />
                 </FormField>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <FormField
-                    label="Postnummer"
-                    error={errors.private?.postalCode?.message}
-                  >
-                    <input
-                      {...register("private.postalCode")}
-                      placeholder="411 01"
-                      className="form-input"
-                    />
+                  <FormField label="Postnummer" error={errors.private?.postalCode?.message}>
+                    <input {...register("private.postalCode")} placeholder="411 01" className="form-input" />
                   </FormField>
-                  <FormField
-                    label="Stad"
-                    error={errors.private?.city?.message}
-                  >
-                    <input
-                      {...register("private.city")}
-                      placeholder="Göteborg"
-                      className="form-input"
-                    />
+                  <FormField label="Stad" error={errors.private?.city?.message}>
+                    <input {...register("private.city")} placeholder="Göteborg" className="form-input" />
                   </FormField>
                 </div>
               </div>
@@ -665,10 +530,7 @@ export default function BookingPage() {
 
             {/* Participants */}
             <div className="space-y-4">
-              <h3
-                className="text-sm font-semibold"
-                style={{ color: "var(--slate-deep)" }}
-              >
+              <h3 className="text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
                 Deltagare
               </h3>
               {fields.map((field, index) => (
@@ -681,35 +543,78 @@ export default function BookingPage() {
                   showPrimaryContact={isCompany && fields.length > 1}
                 />
               ))}
-              <button
-                type="button"
-                onClick={() => append({ ...emptyParticipant })}
-                className="flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all"
-                style={{
-                  borderColor: "var(--border)",
-                  color: "var(--frost)",
-                }}
-              >
-                <PlusIcon />
-                Lägg till deltagare
-              </button>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => append({ ...emptyParticipant })}
+                  className="flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all"
+                  style={{ borderColor: "var(--border)", color: "var(--frost)" }}
+                >
+                  <PlusIcon /> Lägg till deltagare
+                </button>
+
+                {/* Person picker from EduAdmin */}
+                {isCompany && availablePersons.length > 0 && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowPersonPicker(!showPersonPicker)}
+                      className="flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all"
+                      style={{ borderColor: "var(--frost)", backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}
+                    >
+                      <UserIcon /> Välj från företaget ({availablePersons.length})
+                    </button>
+
+                    {showPersonPicker && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setShowPersonPicker(false)} />
+                        <div
+                          className="absolute left-0 top-full z-20 mt-1 w-80 rounded-lg border bg-white py-1 shadow-lg"
+                          style={{ borderColor: "var(--border)" }}
+                        >
+                          <div className="max-h-64 overflow-y-auto">
+                            {availablePersons.map((p) => (
+                              <button
+                                key={p.PersonId}
+                                type="button"
+                                onClick={() => addPersonFromCompany(p)}
+                                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--frost-light)]"
+                              >
+                                <div
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                                  style={{ backgroundColor: p.IsContactPerson ? "var(--frost-light)" : "#f0f0f0", color: p.IsContactPerson ? "var(--frost-dark)" : "var(--slate-light)" }}
+                                >
+                                  <UserIcon />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span className="block font-medium" style={{ color: "var(--slate-deep)" }}>
+                                    {p.FirstName?.trim()} {p.LastName?.trim()}
+                                  </span>
+                                  <span className="block text-xs truncate" style={{ color: "var(--slate-light)" }}>
+                                    {p.Email || "Ingen e-post"}
+                                    {p.CivicRegistrationNumber && ` · ${p.CivicRegistrationNumber}`}
+                                  </span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Payment method */}
-            <PaymentSelector
-              register={register}
-              watch={watch}
-              isCompany={isCompany}
-            />
+            <PaymentSelector register={register} watch={watch} isCompany={isCompany} />
 
             {/* Submit */}
             <button
               type="submit"
               className="w-full rounded-lg py-3.5 text-sm font-semibold text-white transition-all hover:opacity-90"
-              style={{
-                background:
-                  "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)",
-              }}
+              style={{ background: "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)" }}
             >
               Nästa: Granska bokning
             </button>
@@ -720,69 +625,30 @@ export default function BookingPage() {
         {step === 2 && step1Data && (
           <div className="space-y-6">
             <BookingSummary event={event} formData={step1Data} />
-
-            {/* Terms */}
             <label className="flex items-start gap-3 text-sm">
-              <input
-                type="checkbox"
-                id="accept-terms"
-                className="mt-0.5 accent-[var(--frost)]"
-                required
-              />
+              <input type="checkbox" id="accept-terms" className="mt-0.5 accent-[var(--frost)]" required />
               <span style={{ color: "var(--slate-light)" }}>
                 Jag godkänner{" "}
-                <a
-                  href="/villkor"
-                  className="underline"
-                  style={{ color: "var(--frost)" }}
-                  target="_blank"
-                >
-                  bokningsvillkoren
-                </a>{" "}
+                <a href="/villkor" className="underline" style={{ color: "var(--frost)" }} target="_blank">bokningsvillkoren</a>{" "}
                 och bekräftar att uppgifterna ovan är korrekta.
               </span>
             </label>
-
-            {/* Actions */}
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="rounded-lg border px-6 py-3.5 text-sm font-medium transition-all"
-                style={{
-                  borderColor: "var(--border)",
-                  color: "var(--slate-light)",
-                }}
-              >
+              <button type="button" onClick={() => setStep(1)}
+                className="rounded-lg border px-6 py-3.5 text-sm font-medium"
+                style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
                 Tillbaka
               </button>
-              <button
-                type="button"
+              <button type="button"
                 onClick={() => {
-                  const checkbox = document.getElementById(
-                    "accept-terms",
-                  ) as HTMLInputElement;
-                  if (!checkbox?.checked) {
-                    checkbox?.focus();
-                    return;
-                  }
+                  const cb = document.getElementById("accept-terms") as HTMLInputElement;
+                  if (!cb?.checked) { cb?.focus(); return; }
                   onFinalSubmit();
                 }}
                 disabled={submitting}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg py-3.5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)",
-                }}
-              >
-                {submitting ? (
-                  <>
-                    <LoaderIcon className="animate-spin" />
-                    Bearbetar...
-                  </>
-                ) : (
-                  "Slutför bokning"
-                )}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg py-3.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                style={{ background: "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)" }}>
+                {submitting ? (<><LoaderIcon className="animate-spin" /> Bearbetar...</>) : "Slutför bokning"}
               </button>
             </div>
           </div>
@@ -791,45 +657,23 @@ export default function BookingPage() {
         {/* ─── Step 3 ─── */}
         {step === 3 && (
           <div className="py-10 text-center">
-            <div
-              className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full"
-              style={{
-                backgroundColor: "var(--frost-light)",
-                color: "var(--success)",
-              }}
-            >
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: "var(--frost-light)", color: "var(--success)" }}>
               <CheckIcon />
             </div>
-            <h3
-              className="mb-2 text-2xl"
-              style={{
-                fontFamily: "var(--font-serif)",
-                color: "var(--slate-deep)",
-              }}
-            >
+            <h3 className="mb-2 text-2xl" style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}>
               Tack för din bokning!
             </h3>
             {bookingResult && (
-              <p
-                className="mb-1 text-sm font-medium"
-                style={{ color: "var(--frost-dark)" }}
-              >
+              <p className="mb-1 text-sm font-medium" style={{ color: "var(--frost-dark)" }}>
                 Bokningsnummer: {bookingResult.bookingNumber}
               </p>
             )}
-            <p
-              className="mx-auto mt-4 max-w-md leading-relaxed"
-              style={{ color: "var(--slate-light)" }}
-            >
+            <p className="mx-auto mt-4 max-w-md leading-relaxed" style={{ color: "var(--slate-light)" }}>
               {watch("paymentMethod") === "invoice"
                 ? "En faktura skickas till den angivna e-postadressen. Du får även en bekräftelse med en personlig länk för att hantera din bokning."
                 : "Betalningen har genomförts. Du får en bekräftelse via e-post med en personlig länk för att hantera din bokning."}
             </p>
-            <a
-              href="/kurser"
-              className="mt-8 inline-block rounded-lg px-8 py-3 text-sm font-semibold text-white transition-all hover:opacity-90"
-              style={{ backgroundColor: "var(--frost)" }}
-            >
+            <a href="/kurser" className="mt-8 inline-block rounded-lg px-8 py-3 text-sm font-semibold text-white hover:opacity-90" style={{ backgroundColor: "var(--frost)" }}>
               Tillbaka till kurskatalogen
             </a>
           </div>
@@ -841,33 +685,14 @@ export default function BookingPage() {
   );
 }
 
-function FormField({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
+function FormField({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label
-        className="mb-1.5 block text-xs font-medium uppercase tracking-wide"
-        style={{ color: "var(--slate-light)" }}
-      >
+      <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>
         {label} <span style={{ color: "var(--frost)" }}>*</span>
       </label>
       {children}
-      {error && (
-        <p
-          className="mt-1 text-xs"
-          style={{ color: "var(--danger)" }}
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
+      {error && <p className="mt-1 text-xs" style={{ color: "var(--danger)" }} role="alert">{error}</p>}
     </div>
   );
 }
