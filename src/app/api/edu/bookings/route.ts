@@ -10,29 +10,31 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Get all bookings, expand Customer to filter client-side (OData doesn't support filtering on nested)
+    const cid = parseInt(customerId);
+
+    // Fetch bookings with $top=500 to get as many as possible
     const data = await eduAdminFetch<ODataResponse<Record<string, unknown>>>(
       "/v1/odata/Bookings",
       {
-        $expand: "Customer($select=CustomerId,CustomerName),ContactPerson($select=PersonId,FirstName,LastName,Email,Phone),Participants($select=ParticipantId,PersonId,FirstName,LastName,Email,CivicRegistrationNumber,Canceled,PriceNameId)",
+        $expand: [
+          "Customer($select=CustomerId,CustomerName)",
+          "ContactPerson($select=PersonId,FirstName,LastName,Email,Phone)",
+          "Participants($select=ParticipantId,PersonId,FirstName,LastName,Email,CivicRegistrationNumber,Canceled,PriceNameId)",
+        ].join(","),
         $select: "BookingId,EventId,TotalPriceExVat,TotalPriceIncVat,NumberOfParticipants,Created,Paid,Preliminary,PaymentMethodId,Invoiced,Notes,Reference",
         $orderby: "Created desc",
-        $top: "100",
+        $top: "500",
       },
     );
 
     // Filter to requested customer
-    const cid = parseInt(customerId);
     const bookings = (data.value || []).filter(
-      (b: Record<string, unknown>) => {
-        const customer = b.Customer as { CustomerId?: number } | undefined;
-        return customer?.CustomerId === cid;
-      },
+      (b) => (b.Customer as { CustomerId?: number })?.CustomerId === cid,
     );
 
-    // Enrich with event info
+    // Enrich with event/course info (batch-style)
     const enriched = await Promise.all(
-      bookings.map(async (b: Record<string, unknown>) => {
+      bookings.map(async (b) => {
         try {
           const event = await eduAdminFetch<Record<string, unknown>>(
             `/v1/odata/Events(${b.EventId})`,
