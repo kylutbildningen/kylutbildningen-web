@@ -6,10 +6,9 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice } from "@/lib/format";
-import { eduAdminFetch } from "@/lib/eduadmin/client";
 import {
   CalendarIcon, MapPinIcon, UsersIcon, LoaderIcon, UserIcon,
-  TrashIcon, PlusIcon, CheckIcon, XIcon,
+  TrashIcon, PlusIcon, CheckIcon, XIcon, ArrowRightIcon,
 } from "@/components/icons";
 
 interface BookingDetail {
@@ -33,6 +32,7 @@ interface BookingDetail {
     EndDate: string;
     City: string;
   } | null;
+  Customer: { CustomerId: number; CustomerName: string } | null;
   ContactPerson: { PersonId: number; FirstName: string; LastName: string; Email: string; Phone: string } | null;
   Participants: Array<{
     ParticipantId: number;
@@ -63,14 +63,14 @@ export default function BookingDetailPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Move booking state
-  const [showMove, setShowMove] = useState(false);
+  // Move participant state
+  const [movingParticipant, setMovingParticipant] = useState<BookingDetail["Participants"][0] | null>(null);
   const [availableEvents, setAvailableEvents] = useState<AvailableEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
 
-  // Add participant state
+  // Add participant
   const [showAddParticipant, setShowAddParticipant] = useState(false);
-  const [newParticipant, setNewParticipant] = useState({ firstName: "", lastName: "", email: "", phone: "" });
+  const [newParticipant, setNewParticipant] = useState({ firstName: "", lastName: "", email: "", phone: "", civicRegistrationNumber: "" });
 
   useEffect(() => { loadBooking(); }, [bookingId]);
 
@@ -104,21 +104,76 @@ export default function BookingDetailPage() {
     }
   }
 
-  async function handleCancelParticipant(participantId: number, name: string) {
-    if (!confirm(`Vill du avboka ${name}?`)) return;
+  async function handleCancelParticipant(participant: BookingDetail["Participants"][0]) {
+    const name = `${participant.FirstName} ${participant.LastName}`;
+    if (!confirm(`Vill du avboka ${name} från denna kurs?`)) return;
     setActionLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/edu/bookings/${bookingId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "cancelParticipant", participantId }),
+        body: JSON.stringify({ action: "cancelParticipant", participantId: participant.ParticipantId }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       setSuccess(`${name} har avbokats`);
       await loadBooking();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kunde inte avboka");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function startMoveParticipant(participant: BookingDetail["Participants"][0]) {
+    if (!booking?.Event?.CourseTemplateId) return;
+    setMovingParticipant(participant);
+    setLoadingEvents(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/edu/events?courseTemplateId=${booking.Event.CourseTemplateId}`);
+      if (res.ok) {
+        const events: AvailableEvent[] = await res.json();
+        setAvailableEvents(
+          events.filter(e =>
+            e.EventId !== booking.EventId &&
+            new Date(e.StartDate) > new Date() &&
+            e.NumberOfBookedParticipants < e.MaxParticipantNumber
+          ),
+        );
+      }
+    } catch { /* ignore */ }
+    setLoadingEvents(false);
+  }
+
+  async function handleMoveParticipant(newEventId: number) {
+    if (!movingParticipant || !booking) return;
+    const name = `${movingParticipant.FirstName} ${movingParticipant.LastName}`;
+    if (!confirm(`Flytta ${name} till nytt kurstillfälle? Bekräftelsemejl skickas automatiskt.`)) return;
+
+    setActionLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/edu/bookings/${bookingId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "moveParticipant",
+          participantId: movingParticipant.ParticipantId,
+          personId: movingParticipant.PersonId,
+          newEventId,
+          customerId: booking.Customer?.CustomerId,
+          contactPersonId: booking.ContactPerson?.PersonId,
+          paymentMethodId: booking.PaymentMethodId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSuccess(`${name} har flyttats till nytt kurstillfälle. Bekräftelsemejl skickat.`);
+      setMovingParticipant(null);
+      await loadBooking();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kunde inte flytta");
     } finally {
       setActionLoading(false);
     }
@@ -137,51 +192,9 @@ export default function BookingDetailPage() {
     }
   }
 
-  async function handleShowMove() {
-    if (!booking?.Event?.CourseTemplateId) return;
-    setShowMove(true);
-    setLoadingEvents(true);
-    try {
-      const res = await fetch(`/api/edu/events?courseTemplateId=${booking.Event.CourseTemplateId}`);
-      if (res.ok) {
-        const events = await res.json();
-        // Filter out current event and past events
-        setAvailableEvents(
-          events.filter((e: AvailableEvent) =>
-            e.EventId !== booking.EventId &&
-            new Date(e.StartDate) > new Date() &&
-            e.NumberOfBookedParticipants < e.MaxParticipantNumber
-          ),
-        );
-      }
-    } catch { /* ignore */ }
-    setLoadingEvents(false);
-  }
-
-  async function handleMove(newEventId: number) {
-    if (!confirm("Flytta bokningen till nytt datum? Bekräftelsemejl skickas automatiskt.")) return;
-    setActionLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/edu/bookings/${bookingId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "move", newEventId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setSuccess("Bokningen har flyttats! Bekräftelsemejl har skickats.");
-      router.replace(`/dashboard/bokningar/${data.newBookingId}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Kunde inte flytta");
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
   async function handleAddParticipant() {
-    if (!newParticipant.firstName || !newParticipant.lastName) {
-      setError("Förnamn och efternamn krävs");
+    if (!newParticipant.firstName || !newParticipant.lastName || !newParticipant.civicRegistrationNumber) {
+      setError("Förnamn, efternamn och personnummer krävs");
       return;
     }
     setActionLoading(true);
@@ -197,12 +210,13 @@ export default function BookingDetailPage() {
             LastName: newParticipant.lastName,
             Email: newParticipant.email,
             Phone: newParticipant.phone,
+            CivicRegistrationNumber: newParticipant.civicRegistrationNumber,
           }],
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       setSuccess("Deltagare tillagd");
-      setNewParticipant({ firstName: "", lastName: "", email: "", phone: "" });
+      setNewParticipant({ firstName: "", lastName: "", email: "", phone: "", civicRegistrationNumber: "" });
       setShowAddParticipant(false);
       await loadBooking();
     } catch (err) {
@@ -230,9 +244,7 @@ export default function BookingDetailPage() {
         <SiteHeader />
         <div className="mx-auto max-w-2xl px-6 py-20 text-center">
           <p style={{ color: "var(--slate-light)" }}>{error || "Bokningen hittades inte"}</p>
-          <a href="/dashboard/bokningar" className="mt-4 inline-block text-sm font-medium underline" style={{ color: "var(--frost)" }}>
-            Alla bokningar
-          </a>
+          <a href="/dashboard/bokningar" className="mt-4 inline-block text-sm font-medium underline" style={{ color: "var(--frost)" }}>Alla bokningar</a>
         </div>
         <SiteFooter />
       </div>
@@ -242,9 +254,6 @@ export default function BookingDetailPage() {
   const startDate = booking.Event?.StartDate
     ? new Date(booking.Event.StartDate).toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
     : "—";
-  const endDate = booking.Event?.EndDate
-    ? new Date(booking.Event.EndDate).toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
-    : "";
   const isPast = booking.Event?.StartDate && new Date(booking.Event.StartDate) < new Date();
   const activeParticipants = booking.Participants.filter(p => !p.Canceled);
   const canceledParticipants = booking.Participants.filter(p => p.Canceled);
@@ -253,48 +262,36 @@ export default function BookingDetailPage() {
     <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
       <SiteHeader />
       <div className="mx-auto max-w-3xl px-6 py-10">
-        <a href="/dashboard/bokningar" className="mb-4 inline-block text-sm font-medium" style={{ color: "var(--frost)" }}>
-          ← Alla bokningar
-        </a>
+        <a href="/dashboard/bokningar" className="mb-4 inline-block text-sm font-medium" style={{ color: "var(--frost)" }}>← Alla bokningar</a>
 
         {/* Header */}
-        <div className="mb-6 flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl" style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}>
-              {booking.CourseName}
-            </h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--slate-light)" }}>
-              Boknings-ID: {booking.BookingId}
-            </p>
-          </div>
-          <div className="flex gap-1.5">
-            {booking.Paid && <span className="badge badge-available">Betald</span>}
-            {booking.Invoiced && <span className="badge badge-few">Fakturerad</span>}
-            {isPast && <span className="badge" style={{ backgroundColor: "#f0f0f0", color: "var(--slate-light)" }}>Avslutad</span>}
-            {!isPast && !booking.Paid && !booking.Invoiced && <span className="badge badge-available">Bekräftad</span>}
+        <div className="mb-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl" style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}>{booking.CourseName}</h1>
+              <p className="mt-1 text-sm" style={{ color: "var(--slate-light)" }}>Boknings-ID: {booking.BookingId}</p>
+            </div>
+            <div className="flex gap-1.5">
+              {isPast && <span className="badge" style={{ backgroundColor: "#f0f0f0", color: "var(--slate-light)" }}>Avslutad</span>}
+              {booking.Paid && <span className="badge badge-available">Betald</span>}
+              {booking.Invoiced && <span className="badge badge-few">Fakturerad</span>}
+              {!isPast && !booking.Paid && !booking.Invoiced && <span className="badge badge-available">Bekräftad</span>}
+            </div>
           </div>
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--danger)", backgroundColor: "#fef2f2", color: "var(--danger)" }}>
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--success)", backgroundColor: "#ecfdf5", color: "var(--success)" }}>
-            {success}
-          </div>
-        )}
+        {error && <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--danger)", backgroundColor: "#fef2f2", color: "var(--danger)" }}>{error}</div>}
+        {success && <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--success)", backgroundColor: "#ecfdf5", color: "var(--success)" }}>{success}</div>}
 
         {/* Event info */}
         <div className="mb-6 rounded-lg border bg-white p-5" style={{ borderColor: "var(--border)" }}>
           <div className="flex flex-wrap gap-4 text-sm" style={{ color: "var(--slate-light)" }}>
-            <span className="flex items-center gap-1.5"><CalendarIcon />{startDate}{endDate && startDate !== endDate ? ` – ${endDate}` : ""}</span>
+            <span className="flex items-center gap-1.5"><CalendarIcon />{startDate}</span>
             {booking.Event?.City && <span className="flex items-center gap-1.5"><MapPinIcon />{booking.Event.City.trim()}</span>}
             <span className="flex items-center gap-1.5"><UsersIcon />{activeParticipants.length} deltagare</span>
           </div>
           <div className="mt-3 flex gap-6 text-sm">
-            <span style={{ color: "var(--slate-light)" }}>Pris exkl. moms: <strong style={{ color: "var(--slate-deep)" }}>{formatPrice(booking.TotalPriceExVat)}</strong></span>
+            <span style={{ color: "var(--slate-light)" }}>Exkl. moms: <strong style={{ color: "var(--slate-deep)" }}>{formatPrice(booking.TotalPriceExVat)}</strong></span>
             <span style={{ color: "var(--slate-light)" }}>Inkl. moms: <strong style={{ color: "var(--slate-deep)" }}>{formatPrice(booking.TotalPriceIncVat)}</strong></span>
           </div>
           {booking.ContactPerson && (
@@ -311,18 +308,19 @@ export default function BookingDetailPage() {
               <UsersIcon /> Deltagare ({activeParticipants.length})
             </h2>
             {!isPast && (
-              <button onClick={() => setShowAddParticipant(!showAddParticipant)}
-                className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "var(--frost)" }}>
-                <PlusIcon /> Lägg till
+              <button onClick={() => setShowAddParticipant(!showAddParticipant)} className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "var(--frost)" }}>
+                <PlusIcon /> Lägg till deltagare
               </button>
             )}
           </div>
 
+          {/* Add participant form */}
           {showAddParticipant && (
             <div className="mb-3 rounded-lg border bg-white p-4" style={{ borderColor: "var(--border)" }}>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <input type="text" value={newParticipant.firstName} onChange={e => setNewParticipant({ ...newParticipant, firstName: e.target.value })} placeholder="Förnamn *" className="form-input text-sm" autoFocus />
                 <input type="text" value={newParticipant.lastName} onChange={e => setNewParticipant({ ...newParticipant, lastName: e.target.value })} placeholder="Efternamn *" className="form-input text-sm" />
+                <input type="text" value={newParticipant.civicRegistrationNumber} onChange={e => setNewParticipant({ ...newParticipant, civicRegistrationNumber: e.target.value })} placeholder="Personnummer *" className="form-input text-sm" />
                 <input type="email" value={newParticipant.email} onChange={e => setNewParticipant({ ...newParticipant, email: e.target.value })} placeholder="E-post" className="form-input text-sm" />
                 <input type="tel" value={newParticipant.phone} onChange={e => setNewParticipant({ ...newParticipant, phone: e.target.value })} placeholder="Telefon" className="form-input text-sm" />
               </div>
@@ -337,25 +335,96 @@ export default function BookingDetailPage() {
             </div>
           )}
 
+          {/* Participant list */}
           <div className="rounded-lg border bg-white" style={{ borderColor: "var(--border)" }}>
             {activeParticipants.map((p, i) => (
-              <div key={p.ParticipantId} className="flex items-center gap-3 px-5 py-3 event-row" style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}>
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>
-                  <UserIcon />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="text-sm font-medium" style={{ color: "var(--slate-deep)" }}>{p.FirstName} {p.LastName}</span>
-                  <div className="flex gap-3 text-xs" style={{ color: "var(--slate-light)" }}>
-                    {p.Email && <span>{p.Email}</span>}
-                    {p.CivicRegistrationNumber && <span>Personnr: {p.CivicRegistrationNumber}</span>}
+              <div key={p.ParticipantId}>
+                {i > 0 && <div className="h-px" style={{ backgroundColor: "var(--border)" }} />}
+                <div className="px-5 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>
+                      <UserIcon />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-medium" style={{ color: "var(--slate-deep)" }}>{p.FirstName} {p.LastName}</span>
+                      <div className="flex flex-wrap gap-3 text-xs" style={{ color: "var(--slate-light)" }}>
+                        {p.Email && <span>{p.Email}</span>}
+                        {p.CivicRegistrationNumber && <span>{p.CivicRegistrationNumber}</span>}
+                      </div>
+                    </div>
+                    {!isPast && (
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          onClick={() => startMoveParticipant(p)}
+                          disabled={actionLoading}
+                          className="rounded px-2 py-1 text-[11px] font-medium transition-colors"
+                          style={{ color: "var(--frost)" }}
+                          title="Flytta till annat kurstillfälle"
+                        >
+                          Flytta
+                        </button>
+                        <button
+                          onClick={() => handleCancelParticipant(p)}
+                          disabled={actionLoading}
+                          className="rounded p-1 transition-colors"
+                          style={{ color: "var(--danger)" }}
+                          title="Avboka deltagare"
+                        >
+                          <TrashIcon />
+                        </button>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Move panel for this participant */}
+                  {movingParticipant?.ParticipantId === p.ParticipantId && (
+                    <div className="mt-3 rounded-lg border p-4" style={{ borderColor: "var(--frost)", backgroundColor: "var(--frost-light)" }}>
+                      <div className="mb-3 flex items-center justify-between">
+                        <h4 className="text-sm font-semibold" style={{ color: "var(--frost-dark)" }}>
+                          Flytta {p.FirstName} {p.LastName} till nytt datum
+                        </h4>
+                        <button onClick={() => setMovingParticipant(null)} className="p-1" style={{ color: "var(--slate-light)" }}>
+                          <XIcon />
+                        </button>
+                      </div>
+
+                      {loadingEvents ? (
+                        <div className="flex items-center gap-2 py-2">
+                          <LoaderIcon className="animate-spin" />
+                          <span className="text-xs" style={{ color: "var(--slate-light)" }}>Hämtar lediga datum...</span>
+                        </div>
+                      ) : availableEvents.length === 0 ? (
+                        <p className="text-sm" style={{ color: "var(--slate-light)" }}>Inga andra datum tillgängliga för denna kurs.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {availableEvents.map(e => {
+                            const date = new Date(e.StartDate).toLocaleDateString("sv-SE", { day: "numeric", month: "long", year: "numeric" });
+                            const spots = e.MaxParticipantNumber - e.NumberOfBookedParticipants;
+                            return (
+                              <button
+                                key={e.EventId}
+                                onClick={() => handleMoveParticipant(e.EventId)}
+                                disabled={actionLoading}
+                                className="flex w-full items-center justify-between rounded-lg border bg-white px-4 py-3 text-sm transition-all hover:shadow-sm"
+                                style={{ borderColor: "var(--border)" }}
+                              >
+                                <span className="flex items-center gap-2" style={{ color: "var(--slate-deep)" }}>
+                                  <CalendarIcon /> {date} — {e.City?.trim()}
+                                </span>
+                                <span className="flex items-center gap-2">
+                                  <span className="text-xs" style={{ color: spots < 3 ? "var(--warning)" : "var(--success)" }}>
+                                    {spots} platser
+                                  </span>
+                                  <ArrowRightIcon />
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {!isPast && (
-                  <button onClick={() => handleCancelParticipant(p.ParticipantId, `${p.FirstName} ${p.LastName}`)}
-                    disabled={actionLoading} className="p-1 text-xs" style={{ color: "var(--danger)" }} title="Avboka deltagare">
-                    <TrashIcon />
-                  </button>
-                )}
               </div>
             ))}
           </div>
@@ -364,7 +433,7 @@ export default function BookingDetailPage() {
             <div className="mt-3">
               <p className="mb-2 text-xs font-medium" style={{ color: "var(--slate-light)" }}>Avbokade:</p>
               {canceledParticipants.map(p => (
-                <span key={p.ParticipantId} className="mr-2 text-xs line-through" style={{ color: "var(--slate-light)" }}>
+                <span key={p.ParticipantId} className="mr-3 text-xs line-through" style={{ color: "var(--slate-light)" }}>
                   {p.FirstName} {p.LastName}
                 </span>
               ))}
@@ -372,51 +441,16 @@ export default function BookingDetailPage() {
           )}
         </div>
 
-        {/* Actions */}
+        {/* Delete booking */}
         {!isPast && (
-          <div className="space-y-3">
-            <button onClick={handleShowMove}
-              className="w-full rounded-lg border bg-white px-5 py-3 text-left text-sm font-medium transition-all hover:bg-[var(--frost-light)]"
-              style={{ borderColor: "var(--border)", color: "var(--frost-dark)" }}>
-              Flytta till annat datum
-            </button>
-
-            {showMove && (
-              <div className="rounded-lg border bg-white p-5" style={{ borderColor: "var(--border)" }}>
-                <h3 className="mb-3 text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>Välj nytt datum</h3>
-                {loadingEvents ? (
-                  <div className="flex items-center gap-2 py-4"><LoaderIcon className="animate-spin" /><span className="text-sm" style={{ color: "var(--slate-light)" }}>Hämtar tillgängliga datum...</span></div>
-                ) : availableEvents.length === 0 ? (
-                  <p className="text-sm" style={{ color: "var(--slate-light)" }}>Inga andra datum tillgängliga för denna kurs.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {availableEvents.map(e => {
-                      const date = new Date(e.StartDate).toLocaleDateString("sv-SE", { day: "numeric", month: "long", year: "numeric" });
-                      const spots = e.MaxParticipantNumber - e.NumberOfBookedParticipants;
-                      return (
-                        <button key={e.EventId} onClick={() => handleMove(e.EventId)} disabled={actionLoading}
-                          className="flex w-full items-center justify-between rounded-lg border px-4 py-3 text-sm transition-all hover:bg-[var(--frost-light)]"
-                          style={{ borderColor: "var(--border)" }}>
-                          <span className="flex items-center gap-2" style={{ color: "var(--slate-deep)" }}>
-                            <CalendarIcon /> {date} — {e.City?.trim()}
-                          </span>
-                          <span className="text-xs" style={{ color: spots < 3 ? "var(--warning)" : "var(--success)" }}>
-                            {spots} platser kvar
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <button onClick={handleDeleteBooking} disabled={actionLoading}
-              className="w-full rounded-lg border px-5 py-3 text-left text-sm font-medium transition-all hover:bg-red-50"
-              style={{ borderColor: "var(--danger)", color: "var(--danger)" }}>
-              Avboka hela bokningen
-            </button>
-          </div>
+          <button
+            onClick={handleDeleteBooking}
+            disabled={actionLoading}
+            className="w-full rounded-lg border px-5 py-3 text-left text-sm font-medium transition-all hover:bg-red-50"
+            style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
+          >
+            Avboka hela bokningen
+          </button>
         )}
       </div>
       <SiteFooter />

@@ -106,9 +106,55 @@ export async function POST(
       return NextResponse.json({ success: true });
     }
 
-    // Move booking = delete old + create new
+    // Move single participant to a new event
+    // 1. Cancel participant on current booking
+    // 2. Create new booking on new event with just this participant
+    if (body.action === "moveParticipant" && body.participantId && body.newEventId) {
+      // Cancel participant from current booking
+      const cancelRes = await fetch(`${API_URL}/v1/Participant/${body.participantId}/Cancel`, {
+        method: "POST",
+        headers: { Authorization: `bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!cancelRes.ok) {
+        const text = await cancelRes.text();
+        return NextResponse.json({ error: `Kunde inte avboka deltagare: ${text}` }, { status: 500 });
+      }
+
+      // Create new booking on new event with this person
+      const newBooking: Record<string, unknown> = {
+        EventId: body.newEventId,
+        PaymentMethodId: body.paymentMethodId || 1,
+        Customer: { CustomerId: body.customerId },
+        ContactPerson: body.contactPersonId
+          ? { PersonId: body.contactPersonId }
+          : undefined,
+        Participants: [{ PersonId: body.personId }],
+        SendConfirmationEmail: {
+          SendToCustomerContact: true,
+          SendToParticipants: true,
+        },
+      };
+
+      const createRes = await fetch(`${API_URL}/v1/Booking`, {
+        method: "POST",
+        headers: { Authorization: `bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(newBooking),
+      });
+      if (!createRes.ok) {
+        const text = await createRes.text();
+        return NextResponse.json({ error: `Kunde inte skapa ny bokning: ${text}` }, { status: 500 });
+      }
+      const newResult = await createRes.json();
+
+      return NextResponse.json({
+        success: true,
+        newBookingId: newResult.BookingId,
+      });
+    }
+
+    // Move entire booking (all participants) to a new event
     if (body.action === "move" && body.newEventId) {
-      // Get the existing booking details to recreate
       const detailRes = await fetch(`${API_URL}/v1/odata/Bookings(${id})?$expand=Customer,ContactPerson,Participants`, {
         headers: { Authorization: `bearer ${token}` },
       });
@@ -117,12 +163,9 @@ export async function POST(
       }
       const booking = await detailRes.json();
 
-      // Create new booking on the new event
       const newBooking = {
         EventId: body.newEventId,
         PaymentMethodId: booking.PaymentMethodId,
-        Notes: booking.Notes || "",
-        Reference: booking.Reference || "",
         Customer: { CustomerId: booking.Customer?.CustomerId },
         ContactPerson: { PersonId: booking.ContactPerson?.PersonId },
         Participants: (booking.Participants || [])
@@ -145,7 +188,6 @@ export async function POST(
       }
       const newResult = await createRes.json();
 
-      // Delete old booking
       await fetch(`${API_URL}/v1/Booking/${id}`, {
         method: "DELETE",
         headers: { Authorization: `bearer ${token}` },
@@ -154,7 +196,6 @@ export async function POST(
       return NextResponse.json({
         success: true,
         newBookingId: newResult.BookingId,
-        message: "Bokningen har flyttats",
       });
     }
 
