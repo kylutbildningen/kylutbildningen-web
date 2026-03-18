@@ -263,9 +263,20 @@ export default function BookingPage() {
     setSubmitting(true);
 
     try {
+      // Get auth token for server-side booking creation
+      const supabase = createSupabaseBrowser();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch("/api/booking/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           eventId: event.eventId,
           customerType: formData.customerType,
