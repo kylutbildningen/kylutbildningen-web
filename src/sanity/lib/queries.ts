@@ -5,7 +5,7 @@ export const HOME_PAGE_QUERY = groq`
     heroHeading,
     heroSubheading,
     heroCtaText,
-    heroImage { asset, alt },
+    heroImage,
     uspItems,
     aboutHeading,
     aboutText,
