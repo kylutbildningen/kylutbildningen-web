@@ -4,6 +4,7 @@ interface Category {
   name: string
   courseTemplateId: number
   description?: string
+  slug?: string | null
 }
 
 interface Props {
@@ -34,10 +35,10 @@ export function CourseCategories({ heading, categories }: Props) {
   )
 }
 
-function CategoryCard({ cat, index }: { cat: { name: string; courseTemplateId: number; description?: string }; index: number }) {
+function CategoryCard({ cat, index }: { cat: { name: string; courseTemplateId: number; description?: string; slug?: string | null }; index: number }) {
   return (
     <Link
-      href={cat.courseTemplateId ? `/kurser?category=${encodeURIComponent(cat.name)}` : '/kurser'}
+      href={cat.slug ? `/kurser/${cat.slug}` : `/kurser?category=${encodeURIComponent(cat.name)}`}
       className="block p-7 rounded-lg transition-all hover:-translate-y-0.5 group"
       style={{
         background: 'rgba(255,255,255,0.04)',

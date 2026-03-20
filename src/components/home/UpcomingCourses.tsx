@@ -5,9 +5,10 @@ import type { EventCard } from '@/types/eduadmin'
 interface Props {
   heading?: string
   events: EventCard[]
+  templateSlugMap?: Record<number, string>
 }
 
-export function UpcomingCourses({ heading, events }: Props) {
+export function UpcomingCourses({ heading, events, templateSlugMap = {} }: Props) {
   return (
     <section className="py-24 px-18 bg-white">
       <div className="max-w-6xl mx-auto">
@@ -25,6 +26,9 @@ export function UpcomingCourses({ heading, events }: Props) {
           style={{ background: '#DDE4ED', border: '1px solid #DDE4ED', borderRadius: '6px', overflow: 'hidden' }}>
           {events.slice(0, 6).map(event => {
             const full = event.isFullyBooked
+            const infoHref = templateSlugMap[event.courseTemplateId]
+              ? `/kurser/${templateSlugMap[event.courseTemplateId]}`
+              : `/kurser?category=${encodeURIComponent(event.categoryName)}`
             return (
               <div key={event.eventId}
                 className={`bg-white p-7 flex flex-col gap-3 transition-colors ${!full ? 'hover:bg-[#f5f8fc] cursor-pointer' : 'opacity-60'}`}>
@@ -55,7 +59,7 @@ export function UpcomingCourses({ heading, events }: Props) {
                     }
                   </div>
                   <div className="flex items-center gap-3">
-                    <Link href={`/kurser?q=${encodeURIComponent(event.courseName)}`}
+                    <Link href={infoHref}
                       className="text-xs font-medium hover:text-[#1A5EA8] transition-colors"
                       style={{ color: 'var(--muted)' }}>
                       Info
