@@ -31,7 +31,7 @@ export function HeroSection({ heading, subheading, ctaText, heroImage, events }:
             fill
             className="object-cover"
             priority
-            style={{ opacity: 0.18 }}
+            style={{ opacity: 0.7 }}
           />
         </div>
       )}
@@ -91,7 +91,7 @@ export function HeroSection({ heading, subheading, ctaText, heroImage, events }:
                 {stat.num}
               </div>
               <div className="text-xs font-medium tracking-widest uppercase mt-1"
-                style={{ color: '#8BA3BE' }}>
+                style={{ color: 'rgba(255,255,255,0.7)' }}>
                 {stat.label}
               </div>
             </div>

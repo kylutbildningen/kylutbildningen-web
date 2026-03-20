@@ -7,11 +7,11 @@ interface Props { events: EventCard[] }
 export function HeroUpcomingPanel({ events }: Props) {
   return (
     <div className="w-full max-w-[440px] rounded-lg overflow-hidden"
-      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}>
 
       {/* Titelrad */}
       <div className="flex items-center gap-2 px-5 py-4"
-        style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <span className="w-2 h-2 rounded-full bg-red-500" />
         <span className="w-2 h-2 rounded-full bg-yellow-400" />
         <span className="w-2 h-2 rounded-full bg-green-500" />

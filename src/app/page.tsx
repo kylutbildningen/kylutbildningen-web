@@ -43,6 +43,7 @@ export default async function HomePage() {
 
   const categories = sanityCategories?.length ? sanityCategories : eduAdminCategories
 
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
