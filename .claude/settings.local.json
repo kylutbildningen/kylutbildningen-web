@@ -19,7 +19,8 @@
       "mcp__claude_ai_Vercel__get_deployment_build_logs",
       "Bash(curl:*)",
       "Bash(cd:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(node -e \":*)"
     ]
   }
 }
