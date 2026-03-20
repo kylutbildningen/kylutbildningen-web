@@ -1,204 +1,151 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { SnowflakeIcon, UserIcon, ChevronDownIcon } from "@/components/icons";
-import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 interface UserInfo {
-  fullName: string;
-  companyName: string;
+  fullName: string
+  companyName: string
 }
 
 export function SiteHeader() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [user, setUser] = useState<UserInfo | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname()
+  const router = useRouter()
+  const [user, setUser] = useState<UserInfo | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     async function loadUser() {
-      const supabase = createSupabaseBrowser();
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-
-      if (!authUser) return;
+      const supabase = createSupabaseBrowser()
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) return
 
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", authUser.id)
-        .single();
+        .from('profiles')
+        .select('full_name')
+        .eq('id', authUser.id)
+        .single()
 
       const { data: membership } = await supabase
-        .from("company_memberships")
-        .select("company_name")
-        .eq("user_id", authUser.id)
+        .from('company_memberships')
+        .select('company_name')
+        .eq('user_id', authUser.id)
         .limit(1)
-        .single();
+        .single()
 
       if (profile?.full_name) {
         setUser({
           fullName: profile.full_name,
-          companyName: membership?.company_name ?? "",
-        });
+          companyName: membership?.company_name ?? '',
+        })
       }
     }
-
-    loadUser();
-  }, []);
+    loadUser()
+  }, [])
 
   async function handleLogout() {
-    const supabase = createSupabaseBrowser();
-    await supabase.auth.signOut();
-    setUser(null);
-    setMenuOpen(false);
-    router.push("/");
+    const supabase = createSupabaseBrowser()
+    await supabase.auth.signOut()
+    setUser(null)
+    setMenuOpen(false)
+    router.push('/')
   }
 
+  const navLinks = [
+    { href: '/', label: 'Start' },
+    { href: '/kurser', label: 'Kursutbud' },
+    { href: '/om-oss', label: 'Om oss' },
+    { href: '/kontakt', label: 'Kontakt' },
+  ]
+
   return (
-    <nav
-      className="sticky top-0 z-40 border-b"
+    <header
+      className="sticky top-0 z-50 flex items-center justify-between px-12 h-16"
       style={{
-        borderColor: "var(--border)",
-        backgroundColor: "rgba(248, 248, 246, 0.85)",
-        backdropFilter: "blur(12px)",
+        background: 'rgba(11,31,58,0.95)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="flex items-center gap-2.5">
-          <SnowflakeIcon className="opacity-70" />
-          <span
-            className="text-lg font-semibold tracking-tight"
-            style={{ color: "var(--slate-deep)" }}
-          >
-            Kylutbildningen
-          </span>
-        </Link>
-        <div className="flex items-center gap-4 sm:gap-6">
-          <Link
-            href="/"
-            className="hidden text-sm font-medium transition-colors sm:block"
-            style={{
-              color: pathname === "/" ? "var(--frost)" : "var(--slate-light)",
-            }}
-          >
-            Start
-          </Link>
-          <Link
-            href="/kurser"
-            className="text-sm font-medium transition-colors"
-            style={{
-              color: pathname === "/kurser" ? "var(--frost)" : "var(--slate-light)",
-            }}
-          >
-            Kursutbud
-          </Link>
+      <Link href="/" className="font-condensed font-bold text-lg tracking-widest uppercase text-white">
+        Kyl<span className="text-[#00C4FF]">utbildningen</span>
+      </Link>
 
-          {user ? (
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all"
-                style={{ borderColor: "var(--border)" }}
-              >
-                <div
-                  className="flex h-7 w-7 items-center justify-center rounded-full"
-                  style={{
-                    backgroundColor: "var(--frost-light)",
-                    color: "var(--frost-dark)",
-                  }}
-                >
-                  <UserIcon />
-                </div>
-                <div className="hidden text-left sm:block">
-                  <span
-                    className="block text-xs font-semibold leading-tight"
-                    style={{ color: "var(--slate-deep)" }}
-                  >
-                    {user.fullName}
-                  </span>
-                  {user.companyName && (
-                    <span
-                      className="block text-[10px] leading-tight"
-                      style={{ color: "var(--slate-light)" }}
-                    >
-                      {user.companyName}
-                    </span>
-                  )}
-                </div>
-                <ChevronDownIcon />
-              </button>
+      <nav className="flex items-center gap-8">
+        {navLinks.map(({ href, label }) => (
+          <Link
+            key={href}
+            href={href}
+            className={`text-xs font-medium tracking-widest uppercase transition-colors
+              ${pathname === href ? 'text-white' : 'text-white/60 hover:text-white'}`}
+          >
+            {label}
+          </Link>
+        ))}
 
-              {menuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setMenuOpen(false)}
-                  />
-                  <div
-                    className="absolute right-0 top-full z-20 mt-1 w-52 rounded-lg border bg-white py-1 shadow-lg"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <div className="border-b px-4 py-2 sm:hidden" style={{ borderColor: "var(--border)" }}>
-                      <p
-                        className="text-xs font-semibold"
-                        style={{ color: "var(--slate-deep)" }}
-                      >
-                        {user.fullName}
-                      </p>
-                      {user.companyName && (
-                        <p
-                          className="text-[10px]"
-                          style={{ color: "var(--slate-light)" }}
-                        >
-                          {user.companyName}
-                        </p>
-                      )}
-                    </div>
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-2 text-sm transition-colors hover:bg-[var(--frost-light)]"
-                      style={{ color: "var(--slate-deep)" }}
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      href="/kurser"
-                      onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-2 text-sm transition-colors hover:bg-[var(--frost-light)]"
-                      style={{ color: "var(--slate-deep)" }}
-                    >
-                      Boka kurs
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full border-t px-4 py-2 text-left text-sm transition-colors hover:bg-[var(--frost-light)]"
-                      style={{
-                        borderColor: "var(--border)",
-                        color: "var(--slate-light)",
-                      }}
-                    >
-                      Logga ut
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <Link
-              href="/kurser"
-              className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: "var(--frost)" }}
+        {user ? (
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="flex items-center gap-2 px-4 py-2 rounded text-xs font-semibold tracking-wider uppercase transition-colors"
+              style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)' }}
             >
-              Boka nu
-            </Link>
-          )}
-        </div>
-      </div>
-    </nav>
-  );
+              {user.fullName}
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M2 4l4 4 4-4" />
+              </svg>
+            </button>
+
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div
+                  className="absolute right-0 top-full z-20 mt-1 w-48 rounded overflow-hidden shadow-xl"
+                  style={{ background: '#112847', border: '1px solid rgba(255,255,255,0.1)' }}
+                >
+                  {user.companyName && (
+                    <div className="px-4 py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <p className="text-[10px] tracking-wider uppercase" style={{ color: '#8BA3BE' }}>
+                        {user.companyName}
+                      </p>
+                    </div>
+                  )}
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-4 py-2.5 text-xs tracking-wider hover:bg-white/5 text-white/70 hover:text-white transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/kurser"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-4 py-2.5 text-xs tracking-wider hover:bg-white/5 text-white/70 hover:text-white transition-colors"
+                  >
+                    Boka kurs
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2.5 text-xs tracking-wider hover:bg-white/5 transition-colors"
+                    style={{ borderTop: '1px solid rgba(255,255,255,0.06)', color: '#8BA3BE' }}
+                  >
+                    Logga ut
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <Link
+            href="/logga-in"
+            className="px-5 py-2 bg-[#1A5EA8] hover:bg-[#2A7DD4] text-white text-xs font-semibold tracking-wider uppercase rounded transition-colors"
+          >
+            Logga in
+          </Link>
+        )}
+      </nav>
+    </header>
+  )
 }

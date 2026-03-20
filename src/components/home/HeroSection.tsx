@@ -1,0 +1,94 @@
+import Link from 'next/link'
+import { HeroUpcomingPanel } from './HeroUpcomingPanel'
+import type { EventCard } from '@/types/eduadmin'
+
+interface Props {
+  heading?: string
+  subheading?: string
+  ctaText?: string
+  events: EventCard[]
+}
+
+export function HeroSection({ heading, subheading, ctaText, events }: Props) {
+  return (
+    <section className="min-h-screen grid grid-cols-2 relative overflow-hidden"
+      style={{ background: 'var(--navy)' }}>
+
+      {/* Grid-lines bakgrund */}
+      <div className="absolute inset-0" style={{
+        backgroundImage: 'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)',
+        backgroundSize: '80px 80px'
+      }} />
+
+      {/* Vänster — text */}
+      <div className="relative z-10 flex flex-col justify-center px-18 pt-20 pb-20">
+
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 mb-8 px-3.5 py-1.5 rounded-sm w-fit"
+          style={{ background: 'rgba(0,196,255,0.1)', border: '1px solid rgba(0,196,255,0.25)' }}>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#00C4FF] animate-pulse" />
+          <span className="text-[11px] font-bold tracking-[0.1em] uppercase text-[#00C4FF]">
+            INCERT-godkänt examinationscenter
+          </span>
+        </div>
+
+        {/* Rubrik */}
+        <h1 className="font-condensed font-extrabold uppercase leading-[0.95] tracking-tight text-white mb-6"
+          style={{ fontSize: 'clamp(52px, 6vw, 80px)' }}>
+          {heading ?? <>Certifiering<br />för <span className="text-[#00C4FF]">kyl</span><br />branschen</>}
+        </h1>
+
+        <p className="text-lg font-light leading-relaxed mb-12 max-w-sm"
+          style={{ color: 'rgba(255,255,255,0.55)' }}>
+          {subheading ?? 'Vi utbildar och examinerar kyltekniker inom alla F-gas-kategorier 1–5 i Göteborg.'}
+        </p>
+
+        <div className="flex items-center gap-4">
+          <Link href="/kurser"
+            className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-[#1A5EA8] hover:bg-[#2A7DD4] text-white text-sm font-semibold tracking-wider uppercase rounded transition-all hover:-translate-y-px">
+            {ctaText ?? 'Se alla kurser'}
+            <ArrowIcon />
+          </Link>
+          <Link href="/om-oss"
+            className="text-sm font-medium tracking-wider uppercase pb-0.5 transition-colors"
+            style={{ color: 'rgba(255,255,255,0.45)', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+            Om oss
+          </Link>
+        </div>
+
+        {/* Stats */}
+        <div className="flex gap-0 mt-16 pt-8" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          {[
+            { num: '1–5', label: 'Alla kategorier' },
+            { num: '100%', label: 'INCERT-certifierat' },
+            { num: 'GBG', label: 'Göteborg' },
+          ].map((stat, i) => (
+            <div key={i} className="flex-1 pr-8 mr-8"
+              style={{ borderRight: i < 2 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
+              <div className="font-condensed font-bold text-4xl text-white leading-none tracking-tight">
+                {stat.num}
+              </div>
+              <div className="text-xs font-medium tracking-widest uppercase mt-1"
+                style={{ color: '#8BA3BE' }}>
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Höger — live-panel */}
+      <div className="relative z-10 flex items-center justify-center pt-20 pb-20 pr-16">
+        <HeroUpcomingPanel events={events} />
+      </div>
+    </section>
+  )
+}
+
+function ArrowIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 8h10M9 4l4 4-4 4" />
+    </svg>
+  )
+}

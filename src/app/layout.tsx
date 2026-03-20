@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { Outfit, Instrument_Serif } from "next/font/google";
+import { Barlow, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 
-const outfit = Outfit({
-  variable: "--font-outfit",
+const barlow = Barlow({
   subsets: ["latin"],
+  weight: ["300", "400", "500"],
+  variable: "--font-barlow",
 });
 
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  weight: "400",
+const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],
+  weight: ["400", "600", "700", "800"],
+  variable: "--font-barlow-condensed",
 });
 
 export const metadata: Metadata = {
@@ -25,10 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="sv">
-      <body
-        className={`${outfit.variable} ${instrumentSerif.variable} antialiased`}
-      >
+    <html lang="sv" className={`${barlow.variable} ${barlowCondensed.variable}`}>
+      <body className="antialiased">
         {children}
       </body>
     </html>
