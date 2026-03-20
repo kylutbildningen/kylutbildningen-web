@@ -22,8 +22,9 @@ export function HeroUpcomingPanel({ events }: Props) {
       {/* Kurslista */}
       <div>
         {events.slice(0, 5).map(event => (
-          <div key={event.eventId}
-            className="flex items-center justify-between px-5 py-3.5 transition-colors hover:bg-white/5 cursor-pointer"
+          <Link key={event.eventId}
+            href={`/kurser?category=${encodeURIComponent(event.categoryName)}`}
+            className="flex items-center justify-between px-5 py-3.5 transition-colors hover:bg-white/5"
             style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
             <div className="font-condensed font-bold text-[13px] tracking-wider text-[#00C4FF] min-w-[90px]">
               {formatDateRange(event.startDate, event.endDate)}
@@ -33,7 +34,7 @@ export function HeroUpcomingPanel({ events }: Props) {
               {event.courseName}
             </div>
             <SeatsBadge seats={event.spotsLeft} full={event.isFullyBooked} />
-          </div>
+          </Link>
         ))}
       </div>
 
