@@ -114,7 +114,7 @@ export function toEventCard(
 
   return {
     eventId: event.EventId,
-    courseTemplateId: event.CourseTemplateId,
+    courseTemplateId: event.CourseTemplateId ?? course?.CourseTemplateId ?? 0,
     courseName: event.CourseName || course?.CourseName || "",
     categoryName: event.CategoryName || course?.CategoryName || "",
     city: event.City || "",
