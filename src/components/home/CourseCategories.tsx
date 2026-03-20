@@ -37,7 +37,7 @@ export function CourseCategories({ heading, categories }: Props) {
 function CategoryCard({ cat, index }: { cat: { name: string; courseTemplateId: number; description?: string }; index: number }) {
   return (
     <Link
-      href={`/kurser/${cat.courseTemplateId}`}
+      href={cat.courseTemplateId ? `/kurser?category=${encodeURIComponent(cat.name)}` : '/kurser'}
       className="block p-7 rounded-lg transition-all hover:-translate-y-0.5 group"
       style={{
         background: 'rgba(255,255,255,0.04)',

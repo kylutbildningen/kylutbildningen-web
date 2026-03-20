@@ -55,7 +55,7 @@ export function UpcomingCourses({ heading, events }: Props) {
                     }
                   </div>
                   <div className="flex items-center gap-3">
-                    <Link href={`/kurser/${event.courseTemplateId}`}
+                    <Link href={`/kurser?q=${encodeURIComponent(event.courseName)}`}
                       className="text-xs font-medium hover:text-[#1A5EA8] transition-colors"
                       style={{ color: 'var(--muted)' }}>
                       Info

@@ -1,18 +1,40 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { HeroUpcomingPanel } from './HeroUpcomingPanel'
+import { urlFor } from '@/sanity/lib/image'
 import type { EventCard } from '@/types/eduadmin'
+
+interface SanityImage {
+  asset: { _ref: string }
+  alt?: string
+}
 
 interface Props {
   heading?: string
   subheading?: string
   ctaText?: string
+  heroImage?: SanityImage | null
   events: EventCard[]
 }
 
-export function HeroSection({ heading, subheading, ctaText, events }: Props) {
+export function HeroSection({ heading, subheading, ctaText, heroImage, events }: Props) {
   return (
     <section className="min-h-screen grid grid-cols-2 relative overflow-hidden"
       style={{ background: 'var(--navy)' }}>
+
+      {/* Bakgrundsbild från Sanity */}
+      {heroImage?.asset && (
+        <div className="absolute inset-0">
+          <Image
+            src={urlFor(heroImage).width(1920).url()}
+            alt={heroImage.alt ?? ''}
+            fill
+            className="object-cover"
+            priority
+            style={{ opacity: 0.18 }}
+          />
+        </div>
+      )}
 
       {/* Grid-lines bakgrund */}
       <div className="absolute inset-0" style={{
