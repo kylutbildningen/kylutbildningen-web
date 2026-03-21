@@ -42,7 +42,7 @@ export function EventCard({ event }: { event: EventCardType }) {
         {lowestPrice ? (
           <div>
             <div className="text-sm font-semibold" style={{ color: 'var(--navy)' }}>
-              fr. {formatPrice(lowestPrice)} kr
+              fr. {formatPrice(lowestPrice)}
             </div>
             <div className="text-[11px]" style={{ color: 'var(--muted)' }}>exkl. moms</div>
           </div>
