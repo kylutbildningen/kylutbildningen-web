@@ -1,4 +1,4 @@
-import type { EventCard } from "@/types/eduadmin";
+import type { EventCard, PriceOption } from "@/types/eduadmin";
 import type { BookingStep1Data } from "@/lib/validation";
 import { formatCompactDateRange, formatTime, formatPrice } from "@/lib/format";
 import { CalendarIcon, MapPinIcon, ClockIcon, UsersIcon } from "@/components/icons";
@@ -6,9 +6,10 @@ import { CalendarIcon, MapPinIcon, ClockIcon, UsersIcon } from "@/components/ico
 interface BookingSummaryProps {
   event: EventCard;
   formData: BookingStep1Data;
+  priceOptions?: PriceOption[];
 }
 
-export function BookingSummary({ event, formData }: BookingSummaryProps) {
+export function BookingSummary({ event, formData, priceOptions = [] }: BookingSummaryProps) {
   const numParticipants = formData.participants.length;
   const unitPrice = event.lowestPrice ?? 0;
   const totalExVat = unitPrice * numParticipants;
@@ -101,18 +102,25 @@ export function BookingSummary({ event, formData }: BookingSummaryProps) {
           <UsersIcon />
           Deltagare ({numParticipants})
         </h4>
-        <div className="space-y-2">
-          {formData.participants.map((p, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between text-sm"
-            >
-              <span style={{ color: "var(--slate-deep)" }}>
-                {p.firstName} {p.lastName}
-              </span>
-              <span style={{ color: "var(--slate-light)" }}>{p.email}</span>
-            </div>
-          ))}
+        <div className="space-y-3">
+          {formData.participants.map((p, i) => {
+            const cert = priceOptions.find((opt) => opt.priceNameId === p.priceNameId);
+            return (
+              <div key={i} className="text-sm">
+                <div className="flex items-center justify-between">
+                  <span style={{ color: "var(--slate-deep)" }}>
+                    {p.firstName} {p.lastName}
+                  </span>
+                  <span style={{ color: "var(--slate-light)" }}>{p.email}</span>
+                </div>
+                {cert && (
+                  <p className="mt-0.5 text-xs" style={{ color: "var(--frost-dark)" }}>
+                    {cert.name}
+                  </p>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

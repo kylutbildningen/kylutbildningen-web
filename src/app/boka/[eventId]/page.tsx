@@ -674,7 +674,7 @@ export default function BookingPage() {
         {/* ─── Step 2 ─── */}
         {step === 2 && step1Data && (
           <div className="space-y-6">
-            <BookingSummary event={event} formData={step1Data} />
+            <BookingSummary event={event} formData={step1Data} priceOptions={event.priceOptions} />
             <label className="flex items-start gap-3 text-sm">
               <input type="checkbox" id="accept-terms" className="mt-0.5 accent-[var(--frost)]" required />
               <span style={{ color: "var(--slate-light)" }}>
