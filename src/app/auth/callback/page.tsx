@@ -119,7 +119,7 @@ function AuthCallbackContent() {
 
 async function routeUser(
   supabase: ReturnType<typeof createSupabaseBrowser>,
-  user: { id: string },
+  user: { id: string; email?: string },
   next: string | null,
   invite: string | null,
   router: ReturnType<typeof useRouter>,
@@ -134,29 +134,41 @@ async function routeUser(
     return;
   }
 
-  // Check profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) {
-    router.replace("/onboarding/company");
-    return;
-  }
-
   // Check memberships
   const { data: memberships } = await supabase
     .from("company_memberships")
-    .select("id")
+    .select("id, role")
     .eq("user_id", user.id)
     .limit(1);
 
-  if (!memberships || memberships.length === 0) {
-    router.replace("/onboarding/company");
+  if (memberships && memberships.length > 0) {
+    const role = memberships[0].role;
+    router.replace(role === "participant" ? "/dashboard/mina-kurser" : "/dashboard");
     return;
   }
 
-  router.replace("/dashboard");
+  // No membership — try auto-creating a participant membership from persons table
+  if (user.email) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      const res = await fetch("/api/auth/create-participant-membership", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId: user.id, email: user.email }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { found: boolean };
+        if (data.found) {
+          router.replace("/dashboard/mina-kurser");
+          return;
+        }
+      }
+    }
+  }
+
+  // Fall through to onboarding for contact persons
+  router.replace("/onboarding/company");
 }
