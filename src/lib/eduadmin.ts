@@ -112,6 +112,16 @@ export function toEventCard(
   const priceInfo = getLowestPrice(event.PriceNames) ??
     (course ? getLowestPrice(course.PriceNames) : null);
 
+  // Build public price options list (from event prices, fall back to course prices)
+  const rawPrices = (event.PriceNames ?? course?.PriceNames ?? [])
+    .filter((p) => p.PublicPriceName);
+  const priceOptions = rawPrices.map((p) => ({
+    priceNameId: p.PriceNameId,
+    name: p.PriceNameDescription,
+    price: p.Price,
+    priceIncVat: p.Price * (1 + p.PriceNameVat / 100),
+  }));
+
   return {
     eventId: event.EventId,
     courseTemplateId: event.CourseTemplateId ?? course?.CourseTemplateId ?? 0,
@@ -129,6 +139,7 @@ export function toEventCard(
     lowestPrice: priceInfo?.price ?? null,
     lowestPriceIncVat: priceInfo?.priceIncVat ?? null,
     cancelled: event.Cancelled ?? false,
+    priceOptions,
   };
 }
 

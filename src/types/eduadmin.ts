@@ -72,6 +72,13 @@ export interface ODataResponse<T> {
   "@odata.count"?: number;
 }
 
+export interface PriceOption {
+  priceNameId: number;
+  name: string;
+  price: number;
+  priceIncVat: number;
+}
+
 /** Flattened event used by the frontend */
 export interface EventCard {
   eventId: number;
@@ -90,4 +97,5 @@ export interface EventCard {
   lowestPrice: number | null;
   lowestPriceIncVat: number | null;
   cancelled: boolean;
+  priceOptions: PriceOption[];
 }

@@ -47,6 +47,7 @@ export interface BookingCreateRequest {
   eventId: number;
   customerType: CustomerType;
   paymentMethod: PaymentMethod;
+  priceNameId?: number;
   company?: CompanyInfo;
   private?: PrivateInfo;
   participants: Participant[];

@@ -59,6 +59,7 @@ export const bookingStep1Schema = z
   .object({
     customerType: z.enum(["company", "private"]),
     paymentMethod: z.enum(["card", "invoice"]),
+    priceNameId: z.number().optional(),
     company: companySchema,
     private: privateSchema,
     participants: z.array(participantSchema).min(1, "Minst en deltagare krävs"),
