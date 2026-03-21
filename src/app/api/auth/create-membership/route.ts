@@ -36,9 +36,9 @@ export async function POST(request: Request) {
     // Re-verify against EduAdmin server-side
     const verification = await verifyEmailOnCustomer(email, customerId);
 
-    if (!verification.verified || !verification.isContactPerson) {
+    if (!verification.verified) {
       return NextResponse.json(
-        { error: "Din e-post kunde inte verifieras som kontaktperson" },
+        { error: "Din e-post kunde inte hittas på detta företag" },
         { status: 403 },
       );
     }
@@ -46,16 +46,20 @@ export async function POST(request: Request) {
     // Get company details
     const customer = await getCustomerWithContacts(customerId);
 
-    // Determine role
-    const { data: existingAdmin } = await supabaseAdmin
-      .from("company_memberships")
-      .select("id")
-      .eq("edu_customer_id", customerId)
-      .eq("role", "company_admin")
-      .limit(1)
-      .maybeSingle();
-
-    const role = existingAdmin ? "contact_person" : "company_admin";
+    // Determine role based on contact person status
+    let role: string;
+    if (verification.isContactPerson) {
+      const { data: existingAdmin } = await supabaseAdmin
+        .from("company_memberships")
+        .select("id")
+        .eq("edu_customer_id", customerId)
+        .eq("role", "company_admin")
+        .limit(1)
+        .maybeSingle();
+      role = existingAdmin ? "contact_person" : "company_admin";
+    } else {
+      role = "participant";
+    }
 
     // Insert with service_role (bypasses RLS)
     const { data: membership, error } = await supabaseAdmin
@@ -68,7 +72,7 @@ export async function POST(request: Request) {
           company_name: customer.CustomerName,
           org_number: customer.OrganisationNumber || null,
           role,
-          is_contact_person: true,
+          is_contact_person: verification.isContactPerson,
         },
         { onConflict: "user_id,edu_customer_id" },
       )

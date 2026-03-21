@@ -60,6 +60,24 @@ export async function syncPersonsFromEduAdmin(
 
   if (error) throw new Error(`Supabase persons upsert failed: ${error.message}`);
 
+  // Remove persons that no longer exist in EduAdmin
+  const eduPersonIds = rows.map((r) => r.edu_person_id);
+  const { data: existing } = await supabase
+    .from("persons")
+    .select("edu_person_id")
+    .eq("edu_customer_id", customerId);
+
+  if (existing) {
+    const toDelete = existing.filter((e) => !eduPersonIds.includes(e.edu_person_id));
+    if (toDelete.length > 0) {
+      await supabase
+        .from("persons")
+        .delete()
+        .eq("edu_customer_id", customerId)
+        .in("edu_person_id", toDelete.map((d) => d.edu_person_id));
+    }
+  }
+
   return rows.length;
 }
 

@@ -31,12 +31,17 @@ export async function POST(request: Request) {
     // Find person record by email
     const { data: person } = await supabaseAdmin
       .from("persons")
-      .select("edu_person_id, edu_customer_id")
+      .select("edu_person_id, edu_customer_id, is_contact_person")
       .eq("email", email.toLowerCase())
       .limit(1)
       .single();
 
     if (!person) {
+      return NextResponse.json({ found: false });
+    }
+
+    // Contact persons should go through proper onboarding (gets admin role there)
+    if (person.is_contact_person) {
       return NextResponse.json({ found: false });
     }
 

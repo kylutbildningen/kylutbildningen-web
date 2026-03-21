@@ -63,6 +63,17 @@ interface MembershipInfo {
   org_number: string | null;
 }
 
+interface PortalRole {
+  personId: number;
+  role: string;
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  company_admin: "Admin",
+  contact_person: "Kontaktperson",
+  participant: "Deltagare",
+};
+
 const emptyPerson = {
   firstName: "",
   lastName: "",
@@ -98,6 +109,7 @@ export default function CompanyManagementPage() {
     address: "", address2: "", zip: "", city: "", country: "",
   });
   const [savingCompany, setSavingCompany] = useState(false);
+  const [portalRoles, setPortalRoles] = useState<PortalRole[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -126,6 +138,20 @@ export default function CompanyManagementPage() {
 
       const cid = stored ? parseInt(stored) : mem.edu_customer_id;
       setMembership({ ...mem, edu_customer_id: cid });
+
+      // Fetch portal roles (memberships mapped to person IDs)
+      const { data: memberships } = await supabase
+        .from("company_memberships")
+        .select("edu_contact_id, role")
+        .eq("edu_customer_id", cid);
+
+      if (memberships) {
+        setPortalRoles(
+          memberships
+            .filter((m) => m.edu_contact_id)
+            .map((m) => ({ personId: m.edu_contact_id, role: m.role })),
+        );
+      }
 
       // Fetch customer details and persons in parallel
       await Promise.all([fetchCustomer(cid), fetchPersons(cid)]);
@@ -489,6 +515,7 @@ export default function CompanyManagementPage() {
                   onCancel={cancelEdit}
                   saving={saving}
                   highlight
+                  portalRoles={portalRoles}
                 />
                 <PersonSection
                   title="Övriga personer / Deltagare"
@@ -501,6 +528,7 @@ export default function CompanyManagementPage() {
                   onSave={handleSave}
                   onCancel={cancelEdit}
                   saving={saving}
+                  portalRoles={portalRoles}
                 />
                 {filtered.length === 0 && !showAdd && (
                   <div className="py-12 text-center" style={{ color: "var(--slate-light)" }}>
@@ -609,6 +637,7 @@ function PersonSection({
   onCancel,
   saving,
   highlight,
+  portalRoles,
 }: {
   title: string;
   persons: Person[];
@@ -621,6 +650,7 @@ function PersonSection({
   onCancel: () => void;
   saving: boolean;
   highlight?: boolean;
+  portalRoles?: PortalRole[];
 }) {
   if (persons.length === 0) return null;
 
@@ -659,14 +689,27 @@ function PersonSection({
                     <span className="text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
                       {person.first_name?.trim()} {person.last_name?.trim()}
                     </span>
-                    {person.is_contact_person && (
-                      <span className="badge badge-available text-[10px]">Kontaktperson</span>
-                    )}
-                    {person.can_login && (
-                      <span className="badge text-[10px]" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>
-                        Inloggning
-                      </span>
-                    )}
+                    {(() => {
+                      const portalRole = portalRoles?.find((r) => r.personId === person.edu_person_id);
+                      if (portalRole) {
+                        const isAdmin = portalRole.role === "company_admin";
+                        return (
+                          <span
+                            className="badge text-[10px]"
+                            style={{
+                              backgroundColor: isAdmin ? "var(--frost)" : "var(--frost-light)",
+                              color: isAdmin ? "#fff" : "var(--frost-dark)",
+                            }}
+                          >
+                            {ROLE_LABELS[portalRole.role] ?? portalRole.role}
+                          </span>
+                        );
+                      }
+                      if (person.is_contact_person) {
+                        return <span className="badge badge-available text-[10px]">Kontaktperson</span>;
+                      }
+                      return null;
+                    })()}
                   </div>
                   <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--slate-light)" }}>
                     {person.email && <span>{person.email}</span>}

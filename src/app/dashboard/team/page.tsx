@@ -444,6 +444,8 @@ function PersonSection({
   saving: boolean;
   highlight?: boolean;
 }) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
   if (persons.length === 0) return null;
 
   return (
@@ -457,6 +459,7 @@ function PersonSection({
           const isCurrentUser = person.email?.toLowerCase() === userEmail.toLowerCase();
           const hasAccount = !!member;
           const isEditing = editingPerson?.edu_person_id === person.edu_person_id;
+          const isExpanded = expandedId === person.edu_person_id;
 
           return (
             <div key={person.edu_person_id} style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}>
@@ -503,64 +506,90 @@ function PersonSection({
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 px-5 py-3.5 event-row">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                    style={{ backgroundColor: highlight ? "var(--frost-light)" : "#f0f0f0", color: highlight ? "var(--frost-dark)" : "var(--slate-light)" }}>
-                    <UserIcon />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
-                        {person.first_name} {person.last_name}
-                      </span>
-                      {isCurrentUser && <span className="badge text-[10px]" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>Du</span>}
-                      {person.is_contact_person && <span className="badge badge-available text-[10px]">Kontaktperson</span>}
-                      {hasAccount && <span className="badge text-[10px]" style={{ backgroundColor: "#ecfdf5", color: "var(--success)" }}>Har konto</span>}
+                <div>
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : person.edu_person_id)}
+                    className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-gray-50"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: highlight ? "var(--frost-light)" : "#f0f0f0", color: highlight ? "var(--frost-dark)" : "var(--slate-light)" }}>
+                      <UserIcon />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
+                          {person.first_name} {person.last_name}
+                        </span>
+                        {isCurrentUser && <span className="badge text-[10px]" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>Du</span>}
+                        {person.is_contact_person && <span className="badge badge-available text-[10px]">Kontaktperson</span>}
+                        {hasAccount && <span className="badge text-[10px]" style={{ backgroundColor: "#ecfdf5", color: "var(--success)" }}>Har konto</span>}
+                        {member && <RoleBadge role={member.role} />}
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--slate-light)" }}>
+                        {person.email && <span>{person.email}</span>}
+                        {(person.phone || person.mobile) && <span>{person.phone || person.mobile}</span>}
+                        {person.job_title && <span>{person.job_title}</span>}
+                      </div>
+                    </div>
+                    <svg
+                      className="h-4 w-4 shrink-0 transition-transform"
+                      style={{ color: "var(--slate-light)", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Expanded actions */}
+                  {isExpanded && (
+                    <div className="flex flex-wrap items-center gap-2 px-5 pb-3.5 pt-0">
+                      <button
+                        onClick={() => { setExpandedId(null); onEdit(person); }}
+                        className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+                        style={{ borderColor: "var(--frost)", color: "var(--frost)" }}
+                      >
+                        Ändra uppgifter
+                      </button>
+                      <button
+                        onClick={() => onToggleContact(person)}
+                        className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+                        style={{ borderColor: "var(--border)", color: person.is_contact_person ? "var(--warning)" : "var(--slate-deep)" }}
+                      >
+                        {person.is_contact_person ? "Ta bort som kontaktperson" : "Gör till kontaktperson"}
+                      </button>
+                      {!hasAccount && person.email && !isCurrentUser && (
+                        <button
+                          onClick={() => onSendInvite(person)}
+                          className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+                          style={{ borderColor: "var(--frost)", color: "var(--frost)" }}
+                        >
+                          Bjud in till portalen
+                        </button>
+                      )}
                       {member && !isCurrentUser && (
                         <select
                           value={member.role}
                           onChange={e => onChangeRole(member, e.target.value)}
-                          className="rounded border px-1.5 py-0.5 text-[11px] font-medium"
-                          style={{ borderColor: "var(--border)", color: "var(--slate-light)", backgroundColor: "#fff" }}
-                          title="Ändra roll i portalen"
+                          className="rounded-lg border px-2 py-1.5 text-xs font-medium"
+                          style={{ borderColor: "var(--border)", color: "var(--slate-deep)", backgroundColor: "#fff" }}
+                          title="Ändra portalroll"
                         >
                           {Object.entries(ROLE_LABELS).map(([val, label]) => (
                             <option key={val} value={val}>{label}</option>
                           ))}
                         </select>
                       )}
-                      {member && isCurrentUser && <RoleBadge role={member.role} />}
+                      {!isCurrentUser && (
+                        <button
+                          onClick={() => onDelete(person)}
+                          className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+                          style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
+                        >
+                          Ta bort
+                        </button>
+                      )}
                     </div>
-                    <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--slate-light)" }}>
-                      {person.email && <span>{person.email}</span>}
-                      {(person.phone || person.mobile) && <span>{person.phone || person.mobile}</span>}
-                      {person.job_title && <span>{person.job_title}</span>}
-                      <span title="EduAdmin PersonId">ID: {person.edu_person_id}</span>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button onClick={() => onEdit(person)} className="rounded px-2 py-1 text-[11px] font-medium transition-colors" style={{ color: "var(--frost)" }}>
-                      Ändra
-                    </button>
-                    <button
-                      onClick={() => onToggleContact(person)}
-                      className="rounded px-2 py-1 text-[11px] font-medium transition-colors"
-                      style={{ color: person.is_contact_person ? "var(--warning)" : "var(--slate-light)" }}
-                      title={person.is_contact_person ? "Ta bort som kontaktperson" : "Gör till kontaktperson"}
-                    >
-                      {person.is_contact_person ? "Ta bort kontakt" : "Gör kontakt"}
-                    </button>
-                    {!hasAccount && person.email && !isCurrentUser && (
-                      <button onClick={() => onSendInvite(person)} className="rounded px-2 py-1 text-[11px] font-medium transition-colors" style={{ color: "var(--frost)" }}>
-                        Bjud in
-                      </button>
-                    )}
-                    {!isCurrentUser && (
-                      <button onClick={() => onDelete(person)} className="rounded p-1 transition-colors" style={{ color: "var(--danger)" }} title="Ta bort">
-                        <TrashIcon />
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
               )}
             </div>
