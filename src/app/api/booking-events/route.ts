@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     .select("*")
     .eq("edu_customer_id", parseInt(customerId))
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(20);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data ?? []);

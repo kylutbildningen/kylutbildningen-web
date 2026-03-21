@@ -121,7 +121,12 @@ export default function BookingDetailPage() {
           fromEventId: booking?.EventId,
         }),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      if (data.bookingDeleted) {
+        router.replace("/dashboard/bokningar");
+        return;
+      }
       setSuccess(`${name} har avbokats`);
       await loadBooking();
     } catch (err) {

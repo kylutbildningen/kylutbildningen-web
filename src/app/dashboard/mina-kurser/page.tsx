@@ -116,7 +116,8 @@ export default function MinaKurserPage() {
           actorEmail: userEmail,
         }),
       });
-      if (!res.ok) throw new Error((await res.json() as { error: string }).error);
+      const data = await res.json() as { error?: string; bookingDeleted?: boolean };
+      if (!res.ok) throw new Error(data.error);
       setSuccess(`Du har avbokats från ${booking.CourseName}`);
       if (person) await loadBookings(person);
     } catch (err) {
