@@ -75,6 +75,59 @@ export async function verifyEmailOnCustomer(
   };
 }
 
+export interface CompanyMatch {
+  customerId: number;
+  customerName: string;
+  organisationNumber: string;
+  personId: number;
+  personName: string;
+  isContactPerson: boolean;
+}
+
+/**
+ * Find all EduAdmin customers where the given email is registered as a person.
+ */
+export async function findCompaniesByEmail(email: string): Promise<CompanyMatch[]> {
+  const persons = await eduAdminFetch<ODataResponse<EduAdminPerson>>(
+    "/v1/odata/Persons",
+    {
+      $filter: `Email eq '${email.replace(/'/g, "''")}'`,
+      $select: "PersonId,CustomerId,FirstName,LastName,Email,IsContactPerson",
+    },
+  );
+
+  if (persons.value.length === 0) return [];
+
+  // Fetch customer details for each unique customerId
+  const uniqueCustomerIds = [...new Set(persons.value.map((p) => p.CustomerId))];
+
+  const customers = await Promise.all(
+    uniqueCustomerIds.map((cid) =>
+      eduAdminFetch<{ CustomerId: number; CustomerName: string; OrganisationNumber: string }>(
+        `/v1/odata/Customers(${cid})`,
+        { $select: "CustomerId,CustomerName,OrganisationNumber" },
+      ).catch(() => null),
+    ),
+  );
+
+  const results: CompanyMatch[] = [];
+  for (const customer of customers) {
+    if (!customer) continue;
+    const person = persons.value.find((p) => p.CustomerId === customer.CustomerId);
+    if (!person) continue;
+    results.push({
+      customerId: customer.CustomerId,
+      customerName: customer.CustomerName,
+      organisationNumber: customer.OrganisationNumber || "",
+      personId: person.PersonId,
+      personName: `${person.FirstName} ${person.LastName}`.trim(),
+      isContactPerson: person.IsContactPerson === true,
+    });
+  }
+
+  return results;
+}
+
 /**
  * Get all persons for a customer (used for team management).
  */

@@ -5,74 +5,46 @@ import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { StepIndicator } from "@/components/onboarding/StepIndicator";
-import { CompanySearch } from "@/components/onboarding/CompanySearch";
-import { VerificationResult } from "@/components/onboarding/VerificationResult";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
-import { LoaderIcon } from "@/components/icons";
+import { LoaderIcon, BuildingIcon, CheckIcon } from "@/components/icons";
 
-interface SelectedCompany {
-  CustomerId: number;
-  CustomerName: string;
-  OrganisationNumber: string;
+interface CompanyMatch {
+  customerId: number;
+  customerName: string;
+  organisationNumber: string;
+  personId: number;
+  personName: string;
+  isContactPerson: boolean;
 }
-
-type VerifyStatus = "idle" | "verifying" | "verified" | "not_contact" | "not_found";
 
 export default function CompanyPage() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [selected, setSelected] = useState<SelectedCompany | null>(null);
-  const [verifyStatus, setVerifyStatus] = useState<VerifyStatus>("idle");
-  const [contactName, setContactName] = useState<string | null>(null);
+  const [companies, setCompanies] = useState<CompanyMatch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<CompanyMatch | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get user email from session
   useEffect(() => {
-    async function getUser() {
+    async function load() {
       const supabase = createSupabaseBrowser();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
         router.replace("/onboarding");
         return;
       }
-      setUserEmail(user.email ?? null);
+      setUserEmail(user.email);
+
+      try {
+        const res = await fetch(`/api/auth/companies-by-email?email=${encodeURIComponent(user.email)}`);
+        if (res.ok) setCompanies(await res.json());
+      } catch { /* show empty state */ }
+
+      setLoading(false);
     }
-    getUser();
+    load();
   }, [router]);
-
-  // Verify when company is selected
-  async function handleSelect(customer: SelectedCompany) {
-    setSelected(customer);
-    setVerifyStatus("verifying");
-    setError(null);
-
-    try {
-      const res = await fetch("/api/auth/verify-contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: userEmail,
-          customerId: customer.CustomerId,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.verified && data.isContactPerson) {
-        setVerifyStatus("verified");
-        setContactName(data.contactName);
-      } else if (data.verified) {
-        setVerifyStatus("not_contact");
-      } else {
-        setVerifyStatus("not_found");
-      }
-    } catch {
-      setVerifyStatus("not_found");
-    }
-  }
 
   async function handleContinue() {
     if (!selected || !userEmail) return;
@@ -81,16 +53,9 @@ export default function CompanyPage() {
 
     try {
       const supabase = createSupabaseBrowser();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.replace("/onboarding"); return; }
 
-      if (!session) {
-        router.replace("/onboarding");
-        return;
-      }
-
-      // Call API route with auth token — uses service_role for insert
       const res = await fetch("/api/auth/create-membership", {
         method: "POST",
         headers: {
@@ -98,17 +63,14 @@ export default function CompanyPage() {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          customerId: selected.CustomerId,
+          customerId: selected.customerId,
           userId: session.user.id,
           email: userEmail,
         }),
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Kunde inte skapa koppling");
-      }
+      if (!res.ok) throw new Error(data.error || "Kunde inte skapa koppling");
 
       router.push("/onboarding/profile");
     } catch (err) {
@@ -118,137 +80,99 @@ export default function CompanyPage() {
     }
   }
 
-  function handleReset() {
-    setSelected(null);
-    setVerifyStatus("idle");
-    setContactName(null);
-    setError(null);
-  }
-
   return (
-    <div
-      className="min-h-screen"
-      style={{ backgroundColor: "var(--warm-white)" }}
-    >
+    <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
       <SiteHeader />
 
-      <div
-        className="border-b bg-white py-4"
-        style={{ borderColor: "var(--border)" }}
-      >
+      <div className="border-b bg-white py-4" style={{ borderColor: "var(--border)" }}>
         <div className="mx-auto max-w-2xl px-6">
           <StepIndicator currentStep={3} />
         </div>
       </div>
 
       <div className="mx-auto max-w-lg px-6 py-16">
-        <h1
-          className="mb-2 text-center text-2xl"
-          style={{
-            fontFamily: "var(--font-serif)",
-            color: "var(--slate-deep)",
-          }}
-        >
-          Sök ditt företag
+        <h1 className="mb-2 text-center text-2xl" style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}>
+          Välj ditt företag
         </h1>
-        <p
-          className="mb-8 text-center text-sm leading-relaxed"
-          style={{ color: "var(--slate-light)" }}
-        >
-          Vi kontrollerar att din e-post{" "}
-          {userEmail && (
-            <strong style={{ color: "var(--slate-deep)" }}>{userEmail}</strong>
-          )}{" "}
-          är registrerad som kontaktperson i EduAdmin.
+        <p className="mb-8 text-center text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
+          Vi hittade följande företag kopplade till{" "}
+          {userEmail && <strong style={{ color: "var(--slate-deep)" }}>{userEmail}</strong>}{" "}
+          i EduAdmin.
         </p>
 
         {error && (
-          <div
-            className="mb-4 rounded-lg border p-3 text-sm"
-            style={{
-              borderColor: "var(--danger)",
-              backgroundColor: "#fef2f2",
-              color: "var(--danger)",
-            }}
-          >
+          <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--danger)", backgroundColor: "#fef2f2", color: "var(--danger)" }}>
             {error}
           </div>
         )}
 
-        {!selected ? (
-          <CompanySearch onSelect={handleSelect} />
+        {loading ? (
+          <div className="flex items-center justify-center gap-3 py-12">
+            <LoaderIcon className="animate-spin" />
+            <span className="text-sm" style={{ color: "var(--slate-light)" }}>Söker efter dina företag...</span>
+          </div>
+        ) : companies.length === 0 ? (
+          <div className="rounded-lg border bg-white p-8 text-center" style={{ borderColor: "var(--border)" }}>
+            <p className="mb-2 text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
+              Ingen matchning hittades
+            </p>
+            <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
+              Din e-post finns inte registrerad som kontaktperson i EduAdmin.
+              Kontakta oss på{" "}
+              <a href="mailto:info@kylutbildningen.se" className="underline" style={{ color: "var(--frost)" }}>
+                info@kylutbildningen.se
+              </a>{" "}
+              så hjälper vi dig.
+            </p>
+          </div>
         ) : (
-          <div className="space-y-4">
-            {/* Selected company header */}
-            <div
-              className="flex items-center justify-between rounded-lg border p-4"
-              style={{ borderColor: "var(--border)" }}
-            >
-              <div>
-                <span
-                  className="block text-sm font-medium"
-                  style={{ color: "var(--slate-deep)" }}
+          <div className="space-y-3">
+            {companies.map((company) => {
+              const isSelected = selected?.customerId === company.customerId;
+              return (
+                <button
+                  key={company.customerId}
+                  onClick={() => setSelected(isSelected ? null : company)}
+                  className="w-full rounded-lg border bg-white p-4 text-left transition-all"
+                  style={{
+                    borderColor: isSelected ? "var(--frost)" : "var(--border)",
+                    boxShadow: isSelected ? "0 0 0 1px var(--frost)" : undefined,
+                  }}
                 >
-                  {selected.CustomerName}
-                </span>
-                {selected.OrganisationNumber && (
-                  <span
-                    className="text-xs"
-                    style={{ color: "var(--slate-light)" }}
-                  >
-                    Org.nr: {selected.OrganisationNumber}
-                  </span>
-                )}
-              </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: isSelected ? "var(--frost-light)" : "#f0f0f0", color: isSelected ? "var(--frost-dark)" : "var(--slate-light)" }}>
+                      {isSelected ? <CheckIcon /> : <BuildingIcon />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
+                        {company.customerName}
+                      </span>
+                      <span className="block text-xs" style={{ color: "var(--slate-light)" }}>
+                        {company.organisationNumber && `Org.nr: ${company.organisationNumber} · `}
+                        {company.isContactPerson ? "Kontaktperson" : "Person"}: {company.personName}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+
+            {selected && (
               <button
-                onClick={handleReset}
-                className="text-xs font-medium underline"
-                style={{ color: "var(--frost)" }}
+                onClick={handleContinue}
+                disabled={creating}
+                className="mt-2 w-full rounded-lg py-3.5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                style={{ background: "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)" }}
               >
-                Byt företag
+                {creating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <LoaderIcon className="animate-spin" /> Skapar koppling...
+                  </span>
+                ) : (
+                  `Fortsätt med ${selected.customerName}`
+                )}
               </button>
-            </div>
-
-            {/* Verification status */}
-            {verifyStatus === "verifying" && (
-              <div className="flex items-center justify-center gap-3 py-8">
-                <LoaderIcon className="animate-spin" />
-                <span className="text-sm" style={{ color: "var(--slate-light)" }}>
-                  Verifierar din e-post...
-                </span>
-              </div>
-            )}
-
-            {verifyStatus === "verified" && (
-              <VerificationResult
-                status="verified"
-                companyName={selected.CustomerName}
-                contactName={contactName ?? undefined}
-                onContinue={creating ? undefined : handleContinue}
-              />
-            )}
-
-            {verifyStatus === "not_contact" && (
-              <VerificationResult
-                status="not_contact"
-                companyName={selected.CustomerName}
-              />
-            )}
-
-            {verifyStatus === "not_found" && (
-              <VerificationResult
-                status="not_found"
-                companyName={selected.CustomerName}
-              />
-            )}
-
-            {creating && (
-              <div className="flex items-center justify-center gap-3 py-4">
-                <LoaderIcon className="animate-spin" />
-                <span className="text-sm" style={{ color: "var(--slate-light)" }}>
-                  Skapar koppling...
-                </span>
-              </div>
             )}
           </div>
         )}
