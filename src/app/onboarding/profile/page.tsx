@@ -14,7 +14,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Check auth
+  // Check auth and pre-fill from persons table or profiles
   useEffect(() => {
     async function check() {
       const supabase = createSupabaseBrowser();
@@ -26,7 +26,24 @@ export default function ProfilePage() {
         return;
       }
 
-      // Check if profile already exists
+      // Try persons table first (has the most complete data)
+      if (user.email) {
+        const { data: person } = await supabase
+          .from("persons")
+          .select("first_name,last_name,phone,mobile")
+          .eq("email", user.email)
+          .limit(1)
+          .single();
+
+        if (person) {
+          const name = `${person.first_name || ""} ${person.last_name || ""}`.trim();
+          if (name) setFullName(name);
+          if (person.phone || person.mobile) setPhone(person.phone || person.mobile || "");
+          return;
+        }
+      }
+
+      // Fallback: check if profile already exists
       const { data: profile } = await supabase
         .from("profiles")
         .select("full_name, phone")
@@ -110,7 +127,7 @@ export default function ProfilePage() {
           className="mb-8 text-center text-sm"
           style={{ color: "var(--slate-light)" }}
         >
-          Fyll i dina uppgifter för att slutföra registreringen.
+          Kontrollera att uppgifterna stämmer, ändra vid behov och gå vidare.
         </p>
 
         {error && (
