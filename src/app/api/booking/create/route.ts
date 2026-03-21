@@ -86,7 +86,7 @@ export async function POST(request: Request) {
         Email: p.email,
         Phone: p.phone,
         CivicRegistrationNumber: p.civicRegistrationNumber || "",
-        ...(body.priceNameId ? { PriceNameId: body.priceNameId } : {}),
+        ...(p.priceNameId ? { PriceNameId: p.priceNameId } : {}),
       })),
       SendConfirmationEmail: {
         SendToCustomerContact: true,

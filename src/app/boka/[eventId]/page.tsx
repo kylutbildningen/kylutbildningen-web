@@ -36,6 +36,7 @@ const emptyParticipant = {
   phone: "",
   civicRegistrationNumber: "",
   isPrimaryContact: false,
+  priceNameId: undefined as number | undefined,
 };
 
 export default function BookingPage() {
@@ -61,7 +62,6 @@ export default function BookingPage() {
     defaultValues: {
       customerType: "company",
       paymentMethod: "card",
-      priceNameId: undefined,
       company: {
         organizationNumber: "",
         companyName: "",
@@ -250,10 +250,6 @@ export default function BookingPage() {
 
   const onStep1Submit = useCallback(
     (data: BookingStep1Data) => {
-      // Block if multiple price options and none selected
-      if (event && event.priceOptions.length > 1 && !data.priceNameId) {
-        return;
-      }
       sessionStorage.setItem(`booking_${eventId}`, JSON.stringify(data));
       setStep(2);
       setTimeout(() => {
@@ -289,7 +285,6 @@ export default function BookingPage() {
           eventId: event.eventId,
           customerType: formData.customerType,
           paymentMethod: formData.paymentMethod,
-          priceNameId: formData.priceNameId,
           company: formData.customerType === "company" ? formData.company : undefined,
           private: formData.customerType === "private" ? formData.private : undefined,
           participants: formData.participants,
@@ -595,6 +590,7 @@ export default function BookingPage() {
                   errors={errors}
                   onRemove={fields.length > 1 ? () => remove(index) : undefined}
                   showPrimaryContact={isCompany && fields.length > 1}
+                  priceOptions={event.priceOptions}
                 />
               ))}
 
@@ -663,45 +659,6 @@ export default function BookingPage() {
 
             {/* Payment method */}
             <PaymentSelector register={register} watch={watch} isCompany={isCompany} />
-
-            {/* Price / certificate selector — only shown when event has multiple price options */}
-            {event.priceOptions.length > 1 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
-                  Välj certifikat
-                </h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {event.priceOptions.map((opt) => {
-                    const selected = watch("priceNameId") === opt.priceNameId;
-                    return (
-                      <button
-                        key={opt.priceNameId}
-                        type="button"
-                        onClick={() => setValue("priceNameId", opt.priceNameId)}
-                        className="rounded-lg border p-4 text-left transition-all"
-                        style={{
-                          borderColor: selected ? "var(--frost)" : "var(--border)",
-                          boxShadow: selected ? "0 0 0 1px var(--frost)" : undefined,
-                          backgroundColor: selected ? "var(--frost-light)" : "#fff",
-                        }}
-                      >
-                        <div className="text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
-                          {opt.name}
-                        </div>
-                        <div className="mt-0.5 text-xs" style={{ color: "var(--slate-light)" }}>
-                          {formatPrice(opt.priceIncVat)} inkl. moms
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                {event.priceOptions.length > 1 && !watch("priceNameId") && (
-                  <p className="text-xs" style={{ color: "var(--danger)" }}>
-                    Välj certifikat för att fortsätta
-                  </p>
-                )}
-              </div>
-            )}
 
             {/* Submit */}
             <button

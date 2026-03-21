@@ -10,6 +10,7 @@ export interface Participant {
   phone: string;
   civicRegistrationNumber: string;
   isPrimaryContact: boolean;
+  priceNameId?: number;
 }
 
 export interface CompanyInfo {
@@ -47,7 +48,6 @@ export interface BookingCreateRequest {
   eventId: number;
   customerType: CustomerType;
   paymentMethod: PaymentMethod;
-  priceNameId?: number;
   company?: CompanyInfo;
   private?: PrivateInfo;
   participants: Participant[];

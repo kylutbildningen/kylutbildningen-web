@@ -24,6 +24,7 @@ const participantSchema = z.object({
   phone: z.string().min(1, "Telefon krävs"),
   civicRegistrationNumber: z.string().min(1, "Personnummer krävs"),
   isPrimaryContact: z.boolean(),
+  priceNameId: z.number().optional(),
 });
 
 const companySchema = z.object({
@@ -59,7 +60,6 @@ export const bookingStep1Schema = z
   .object({
     customerType: z.enum(["company", "private"]),
     paymentMethod: z.enum(["card", "invoice"]),
-    priceNameId: z.number().optional(),
     company: companySchema,
     private: privateSchema,
     participants: z.array(participantSchema).min(1, "Minst en deltagare krävs"),
