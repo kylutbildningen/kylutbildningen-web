@@ -220,10 +220,11 @@ export default function TeamPage() {
     setSaving(true);
     try {
       const supabase = createSupabaseBrowser();
+      // Don't pass ?next= so auth callback can determine the correct role
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: person.email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           shouldCreateUser: true,
         },
       });
@@ -233,6 +234,31 @@ export default function TeamPage() {
       setError(err instanceof Error ? err.message : "Kunde inte skicka inbjudan");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleChangeRole(member: Member, newRole: string) {
+    setError(null);
+    try {
+      const supabase = createSupabaseBrowser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/auth/update-membership-role", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          targetUserId: member.user_id,
+          eduCustomerId: customerId,
+          role: newRole,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setSuccess("Roll uppdaterad");
+      await fetchMembers(customerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kunde inte uppdatera roll");
     }
   }
 
@@ -350,6 +376,7 @@ export default function TeamPage() {
               onDelete={handleDeletePerson}
               onToggleContact={handleToggleContactPerson}
               onSendInvite={handleSendInvite}
+              onChangeRole={handleChangeRole}
               getMemberForPerson={getMemberForPerson}
               saving={saving}
               highlight
@@ -368,6 +395,7 @@ export default function TeamPage() {
               onDelete={handleDeletePerson}
               onToggleContact={handleToggleContactPerson}
               onSendInvite={handleSendInvite}
+              onChangeRole={handleChangeRole}
               getMemberForPerson={getMemberForPerson}
               saving={saving}
             />
@@ -386,11 +414,17 @@ export default function TeamPage() {
 
 type PersonForm = { firstName: string; lastName: string; email: string; phone: string; mobile: string; jobTitle: string; civicRegistrationNumber: string; isContactPerson: boolean };
 
+const ROLE_LABELS: Record<string, string> = {
+  company_admin: "Admin",
+  contact_person: "Kontaktperson",
+  participant: "Deltagare",
+};
+
 function PersonSection({
   title, persons, members, userEmail,
   editingPerson, personForm, setPersonForm,
   onEdit, onCancelEdit, onSaveEdit,
-  onDelete, onToggleContact, onSendInvite, getMemberForPerson, saving, highlight,
+  onDelete, onToggleContact, onSendInvite, onChangeRole, getMemberForPerson, saving, highlight,
 }: {
   title: string;
   persons: SupabasePerson[];
@@ -405,6 +439,7 @@ function PersonSection({
   onDelete: (p: SupabasePerson) => void;
   onToggleContact: (p: SupabasePerson) => void;
   onSendInvite: (p: SupabasePerson) => void;
+  onChangeRole: (member: Member, role: string) => void;
   getMemberForPerson: (p: SupabasePerson) => Member | undefined;
   saving: boolean;
   highlight?: boolean;
@@ -481,7 +516,20 @@ function PersonSection({
                       {isCurrentUser && <span className="badge text-[10px]" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>Du</span>}
                       {person.is_contact_person && <span className="badge badge-available text-[10px]">Kontaktperson</span>}
                       {hasAccount && <span className="badge text-[10px]" style={{ backgroundColor: "#ecfdf5", color: "var(--success)" }}>Har konto</span>}
-                      {member && <RoleBadge role={member.role} />}
+                      {member && !isCurrentUser && (
+                        <select
+                          value={member.role}
+                          onChange={e => onChangeRole(member, e.target.value)}
+                          className="rounded border px-1.5 py-0.5 text-[11px] font-medium"
+                          style={{ borderColor: "var(--border)", color: "var(--slate-light)", backgroundColor: "#fff" }}
+                          title="Ändra roll i portalen"
+                        >
+                          {Object.entries(ROLE_LABELS).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </select>
+                      )}
+                      {member && isCurrentUser && <RoleBadge role={member.role} />}
                     </div>
                     <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--slate-light)" }}>
                       {person.email && <span>{person.email}</span>}
