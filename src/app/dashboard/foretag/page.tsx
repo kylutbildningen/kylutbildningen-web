@@ -101,12 +101,21 @@ export default function CompanyManagementPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"info" | "persons">("info");
 
-  // Add/Edit state
+  // Person Add/Edit state
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyPerson);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Company edit state
+  const [editingCompany, setEditingCompany] = useState<"info" | "address" | null>(null);
+  const [companyForm, setCompanyForm] = useState({
+    customerName: "", email: "", phone: "", mobile: "", web: "",
+    address: "", address2: "", zip: "", city: "", country: "",
+  });
+  const [savingCompany, setSavingCompany] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -162,6 +171,45 @@ export default function CompanyManagementPage() {
       setLoading(false);
     }
   }, []);
+
+  function startEditCompany(section: "info" | "address") {
+    if (!customerData) return;
+    setCompanyForm({
+      customerName: customerData.CustomerName || "",
+      email: customerData.Email || "",
+      phone: customerData.Phone || "",
+      mobile: customerData.Mobile || "",
+      web: customerData.Web || "",
+      address: customerData.Address || "",
+      address2: customerData.Address2 || "",
+      zip: customerData.Zip || "",
+      city: customerData.City || "",
+      country: customerData.Country || "",
+    });
+    setEditingCompany(section);
+    setError(null);
+  }
+
+  async function saveCompany() {
+    if (!membership || !customerData) return;
+    setSavingCompany(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/edu/customers/${membership.edu_customer_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(companyForm),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setEditingCompany(null);
+      setSuccess("Företagsuppgifter uppdaterade");
+      await fetchCustomer(membership.edu_customer_id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kunde inte spara");
+    } finally {
+      setSavingCompany(false);
+    }
+  }
 
   function startEdit(person: Person) {
     setEditingId(person.PersonId);
@@ -233,14 +281,7 @@ export default function CompanyManagementPage() {
 
   async function handleDelete(personId: number, name: string) {
     if (!membership) return;
-    if (!confirm(`Vill du ta bort ${name}? Detta kan inte ångras.`)) return;
-    try {
-      const res = await fetch(`/api/edu/persons/${personId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error((await res.json()).error);
-      await fetchPersons(membership.edu_customer_id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Kunde inte ta bort");
-    }
+    if (!confirm(`${name} kan bara tas bort direkt i EduAdmin — borttagning via API stöds inte.`)) return;
   }
 
   const filtered = persons.filter((p) => {
@@ -335,39 +376,67 @@ export default function CompanyManagementPage() {
             {error}
           </div>
         )}
+        {success && (
+          <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--success)", backgroundColor: "#ecfdf5", color: "var(--success)" }}>
+            {success}
+          </div>
+        )}
 
         {/* ─── Tab: Företagsuppgifter ─── */}
         {activeTab === "info" && customerData && (
           <div className="space-y-6">
             {/* Company info */}
-            <InfoCard
-              title="Företagsinformation"
-              icon={<BuildingIcon />}
-              rows={[
-                { label: "Företagsnamn", value: customerData.CustomerName },
-                { label: "Kundnummer", value: customerData.CustomerNumber || "—" },
-                { label: "Organisationsnummer", value: customerData.OrganisationNumber },
-                { label: "Kundgrupp", value: customerData.CustomerGroupName || "—" },
-                { label: "E-post", value: customerData.Email || "—" },
-                { label: "Telefon", value: customerData.Phone || "—" },
-                { label: "Mobil", value: customerData.Mobile || "—" },
-                { label: "Webb", value: customerData.Web || "—" },
-                { label: "Skapad", value: customerData.Created ? new Date(customerData.Created).toLocaleDateString("sv-SE") : "—" },
-                { label: "Senast ändrad", value: customerData.Modified ? new Date(customerData.Modified).toLocaleDateString("sv-SE") : "—" },
-              ]}
-            />
+            {editingCompany === "info" ? (
+              <EditCard title="Företagsinformation" icon={<BuildingIcon />} onSave={saveCompany} onCancel={() => setEditingCompany(null)} saving={savingCompany}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Företagsnamn</span><input className="form-input text-sm" value={companyForm.customerName} onChange={e => setCompanyForm({ ...companyForm, customerName: e.target.value })} /></label>
+                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>E-post</span><input type="email" className="form-input text-sm" value={companyForm.email} onChange={e => setCompanyForm({ ...companyForm, email: e.target.value })} /></label>
+                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Telefon</span><input type="tel" className="form-input text-sm" value={companyForm.phone} onChange={e => setCompanyForm({ ...companyForm, phone: e.target.value })} /></label>
+                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Mobil</span><input type="tel" className="form-input text-sm" value={companyForm.mobile} onChange={e => setCompanyForm({ ...companyForm, mobile: e.target.value })} /></label>
+                  <label className="space-y-1 sm:col-span-2"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Webbplats</span><input className="form-input text-sm" value={companyForm.web} onChange={e => setCompanyForm({ ...companyForm, web: e.target.value })} /></label>
+                </div>
+              </EditCard>
+            ) : (
+              <InfoCard
+                title="Företagsinformation"
+                icon={<BuildingIcon />}
+                onEdit={() => startEditCompany("info")}
+                rows={[
+                  { label: "Företagsnamn", value: customerData.CustomerName },
+                  { label: "Kundnummer", value: customerData.CustomerNumber || "—" },
+                  { label: "Organisationsnummer", value: customerData.OrganisationNumber },
+                  { label: "E-post", value: customerData.Email || "—" },
+                  { label: "Telefon", value: customerData.Phone || "—" },
+                  { label: "Mobil", value: customerData.Mobile || "—" },
+                  { label: "Webb", value: customerData.Web || "—" },
+                ]}
+              />
+            )}
 
             {/* Address */}
-            <InfoCard
-              title="Adress"
-              icon={<MapPinIcon />}
-              rows={[
-                { label: "Gatuadress", value: [customerData.Address, customerData.Address2].filter(Boolean).join(", ") || "—" },
-                { label: "Postnummer", value: customerData.Zip || "—" },
-                { label: "Stad", value: customerData.City || "—" },
-                { label: "Land", value: customerData.Country || "—" },
-              ]}
-            />
+            {editingCompany === "address" ? (
+              <EditCard title="Adress" icon={<MapPinIcon />} onSave={saveCompany} onCancel={() => setEditingCompany(null)} saving={savingCompany}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="space-y-1 sm:col-span-2"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Gatuadress</span><input className="form-input text-sm" value={companyForm.address} onChange={e => setCompanyForm({ ...companyForm, address: e.target.value })} /></label>
+                  <label className="space-y-1 sm:col-span-2"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Adress 2</span><input className="form-input text-sm" value={companyForm.address2} onChange={e => setCompanyForm({ ...companyForm, address2: e.target.value })} /></label>
+                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Postnummer</span><input className="form-input text-sm" value={companyForm.zip} onChange={e => setCompanyForm({ ...companyForm, zip: e.target.value })} /></label>
+                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Stad</span><input className="form-input text-sm" value={companyForm.city} onChange={e => setCompanyForm({ ...companyForm, city: e.target.value })} /></label>
+                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Land</span><input className="form-input text-sm" value={companyForm.country} onChange={e => setCompanyForm({ ...companyForm, country: e.target.value })} /></label>
+                </div>
+              </EditCard>
+            ) : (
+              <InfoCard
+                title="Adress"
+                icon={<MapPinIcon />}
+                onEdit={() => startEditCompany("address")}
+                rows={[
+                  { label: "Gatuadress", value: [customerData.Address, customerData.Address2].filter(Boolean).join(", ") || "—" },
+                  { label: "Postnummer", value: customerData.Zip || "—" },
+                  { label: "Stad", value: customerData.City || "—" },
+                  { label: "Land", value: customerData.Country || "—" },
+                ]}
+              />
+            )}
 
             {/* Billing info */}
             {customerData.BillingInfo && (
@@ -377,18 +446,10 @@ export default function CompanyManagementPage() {
                 rows={[
                   { label: "Fakturamottagare", value: customerData.BillingInfo.CustomerName || "—" },
                   { label: "Org.nr (faktura)", value: customerData.BillingInfo.OrganisationNumber || "—" },
-                  { label: "Momsregistrering", value: customerData.BillingInfo.VatNumber || "—" },
                   { label: "Fakturaadress", value: [customerData.BillingInfo.Address, customerData.BillingInfo.Address2].filter(Boolean).join(", ") || "—" },
                   { label: "Postnummer", value: customerData.BillingInfo.Zip || "—" },
                   { label: "Stad", value: customerData.BillingInfo.City || "—" },
-                  { label: "Land", value: customerData.BillingInfo.Country || "—" },
                   { label: "Faktura-e-post", value: customerData.BillingInfo.Email || "—" },
-                  { label: "Köparreferens", value: customerData.BillingInfo.BuyerReference || "—" },
-                  { label: "Säljarreferens", value: customerData.BillingInfo.SellerReference || "—" },
-                  { label: "GLN", value: customerData.BillingInfo.GLN || "—" },
-                  { label: "Betalningsvillkor", value: customerData.BillingInfo.PaymentTermName || "—" },
-                  { label: "Rabatt", value: customerData.BillingInfo.DiscountPercent ? `${customerData.BillingInfo.DiscountPercent}%` : "—" },
-                  { label: "Momsfri", value: customerData.BillingInfo.NoVat ? "Ja" : "Nej" },
                 ]}
               />
             )}
@@ -480,18 +541,25 @@ function InfoCard({
   title,
   icon,
   rows,
+  onEdit,
 }: {
   title: string;
   icon: React.ReactNode;
   rows: Array<{ label: string; value: string }>;
+  onEdit?: () => void;
 }) {
   return (
     <div className="rounded-lg border bg-white" style={{ borderColor: "var(--border)" }}>
       <div className="flex items-center gap-2 border-b px-5 py-3" style={{ borderColor: "var(--border)" }}>
         <span style={{ color: "var(--frost)" }}>{icon}</span>
-        <h2 className="text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
+        <h2 className="text-sm font-semibold flex-1" style={{ color: "var(--slate-deep)" }}>
           {title}
         </h2>
+        {onEdit && (
+          <button onClick={onEdit} className="text-xs font-medium px-2 py-1 rounded transition-colors" style={{ color: "var(--frost)" }}>
+            Ändra
+          </button>
+        )}
       </div>
       <div className="divide-y" style={{ borderColor: "var(--border)" }}>
         {rows.map((row) => (
@@ -504,6 +572,43 @@ function InfoCard({
             </span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── EditCard ─── */
+function EditCard({
+  title,
+  icon,
+  onSave,
+  onCancel,
+  saving,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border bg-white" style={{ borderColor: "var(--frost)" }}>
+      <div className="flex items-center gap-2 border-b px-5 py-3" style={{ borderColor: "var(--border)" }}>
+        <span style={{ color: "var(--frost)" }}>{icon}</span>
+        <h2 className="text-sm font-semibold flex-1" style={{ color: "var(--slate-deep)" }}>{title}</h2>
+      </div>
+      <div className="px-5 py-4 space-y-4">
+        {children}
+        <div className="flex justify-end gap-2 pt-2">
+          <button onClick={onCancel} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+            <XIcon /> Avbryt
+          </button>
+          <button onClick={onSave} disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+            <CheckIcon /> {saving ? "Sparar..." : "Spara"}
+          </button>
+        </div>
       </div>
     </div>
   );
