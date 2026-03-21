@@ -43,6 +43,12 @@ interface AvailableEvent {
 interface PersonRecord {
   edu_person_id: number;
   edu_customer_id: number;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  mobile: string | null;
+  civic_registration_number: string | null;
 }
 
 export default function MinaKurserPage() {
@@ -54,6 +60,18 @@ export default function MinaKurserPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [person, setPerson] = useState<PersonRecord | null>(null);
   const [userEmail, setUserEmail] = useState<string>("");
+
+  // Profile edit state
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    mobile: "",
+    civicRegistrationNumber: "",
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
 
   // Move state
   const [movingBooking, setMovingBooking] = useState<MyBooking | null>(null);
@@ -81,7 +99,7 @@ export default function MinaKurserPage() {
 
       const { data: personData } = await supabase
         .from("persons")
-        .select("edu_person_id,edu_customer_id")
+        .select("edu_person_id,edu_customer_id,first_name,last_name,email,phone,mobile,civic_registration_number")
         .eq("email", user.email)
         .limit(1)
         .single();
@@ -92,12 +110,60 @@ export default function MinaKurserPage() {
         return;
       }
 
-      setPerson(personData as PersonRecord);
-      await loadBookings(personData as PersonRecord);
+      const typedPerson = personData as PersonRecord;
+      setPerson(typedPerson);
+
+      // Pre-fill profile form from person record
+      setProfileForm({
+        firstName: typedPerson.first_name || "",
+        lastName: typedPerson.last_name || "",
+        email: typedPerson.email || "",
+        phone: typedPerson.phone || "",
+        mobile: typedPerson.mobile || "",
+        civicRegistrationNumber: typedPerson.civic_registration_number || "",
+      });
+
+      await loadBookings(typedPerson);
       setLoading(false);
     }
     init();
   }, [router, loadBookings]);
+
+  async function handleSaveProfile() {
+    if (!person) return;
+    setSavingProfile(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/edu/persons/${person.edu_person_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...profileForm,
+          customerId: person.edu_customer_id,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      // Update local person record with new values
+      setPerson((prev) =>
+        prev
+          ? {
+              ...prev,
+              first_name: profileForm.firstName,
+              last_name: profileForm.lastName,
+              phone: profileForm.phone || null,
+              mobile: profileForm.mobile || null,
+              civic_registration_number: profileForm.civicRegistrationNumber || null,
+            }
+          : prev,
+      );
+      setSuccess("Dina uppgifter har uppdaterats");
+      setEditingProfile(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kunde inte spara");
+    } finally {
+      setSavingProfile(false);
+    }
+  }
 
   async function handleCancelParticipant(booking: MyBooking, participantId: number, participantName: string) {
     if (!confirm(`Vill du avboka dig från ${booking.CourseName}?`)) return;
@@ -211,6 +277,132 @@ export default function MinaKurserPage() {
         <h1 className="mb-8 text-2xl" style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}>
           Mina kurser
         </h1>
+
+        {/* Profile edit card */}
+        {person && (
+          <div className="mb-8 rounded-xl border bg-white p-5" style={{ borderColor: "var(--border)" }}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
+                Mina uppgifter
+              </h2>
+              {!editingProfile && (
+                <button
+                  onClick={() => setEditingProfile(true)}
+                  className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{ borderColor: "var(--frost)", color: "var(--frost)" }}
+                >
+                  Redigera
+                </button>
+              )}
+            </div>
+
+            {!editingProfile ? (
+              <div className="space-y-1 text-sm" style={{ color: "var(--slate-light)" }}>
+                <p>
+                  <span className="font-medium" style={{ color: "var(--slate-deep)" }}>
+                    {person.first_name} {person.last_name}
+                  </span>
+                </p>
+                {person.email && <p>{person.email}</p>}
+                {(person.phone || person.mobile) && (
+                  <p>{person.phone || person.mobile}</p>
+                )}
+                {person.civic_registration_number && (
+                  <p>Personnummer: {person.civic_registration_number}</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>
+                      Förnamn
+                    </label>
+                    <input
+                      value={profileForm.firstName}
+                      onChange={(e) => setProfileForm((f) => ({ ...f, firstName: e.target.value }))}
+                      className="form-input"
+                      placeholder="Anna"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>
+                      Efternamn
+                    </label>
+                    <input
+                      value={profileForm.lastName}
+                      onChange={(e) => setProfileForm((f) => ({ ...f, lastName: e.target.value }))}
+                      className="form-input"
+                      placeholder="Svensson"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>
+                      E-post (kan ej ändras)
+                    </label>
+                    <input
+                      value={profileForm.email}
+                      readOnly
+                      className="form-input opacity-60 cursor-not-allowed"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>
+                      Telefon
+                    </label>
+                    <input
+                      value={profileForm.phone}
+                      onChange={(e) => setProfileForm((f) => ({ ...f, phone: e.target.value }))}
+                      className="form-input"
+                      placeholder="070-123 45 67"
+                      type="tel"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>
+                      Mobiltelefon
+                    </label>
+                    <input
+                      value={profileForm.mobile}
+                      onChange={(e) => setProfileForm((f) => ({ ...f, mobile: e.target.value }))}
+                      className="form-input"
+                      placeholder="070-123 45 67"
+                      type="tel"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>
+                      Personnummer
+                    </label>
+                    <input
+                      value={profileForm.civicRegistrationNumber}
+                      onChange={(e) => setProfileForm((f) => ({ ...f, civicRegistrationNumber: e.target.value }))}
+                      className="form-input"
+                      placeholder="ÅÅMMDD-XXXX"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <button
+                    onClick={() => setEditingProfile(false)}
+                    className="rounded-lg border px-4 py-2 text-sm font-medium"
+                    style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}
+                  >
+                    Avbryt
+                  </button>
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={savingProfile}
+                    className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    style={{ backgroundColor: "var(--frost)" }}
+                  >
+                    {savingProfile ? <><LoaderIcon className="animate-spin" /> Sparar...</> : "Spara"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--danger)", backgroundColor: "#fef2f2", color: "var(--danger)" }}>

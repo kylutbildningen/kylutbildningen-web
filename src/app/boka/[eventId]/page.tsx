@@ -53,6 +53,12 @@ export default function BookingPage() {
     bookingNumber: string;
   } | null>(null);
 
+  // Participant restriction state
+  const [isParticipantUser, setIsParticipantUser] = useState(false);
+  const [myPersonId, setMyPersonId] = useState<number | null>(null);
+  const [myCustomerId, setMyCustomerId] = useState<number | null>(null);
+  const [alreadyBooked, setAlreadyBooked] = useState(false);
+
   // Company persons from Supabase (for participant picker)
   const [companyPersons, setCompanyPersons] = useState<SupabasePerson[]>([]);
   const [showPersonPicker, setShowPersonPicker] = useState(false);
@@ -126,7 +132,7 @@ export default function BookingPage() {
       // Get membership
       const { data: membership } = await supabase
         .from("company_memberships")
-        .select("edu_customer_id, company_name, org_number")
+        .select("edu_customer_id, company_name, org_number, role")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -194,6 +200,11 @@ export default function BookingPage() {
             setValue("participants.0.civicRegistrationNumber", myPerson.civic_registration_number || "");
             setValue("participants.0.isPrimaryContact", true);
           }
+
+          // Store participant restriction state
+          setIsParticipantUser(membership.role === "participant");
+          setMyPersonId(myPerson?.edu_person_id ?? null);
+          setMyCustomerId(membership.edu_customer_id);
         }
       } catch { /* continue */ }
 
@@ -221,6 +232,19 @@ export default function BookingPage() {
     }
     fetchEvent();
   }, [eventId]);
+
+  // Check if participant is already booked on the same course type
+  useEffect(() => {
+    if (!isParticipantUser || !myPersonId || !myCustomerId || !event) return;
+    async function checkAlreadyBooked() {
+      const res = await fetch(`/api/edu/bookings/mine?personId=${myPersonId}&customerId=${myCustomerId}`);
+      if (!res.ok) return;
+      const bookings = await res.json();
+      const already = bookings.some((b: any) => b.Event?.CourseTemplateId === event!.courseTemplateId);
+      setAlreadyBooked(already);
+    }
+    checkAlreadyBooked();
+  }, [isParticipantUser, myPersonId, myCustomerId, event]);
 
   // Switch to card if private is selected
   useEffect(() => {
@@ -443,8 +467,27 @@ export default function BookingPage() {
           </div>
         )}
 
+        {/* Already booked on same course type */}
+        {alreadyBooked && (
+          <div className="mb-6 rounded-xl border p-6 text-center" style={{ borderColor: "var(--frost)", backgroundColor: "var(--frost-light)" }}>
+            <p className="mb-2 text-base font-medium" style={{ color: "var(--frost-dark)" }}>
+              Du är redan anmäld till denna typ av kurs
+            </p>
+            <p className="mb-4 text-sm" style={{ color: "var(--slate-light)" }}>
+              Om du vill byta tillfälle kan du flytta din befintliga bokning.
+            </p>
+            <a
+              href="/dashboard/mina-kurser"
+              className="inline-block rounded-lg px-5 py-2.5 text-sm font-semibold text-white"
+              style={{ backgroundColor: "var(--frost)" }}
+            >
+              Gå till Mina kurser
+            </a>
+          </div>
+        )}
+
         {/* ─── Step 1 ─── */}
-        {step === 1 && (
+        {step === 1 && !alreadyBooked && (
           <form onSubmit={handleSubmit(onStep1Submit)} className="space-y-8">
             {/* Customer type tabs */}
             <div className="flex gap-2">
@@ -595,17 +638,19 @@ export default function BookingPage() {
               ))}
 
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => append({ ...emptyParticipant })}
-                  className="flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all"
-                  style={{ borderColor: "var(--border)", color: "var(--frost)" }}
-                >
-                  <PlusIcon /> Lägg till deltagare
-                </button>
+                {!isParticipantUser && (
+                  <button
+                    type="button"
+                    onClick={() => append({ ...emptyParticipant })}
+                    className="flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all"
+                    style={{ borderColor: "var(--border)", color: "var(--frost)" }}
+                  >
+                    <PlusIcon /> Lägg till deltagare
+                  </button>
+                )}
 
                 {/* Person picker from EduAdmin */}
-                {isCompany && availablePersons.length > 0 && (
+                {!isParticipantUser && isCompany && availablePersons.length > 0 && (
                   <div className="relative">
                     <button
                       type="button"
