@@ -38,7 +38,8 @@ export async function POST(request: Request) {
       mobile: created.Mobile || undefined,
       civicRegistrationNumber: created.CivicRegistrationNumber || undefined,
       jobTitle: created.JobTitle || undefined,
-      isContactPerson: created.IsContactPerson ?? false,
+      // Use what the user chose — EduAdmin may ignore CreateContactPerson in its response
+      isContactPerson: body.isContactPerson ?? created.IsContactPerson ?? false,
       canLogin: created.CanLogin ?? false,
     });
 
