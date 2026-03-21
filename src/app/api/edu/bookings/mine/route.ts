@@ -25,7 +25,7 @@ interface EduAdminBooking {
 export async function GET(request: NextRequest) {
   const personId = request.nextUrl.searchParams.get("personId");
   const customerId = request.nextUrl.searchParams.get("customerId");
-  if (!personId || !customerId) {
+  if (!personId || !customerId || customerId === "null" || personId === "null") {
     return NextResponse.json({ error: "personId och customerId krävs" }, { status: 400 });
   }
 

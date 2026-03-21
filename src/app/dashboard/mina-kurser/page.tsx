@@ -110,7 +110,26 @@ export default function MinaKurserPage() {
         return;
       }
 
-      const typedPerson = personData as PersonRecord;
+      let typedPerson = personData as PersonRecord;
+
+      // If edu_customer_id is missing, look it up from company_memberships
+      if (!typedPerson.edu_customer_id) {
+        const { data: membership } = await supabase
+          .from("company_memberships")
+          .select("edu_customer_id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        if (membership?.edu_customer_id) {
+          typedPerson = { ...typedPerson, edu_customer_id: membership.edu_customer_id };
+          // Patch the persons row so it's correct next time
+          await supabase
+            .from("persons")
+            .update({ edu_customer_id: membership.edu_customer_id })
+            .eq("edu_person_id", typedPerson.edu_person_id);
+        }
+      }
       setPerson(typedPerson);
 
       // Pre-fill profile form from person record
