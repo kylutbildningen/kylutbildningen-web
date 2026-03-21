@@ -30,17 +30,23 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Get bookings for this customer, expand participants, filter by personId
+    const pid = parseInt(personId);
+
+    // Fetch all bookings for this customer with participants expanded
     const data = await eduAdminFetch<{ value: EduAdminBooking[] }>("/v1/odata/Bookings", {
-      $filter: `CustomerId eq ${customerId} and Participants/any(p: p/PersonId eq ${personId})`,
+      $filter: `CustomerId eq ${customerId}`,
       $expand: "Event,Participants",
       $orderby: "Created desc",
-      $top: "50",
+      $top: "200",
     });
 
-    // Only return future bookings where this person is an active participant
+    // Filter client-side: only bookings where this person is an active participant
     const now = new Date();
     const bookings = (data.value || []).filter((b) => {
+      const isParticipant = (b.Participants ?? []).some(
+        (p) => p.PersonId === pid && !p.Canceled,
+      );
+      if (!isParticipant) return false;
       const eventStart = b.Event?.StartDate ? new Date(b.Event.StartDate) : null;
       return eventStart && eventStart > now;
     });
