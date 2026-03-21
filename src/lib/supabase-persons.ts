@@ -41,7 +41,7 @@ export async function syncPersonsFromEduAdmin(
 
   const rows = persons.map((p) => ({
     edu_person_id: p.PersonId,
-    edu_customer_id: p.CustomerId,
+    edu_customer_id: p.CustomerId || customerId,
     first_name: p.FirstName?.trim() || "",
     last_name: p.LastName?.trim() || "",
     email: p.Email || null,
