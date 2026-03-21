@@ -365,6 +365,7 @@ function PersonSection({
                 <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--slate-light)" }}>
                   {person.Email && <span>{person.Email}</span>}
                   {(person.Phone || person.Mobile) && <span>{person.Phone || person.Mobile}</span>}
+                  <span title="EduAdmin PersonId">ID: {person.PersonId}</span>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
