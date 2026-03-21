@@ -740,10 +740,26 @@ function PersonForm({
         <input type="text" value={form.jobTitle} onChange={(e) => setForm({ ...form, jobTitle: e.target.value })} placeholder="Befattning" className="form-input text-sm" />
       </div>
       <div className="mt-3 flex items-center gap-4">
-        <label className="flex items-center gap-2 text-sm" style={{ color: "var(--slate-light)" }}>
-          <input type="checkbox" checked={form.isContactPerson} onChange={(e) => setForm({ ...form, isContactPerson: e.target.checked })} className="accent-[var(--frost)]" />
-          Kontaktperson
-        </label>
+        <div className="flex gap-2">
+          {([
+            { label: "Deltagare", value: false },
+            { label: "Kontaktperson", value: true },
+          ] as const).map(opt => (
+            <button
+              key={String(opt.value)}
+              type="button"
+              onClick={() => setForm({ ...form, isContactPerson: opt.value })}
+              className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-all"
+              style={{
+                borderColor: form.isContactPerson === opt.value ? "var(--frost)" : "var(--border)",
+                backgroundColor: form.isContactPerson === opt.value ? "var(--frost-light)" : "#fff",
+                color: form.isContactPerson === opt.value ? "var(--frost-dark)" : "var(--slate-light)",
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
         <div className="ml-auto flex gap-2">
           <button onClick={onCancel} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
             <XIcon /> Avbryt

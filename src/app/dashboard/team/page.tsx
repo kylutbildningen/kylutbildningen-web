@@ -35,7 +35,7 @@ export default function TeamPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [editingPerson, setEditingPerson] = useState<SupabasePerson | null>(null);
   const [personForm, setPersonForm] = useState({ firstName: "", lastName: "", email: "", phone: "", mobile: "", jobTitle: "", civicRegistrationNumber: "", isContactPerson: false });
-  const [newPerson, setNewPerson] = useState({ firstName: "", lastName: "", email: "", phone: "", isContactPerson: true });
+  const [newPerson, setNewPerson] = useState({ firstName: "", lastName: "", email: "", phone: "", mobile: "", civicRegistrationNumber: "", jobTitle: "", isContactPerson: false });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -162,7 +162,7 @@ export default function TeamPage() {
       });
       if (!res.ok) throw new Error((await res.json()).error);
       setSuccess(`${newPerson.firstName} ${newPerson.lastName} har lagts till`);
-      setNewPerson({ firstName: "", lastName: "", email: "", phone: "", isContactPerson: true });
+      setNewPerson({ firstName: "", lastName: "", email: "", phone: "", mobile: "", civicRegistrationNumber: "", jobTitle: "", isContactPerson: false });
       setShowAdd(false);
       await fetchPersons(customerId);
     } catch (err) {
@@ -289,25 +289,45 @@ export default function TeamPage() {
         {showAdd && (
           <form onSubmit={handleAddPerson} className="mb-6 rounded-lg border bg-white p-5" style={{ borderColor: "var(--border)" }}>
             <h3 className="mb-4 text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>Lägg till ny person</h3>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+            {/* Person type */}
+            <div className="mb-4 flex gap-2">
+              {([
+                { label: "Deltagare", value: false },
+                { label: "Kontaktperson", value: true },
+              ] as const).map(opt => (
+                <button
+                  key={String(opt.value)}
+                  type="button"
+                  onClick={() => setNewPerson({ ...newPerson, isContactPerson: opt.value })}
+                  className="flex-1 rounded-lg border py-2 text-sm font-medium transition-all"
+                  style={{
+                    borderColor: newPerson.isContactPerson === opt.value ? "var(--frost)" : "var(--border)",
+                    backgroundColor: newPerson.isContactPerson === opt.value ? "var(--frost-light)" : "#fff",
+                    color: newPerson.isContactPerson === opt.value ? "var(--frost-dark)" : "var(--slate-light)",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <input type="text" value={newPerson.firstName} onChange={e => setNewPerson({ ...newPerson, firstName: e.target.value })} placeholder="Förnamn *" className="form-input text-sm" autoFocus />
               <input type="text" value={newPerson.lastName} onChange={e => setNewPerson({ ...newPerson, lastName: e.target.value })} placeholder="Efternamn *" className="form-input text-sm" />
+              <input type="text" value={newPerson.civicRegistrationNumber} onChange={e => setNewPerson({ ...newPerson, civicRegistrationNumber: e.target.value })} placeholder="Personnummer (YYYYMMDD-XXXX)" className="form-input text-sm" />
               <input type="email" value={newPerson.email} onChange={e => setNewPerson({ ...newPerson, email: e.target.value })} placeholder="E-post" className="form-input text-sm" />
               <input type="tel" value={newPerson.phone} onChange={e => setNewPerson({ ...newPerson, phone: e.target.value })} placeholder="Telefon" className="form-input text-sm" />
+              <input type="tel" value={newPerson.mobile} onChange={e => setNewPerson({ ...newPerson, mobile: e.target.value })} placeholder="Mobil" className="form-input text-sm" />
+              <input type="text" value={newPerson.jobTitle} onChange={e => setNewPerson({ ...newPerson, jobTitle: e.target.value })} placeholder="Befattning" className="form-input text-sm sm:col-span-2 lg:col-span-3" />
             </div>
-            <div className="mt-3 flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm" style={{ color: "var(--slate-light)" }}>
-                <input type="checkbox" checked={newPerson.isContactPerson} onChange={e => setNewPerson({ ...newPerson, isContactPerson: e.target.checked })} className="accent-[var(--frost)]" />
-                Kontaktperson
-              </label>
-              <div className="ml-auto flex gap-2">
-                <button type="button" onClick={() => setShowAdd(false)} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
-                  <XIcon /> Avbryt
-                </button>
-                <button type="submit" disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
-                  <CheckIcon /> {saving ? "Sparar..." : "Lägg till"}
-                </button>
-              </div>
+            <div className="mt-3 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowAdd(false)} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+                <XIcon /> Avbryt
+              </button>
+              <button type="submit" disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+                <CheckIcon /> {saving ? "Sparar..." : "Lägg till"}
+              </button>
             </div>
           </form>
         )}
@@ -417,10 +437,26 @@ function PersonSection({
                     <input className="form-input text-sm" value={personForm.jobTitle} onChange={e => setPersonForm({ ...personForm, jobTitle: e.target.value })} placeholder="Befattning" />
                   </div>
                   <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 text-sm" style={{ color: "var(--slate-light)" }}>
-                      <input type="checkbox" checked={personForm.isContactPerson} onChange={e => setPersonForm({ ...personForm, isContactPerson: e.target.checked })} className="accent-[var(--frost)]" />
-                      Kontaktperson
-                    </label>
+                    <div className="flex gap-2">
+                      {([
+                        { label: "Deltagare", value: false },
+                        { label: "Kontaktperson", value: true },
+                      ] as const).map(opt => (
+                        <button
+                          key={String(opt.value)}
+                          type="button"
+                          onClick={() => setPersonForm({ ...personForm, isContactPerson: opt.value })}
+                          className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-all"
+                          style={{
+                            borderColor: personForm.isContactPerson === opt.value ? "var(--frost)" : "var(--border)",
+                            backgroundColor: personForm.isContactPerson === opt.value ? "var(--frost-light)" : "#fff",
+                            color: personForm.isContactPerson === opt.value ? "var(--frost-dark)" : "var(--slate-light)",
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
                     <div className="ml-auto flex gap-2">
                       <button onClick={onCancelEdit} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
                         <XIcon /> Avbryt
