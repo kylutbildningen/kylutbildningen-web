@@ -274,7 +274,7 @@ export default function CompanyManagementPage() {
         const res = await fetch(`/api/edu/persons/${editingId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify({ ...form, customerId: membership.edu_customer_id }),
         });
         if (!res.ok) throw new Error((await res.json()).error);
       }
