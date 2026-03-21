@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     // 2. Save to Supabase with EduAdmin's PersonId
     await upsertPerson({
       eduPersonId: created.PersonId,
-      eduCustomerId: created.CustomerId,
+      eduCustomerId: created.CustomerId || body.customerId,
       firstName: created.FirstName?.trim() || "",
       lastName: created.LastName?.trim() || "",
       email: created.Email || undefined,
