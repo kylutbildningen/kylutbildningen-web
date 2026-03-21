@@ -118,6 +118,29 @@ export async function POST(
         const text = await res.text();
         return NextResponse.json({ error: text }, { status: res.status });
       }
+
+      // Check if any active participants remain — if not, delete the whole booking
+      let bookingDeleted = false;
+      try {
+        const bookingRes = await fetch(
+          `${API_URL}/v1/odata/Bookings(${id})?$expand=Participants`,
+          { headers: { Authorization: `bearer ${token}` } },
+        );
+        if (bookingRes.ok) {
+          const booking = await bookingRes.json();
+          const activeLeft = (booking.Participants ?? []).filter(
+            (p: { Canceled: boolean }) => !p.Canceled,
+          ).length;
+          if (activeLeft === 0) {
+            await fetch(`${API_URL}/v1/Booking/${id}`, {
+              method: "DELETE",
+              headers: { Authorization: `bearer ${token}` },
+            });
+            bookingDeleted = true;
+          }
+        }
+      } catch { /* ignore — participant is already cancelled */ }
+
       // Fire-and-forget logging
       if (body.customerId) {
         logBookingEvent({
@@ -125,13 +148,13 @@ export async function POST(
           bookingId: id,
           participantId: body.participantId,
           participantName: body.participantName,
-          action: "cancelled_participant",
+          action: bookingDeleted ? "cancelled_booking" : "cancelled_participant",
           fromEventId: body.fromEventId,
           actorEmail: body.actorEmail,
           actorUserId: body.actorUserId,
         }).catch(() => {});
       }
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, bookingDeleted });
     }
 
     // Add participants
