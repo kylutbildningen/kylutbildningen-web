@@ -138,21 +138,20 @@ export default function TeamPage() {
 
   async function handleDeletePerson(person: EduPerson) {
     const name = `${person.FirstName?.trim()} ${person.LastName?.trim()}`;
-    if (!confirm(`Vill du ta bort ${name} från företaget? Detta tar bort personen från EduAdmin.`)) return;
+    const member = getMemberForPerson(person);
+    const msg = member
+      ? `Ta bort ${name}s åtkomst till portalen? Personen finns kvar i EduAdmin.`
+      : `${name} har inget portalkonto — personen kan bara tas bort direkt i EduAdmin.`;
+    if (!confirm(msg)) return;
+    if (!member) return;
+
     setError(null);
     try {
-      const res = await fetch(`/api/edu/persons/${person.PersonId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error((await res.json()).error);
-
-      // Also remove Supabase membership if linked
-      const member = getMemberForPerson(person);
-      if (member) {
-        const supabase = createSupabaseBrowser();
-        await supabase.from("company_memberships").delete().eq("id", member.id);
-      }
-
-      setSuccess(`${name} har tagits bort`);
-      await Promise.all([fetchPersons(customerId), fetchMembers(customerId)]);
+      const supabase = createSupabaseBrowser();
+      const { error: dbErr } = await supabase.from("company_memberships").delete().eq("id", member.id);
+      if (dbErr) throw dbErr;
+      setSuccess(`${name}s åtkomst till portalen har tagits bort`);
+      await fetchMembers(customerId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kunde inte ta bort");
     }

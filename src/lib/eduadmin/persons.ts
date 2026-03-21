@@ -113,12 +113,9 @@ export async function updatePerson(
 }
 
 /**
- * Delete person — EduAdmin REST API doesn't have a DELETE endpoint for persons.
- * We can only remove them from being a contact person.
+ * EduAdmin does not support deleting persons via API (returns 405).
+ * Persons must be removed directly in EduAdmin's admin interface.
  */
-export async function deletePerson(personId: number): Promise<void> {
-  // Try OData DELETE as fallback (might work for some accounts)
-  await eduAdminFetch(`/v1/odata/Persons(${personId})`, {
-    __method: "DELETE",
-  });
+export async function deletePerson(_personId: number): Promise<void> {
+  throw new Error("EduAdmin stöder inte borttagning av personer via API. Ta bort personen direkt i EduAdmin.");
 }
