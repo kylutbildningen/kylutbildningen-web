@@ -6,6 +6,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { EventCard } from "@/types/eduadmin";
 import type { BookingStep1Data } from "@/lib/validation";
+import type { SupabasePerson } from "@/lib/supabase-persons";
 import { bookingStep1Schema } from "@/lib/validation";
 import { formatCompactDateRange, formatTime, formatPrice } from "@/lib/format";
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -27,17 +28,6 @@ import {
 } from "@/components/icons";
 
 type BookingStep = 1 | 2 | 3;
-
-interface CompanyPerson {
-  PersonId: number;
-  FirstName: string;
-  LastName: string;
-  Email: string;
-  Phone: string;
-  Mobile: string;
-  CivicRegistrationNumber: string;
-  IsContactPerson: boolean;
-}
 
 const emptyParticipant = {
   firstName: "",
@@ -62,8 +52,8 @@ export default function BookingPage() {
     bookingNumber: string;
   } | null>(null);
 
-  // Company persons from EduAdmin (for participant picker)
-  const [companyPersons, setCompanyPersons] = useState<CompanyPerson[]>([]);
+  // Company persons from Supabase (for participant picker)
+  const [companyPersons, setCompanyPersons] = useState<SupabasePerson[]>([]);
   const [showPersonPicker, setShowPersonPicker] = useState(false);
 
   const form = useForm<BookingStep1Data>({
@@ -176,31 +166,31 @@ export default function BookingPage() {
         }
       } catch { /* continue without prefill */ }
 
-      // Fetch persons from the company
+      // Fetch persons from Supabase
       try {
         const persRes = await fetch(
           `/api/edu/persons?customerId=${membership.edu_customer_id}`,
         );
         if (persRes.ok) {
-          const persons: CompanyPerson[] = await persRes.json();
+          const persons: SupabasePerson[] = await persRes.json();
           setCompanyPersons(persons);
 
           // Find the logged-in user's person record and prefill as contact
           const myPerson = persons.find(
-            (p) => p.Email?.toLowerCase() === user.email?.toLowerCase(),
+            (p) => p.email?.toLowerCase() === user.email?.toLowerCase(),
           );
           if (myPerson) {
-            setValue("company.contactFirstName", myPerson.FirstName?.trim() || "");
-            setValue("company.contactLastName", myPerson.LastName?.trim() || "");
-            setValue("company.contactEmail", myPerson.Email || "");
-            setValue("company.contactPhone", myPerson.Phone || myPerson.Mobile || "");
+            setValue("company.contactFirstName", myPerson.first_name || "");
+            setValue("company.contactLastName", myPerson.last_name || "");
+            setValue("company.contactEmail", myPerson.email || "");
+            setValue("company.contactPhone", myPerson.phone || myPerson.mobile || "");
 
             // Prefill first participant as the contact person
-            setValue("participants.0.firstName", myPerson.FirstName?.trim() || "");
-            setValue("participants.0.lastName", myPerson.LastName?.trim() || "");
-            setValue("participants.0.email", myPerson.Email || "");
-            setValue("participants.0.phone", myPerson.Phone || myPerson.Mobile || "");
-            setValue("participants.0.civicRegistrationNumber", myPerson.CivicRegistrationNumber || "");
+            setValue("participants.0.firstName", myPerson.first_name || "");
+            setValue("participants.0.lastName", myPerson.last_name || "");
+            setValue("participants.0.email", myPerson.email || "");
+            setValue("participants.0.phone", myPerson.phone || myPerson.mobile || "");
+            setValue("participants.0.civicRegistrationNumber", myPerson.civic_registration_number || "");
             setValue("participants.0.isPrimaryContact", true);
           }
         }
@@ -239,22 +229,19 @@ export default function BookingPage() {
   }, [isCompany, setValue]);
 
   // Add person from company picker
-  function addPersonFromCompany(person: CompanyPerson) {
-    // Check if already added
-    const existing = fields.some(
-      (_, i) => {
-        const email = watch(`participants.${i}.email`);
-        return email?.toLowerCase() === person.Email?.toLowerCase();
-      },
-    );
+  function addPersonFromCompany(person: SupabasePerson) {
+    const existing = fields.some((_, i) => {
+      const email = watch(`participants.${i}.email`);
+      return email?.toLowerCase() === person.email?.toLowerCase();
+    });
     if (existing) return;
 
     append({
-      firstName: person.FirstName?.trim() || "",
-      lastName: person.LastName?.trim() || "",
-      email: person.Email || "",
-      phone: person.Phone || person.Mobile || "",
-      civicRegistrationNumber: person.CivicRegistrationNumber || "",
+      firstName: person.first_name || "",
+      lastName: person.last_name || "",
+      email: person.email || "",
+      phone: person.phone || person.mobile || "",
+      civicRegistrationNumber: person.civic_registration_number || "",
       isPrimaryContact: false,
     });
     setShowPersonPicker(false);
@@ -380,7 +367,7 @@ export default function BookingPage() {
   const availablePersons = companyPersons.filter((p) => {
     return !fields.some((_, i) => {
       const email = watch(`participants.${i}.email`);
-      return email?.toLowerCase() === p.Email?.toLowerCase();
+      return email?.toLowerCase() === p.email?.toLowerCase();
     });
   });
 
@@ -637,24 +624,24 @@ export default function BookingPage() {
                           <div className="max-h-64 overflow-y-auto">
                             {availablePersons.map((p) => (
                               <button
-                                key={p.PersonId}
+                                key={p.edu_person_id}
                                 type="button"
                                 onClick={() => addPersonFromCompany(p)}
                                 className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--frost-light)]"
                               >
                                 <div
                                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                                  style={{ backgroundColor: p.IsContactPerson ? "var(--frost-light)" : "#f0f0f0", color: p.IsContactPerson ? "var(--frost-dark)" : "var(--slate-light)" }}
+                                  style={{ backgroundColor: p.is_contact_person ? "var(--frost-light)" : "#f0f0f0", color: p.is_contact_person ? "var(--frost-dark)" : "var(--slate-light)" }}
                                 >
                                   <UserIcon />
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <span className="block font-medium" style={{ color: "var(--slate-deep)" }}>
-                                    {p.FirstName?.trim()} {p.LastName?.trim()}
+                                    {p.first_name} {p.last_name}
                                   </span>
                                   <span className="block text-xs truncate" style={{ color: "var(--slate-light)" }}>
-                                    {p.Email || "Ingen e-post"}
-                                    {p.CivicRegistrationNumber && ` · ${p.CivicRegistrationNumber}`}
+                                    {p.email || "Ingen e-post"}
+                                    {p.civic_registration_number && ` · ${p.civic_registration_number}`}
                                   </span>
                                 </div>
                               </button>
