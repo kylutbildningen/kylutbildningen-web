@@ -113,7 +113,13 @@ export default function BookingDetailPage() {
       const res = await fetch(`/api/edu/bookings/${bookingId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "cancelParticipant", participantId: participant.ParticipantId }),
+        body: JSON.stringify({
+          action: "cancelParticipant",
+          participantId: participant.ParticipantId,
+          participantName: `${participant.FirstName} ${participant.LastName}`,
+          customerId: booking?.Customer?.CustomerId,
+          fromEventId: booking?.EventId,
+        }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       setSuccess(`${name} har avbokats`);
@@ -165,6 +171,8 @@ export default function BookingDetailPage() {
           customerId: booking.Customer?.CustomerId,
           contactPersonId: booking.ContactPerson?.PersonId,
           paymentMethodId: booking.PaymentMethodId,
+          participantName: `${movingParticipant.FirstName} ${movingParticipant.LastName}`,
+          fromEventId: booking.EventId,
         }),
       });
       const data = await res.json();

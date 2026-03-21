@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logBookingEvent } from "@/lib/booking-events";
 
 const API_URL = process.env.EDUADMIN_API_BASE ?? "https://api.eduadmin.se";
 const API_USER = process.env.EDUADMIN_USERNAME ?? "";
@@ -47,11 +48,16 @@ export async function PATCH(
 
 // DELETE — cancel entire booking
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
+    const body = await request.json().catch(() => ({})) as {
+      customerId?: number;
+      actorEmail?: string;
+      actorUserId?: string;
+    };
     const token = await getToken();
     const res = await fetch(`${API_URL}/v1/Booking/${id}`, {
       method: "DELETE",
@@ -60,6 +66,16 @@ export async function DELETE(
     if (!res.ok) {
       const text = await res.text();
       return NextResponse.json({ error: text || res.statusText }, { status: res.status });
+    }
+    // Fire-and-forget logging
+    if (body.customerId) {
+      logBookingEvent({
+        eduCustomerId: body.customerId,
+        bookingId: id,
+        action: "cancelled_booking",
+        actorEmail: body.actorEmail,
+        actorUserId: body.actorUserId,
+      }).catch(() => {});
     }
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -73,7 +89,20 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const body = await request.json();
+  const body = await request.json() as {
+    action: string;
+    participantId?: number;
+    participants?: unknown[];
+    newEventId?: number;
+    personId?: number;
+    customerId?: number;
+    contactPersonId?: number;
+    paymentMethodId?: number;
+    participantName?: string;
+    fromEventId?: number;
+    actorEmail?: string;
+    actorUserId?: string;
+  };
 
   try {
     const token = await getToken();
@@ -89,6 +118,19 @@ export async function POST(
         const text = await res.text();
         return NextResponse.json({ error: text }, { status: res.status });
       }
+      // Fire-and-forget logging
+      if (body.customerId) {
+        logBookingEvent({
+          eduCustomerId: body.customerId,
+          bookingId: id,
+          participantId: body.participantId,
+          participantName: body.participantName,
+          action: "cancelled_participant",
+          fromEventId: body.fromEventId,
+          actorEmail: body.actorEmail,
+          actorUserId: body.actorUserId,
+        }).catch(() => {});
+      }
       return NextResponse.json({ success: true });
     }
 
@@ -102,6 +144,17 @@ export async function POST(
       if (!res.ok) {
         const text = await res.text();
         return NextResponse.json({ error: text }, { status: res.status });
+      }
+      // Fire-and-forget logging
+      if (body.customerId) {
+        logBookingEvent({
+          eduCustomerId: body.customerId,
+          bookingId: id,
+          participantName: body.participantName,
+          action: "added_participant",
+          actorEmail: body.actorEmail,
+          actorUserId: body.actorUserId,
+        }).catch(() => {});
       }
       return NextResponse.json({ success: true });
     }
@@ -145,7 +198,22 @@ export async function POST(
         const text = await createRes.text();
         return NextResponse.json({ error: `Kunde inte skapa ny bokning: ${text}` }, { status: 500 });
       }
-      const newResult = await createRes.json();
+      const newResult = await createRes.json() as { BookingId: number };
+
+      // Fire-and-forget logging
+      if (body.customerId) {
+        logBookingEvent({
+          eduCustomerId: body.customerId,
+          bookingId: id,
+          participantId: body.participantId,
+          participantName: body.participantName,
+          action: "moved_participant",
+          fromEventId: body.fromEventId,
+          toEventId: body.newEventId,
+          actorEmail: body.actorEmail,
+          actorUserId: body.actorUserId,
+        }).catch(() => {});
+      }
 
       return NextResponse.json({
         success: true,
@@ -161,7 +229,12 @@ export async function POST(
       if (!detailRes.ok) {
         return NextResponse.json({ error: "Kunde inte hämta bokning" }, { status: 500 });
       }
-      const booking = await detailRes.json();
+      const booking = await detailRes.json() as {
+        PaymentMethodId: number;
+        Customer?: { CustomerId: number };
+        ContactPerson?: { PersonId: number };
+        Participants?: Array<{ Canceled: boolean; PersonId: number }>;
+      };
 
       const newBooking = {
         EventId: body.newEventId,
@@ -169,8 +242,8 @@ export async function POST(
         Customer: { CustomerId: booking.Customer?.CustomerId },
         ContactPerson: { PersonId: booking.ContactPerson?.PersonId },
         Participants: (booking.Participants || [])
-          .filter((p: { Canceled: boolean }) => !p.Canceled)
-          .map((p: Record<string, unknown>) => ({ PersonId: p.PersonId })),
+          .filter((p) => !p.Canceled)
+          .map((p) => ({ PersonId: p.PersonId })),
         SendConfirmationEmail: {
           SendToCustomerContact: true,
           SendToParticipants: true,
@@ -186,7 +259,7 @@ export async function POST(
         const text = await createRes.text();
         return NextResponse.json({ error: `Kunde inte skapa ny bokning: ${text}` }, { status: 500 });
       }
-      const newResult = await createRes.json();
+      const newResult = await createRes.json() as { BookingId: number };
 
       await fetch(`${API_URL}/v1/Booking/${id}`, {
         method: "DELETE",
