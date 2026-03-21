@@ -8,7 +8,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { CompanySelector } from "@/components/dashboard/CompanySelector";
 import { RoleBadge } from "@/components/dashboard/RoleBadge";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
-import { canBook, canManageMembers } from "@/lib/auth/permissions";
+import { canBook, canManageMembers, canViewCompany, isParticipant } from "@/lib/auth/permissions";
 
 interface Membership {
   id: string;
@@ -149,72 +149,54 @@ export default function DashboardPage() {
         {/* Action cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link
-            href="/dashboard/bokningar"
+            href={isParticipant(role) ? "/dashboard/mina-kurser" : "/dashboard/bokningar"}
             className="rounded-xl border bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-md"
             style={{ borderColor: "var(--border)" }}
           >
             <h3
               className="mb-2 text-lg font-medium"
-              style={{
-                fontFamily: "var(--font-serif)",
-                color: "var(--slate-deep)",
-              }}
+              style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}
             >
               Bokningar
             </h3>
-            <p
-              className="text-sm leading-relaxed"
-              style={{ color: "var(--slate-light)" }}
-            >
+            <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
               Se, ändra och flytta era bokningar.
             </p>
           </Link>
 
-          {canBook(role) && (
+          <Link
+            href="/kurser"
+            className="rounded-xl border bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-md"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <h3
+              className="mb-2 text-lg font-medium"
+              style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}
+            >
+              Boka kurs
+            </h3>
+            <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
+              Se kommande kurstillfällen och boka platser.
+            </p>
+          </Link>
+
+          {canViewCompany(role) && (
             <Link
-              href="/kurser"
+              href="/dashboard/foretag"
               className="rounded-xl border bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-md"
               style={{ borderColor: "var(--border)" }}
             >
               <h3
                 className="mb-2 text-lg font-medium"
-                style={{
-                  fontFamily: "var(--font-serif)",
-                  color: "var(--slate-deep)",
-                }}
+                style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}
               >
-                Boka kurs
+                Företagsöversikt
               </h3>
-              <p
-                className="text-sm leading-relaxed"
-                style={{ color: "var(--slate-light)" }}
-              >
-                Se kommande kurstillfällen och boka platser.
+              <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
+                Kontaktpersoner, deltagare och företagsuppgifter.
               </p>
             </Link>
           )}
-
-          <Link
-            href="/dashboard/foretag"
-            className="rounded-xl border bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-md"
-            style={{ borderColor: "var(--border)" }}
-          >
-            <h3
-              className="mb-2 text-lg font-medium"
-              style={{
-                fontFamily: "var(--font-serif)",
-                color: "var(--slate-deep)",
-              }}
-            >
-              Företagsöversikt
-            </h3>
-            <p
-              className="text-sm leading-relaxed"
-              style={{ color: "var(--slate-light)" }}
-            >
-              Kontaktpersoner, deltagare och företagsuppgifter.
-            </p>
-          </Link>
 
           {canManageMembers(role) && (
             <Link
@@ -224,43 +206,33 @@ export default function DashboardPage() {
             >
               <h3
                 className="mb-2 text-lg font-medium"
-                style={{
-                  fontFamily: "var(--font-serif)",
-                  color: "var(--slate-deep)",
-                }}
+                style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}
               >
                 Hantera team
               </h3>
-              <p
-                className="text-sm leading-relaxed"
-                style={{ color: "var(--slate-light)" }}
-              >
+              <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
                 Bjud in kollegor och hantera behörigheter.
               </p>
             </Link>
           )}
 
-          <Link
-            href="/onboarding/company"
-            className="rounded-xl border bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-md"
-            style={{ borderColor: "var(--border)" }}
-          >
-            <h3
-              className="mb-2 text-lg font-medium"
-              style={{
-                fontFamily: "var(--font-serif)",
-                color: "var(--slate-deep)",
-              }}
+          {canViewCompany(role) && (
+            <Link
+              href="/onboarding/company"
+              className="rounded-xl border bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-md"
+              style={{ borderColor: "var(--border)" }}
             >
-              Lägg till företag
-            </h3>
-            <p
-              className="text-sm leading-relaxed"
-              style={{ color: "var(--slate-light)" }}
-            >
-              Koppla ytterligare ett företag till ditt konto.
-            </p>
-          </Link>
+              <h3
+                className="mb-2 text-lg font-medium"
+                style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}
+              >
+                Lägg till företag
+              </h3>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
+                Koppla ytterligare ett företag till ditt konto.
+              </p>
+            </Link>
+          )}
         </div>
       </div>
 
