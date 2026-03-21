@@ -18,25 +18,7 @@ import {
   CreditCardIcon,
   FileTextIcon,
 } from "@/components/icons";
-
-interface Person {
-  PersonId: number;
-  CustomerId: number;
-  FirstName: string;
-  LastName: string;
-  Email: string;
-  Phone: string;
-  Mobile: string;
-  JobTitle: string;
-  CivicRegistrationNumber: string;
-  Birthdate: string;
-  EmployeeNumber: string;
-  IsContactPerson: boolean;
-  CanLogin: boolean;
-  Address: string;
-  Zip: string;
-  City: string;
-}
+import type { SupabasePerson as Person } from "@/lib/supabase-persons";
 
 interface CustomerData {
   CustomerId: number;
@@ -212,16 +194,16 @@ export default function CompanyManagementPage() {
   }
 
   function startEdit(person: Person) {
-    setEditingId(person.PersonId);
+    setEditingId(person.edu_person_id);
     setForm({
-      firstName: person.FirstName?.trim() || "",
-      lastName: person.LastName?.trim() || "",
-      email: person.Email || "",
-      phone: person.Phone || "",
-      mobile: person.Mobile || "",
-      jobTitle: person.JobTitle || "",
-      civicRegistrationNumber: person.CivicRegistrationNumber || "",
-      isContactPerson: person.IsContactPerson,
+      firstName: person.first_name?.trim() || "",
+      lastName: person.last_name?.trim() || "",
+      email: person.email || "",
+      phone: person.phone || "",
+      mobile: person.mobile || "",
+      jobTitle: person.job_title || "",
+      civicRegistrationNumber: person.civic_registration_number || "",
+      isContactPerson: person.is_contact_person,
     });
     setShowAdd(false);
     setError(null);
@@ -262,7 +244,7 @@ export default function CompanyManagementPage() {
           }),
         });
         if (!res.ok) throw new Error((await res.json()).error);
-      } else if (editingId) {
+      } else if (editingId !== null) {
         const res = await fetch(`/api/edu/persons/${editingId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -288,15 +270,15 @@ export default function CompanyManagementPage() {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
-      p.FirstName?.toLowerCase().includes(q) ||
-      p.LastName?.toLowerCase().includes(q) ||
-      p.Email?.toLowerCase().includes(q) ||
-      p.CivicRegistrationNumber?.includes(q)
+      p.first_name?.toLowerCase().includes(q) ||
+      p.last_name?.toLowerCase().includes(q) ||
+      p.email?.toLowerCase().includes(q) ||
+      p.civic_registration_number?.includes(q)
     );
   });
 
-  const contactPersons = filtered.filter((p) => p.IsContactPerson);
-  const participants = filtered.filter((p) => !p.IsContactPerson);
+  const contactPersons = filtered.filter((p) => p.is_contact_person);
+  const participants = filtered.filter((p) => !p.is_contact_person);
 
   if (!membership) {
     return (
@@ -650,9 +632,9 @@ function PersonSection({
       </h2>
       <div className="overflow-hidden rounded-lg border bg-white" style={{ borderColor: "var(--border)" }}>
         {persons.map((person, i) => (
-          <div key={person.PersonId}>
+          <div key={person.edu_person_id}>
             {i > 0 && <div className="h-px" style={{ backgroundColor: "var(--border)" }} />}
-            {editingId === person.PersonId ? (
+            {editingId === person.edu_person_id ? (
               <PersonForm
                 form={form}
                 setForm={setForm}
@@ -675,24 +657,24 @@ function PersonSection({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
-                      {person.FirstName?.trim()} {person.LastName?.trim()}
+                      {person.first_name?.trim()} {person.last_name?.trim()}
                     </span>
-                    {person.IsContactPerson && (
+                    {person.is_contact_person && (
                       <span className="badge badge-available text-[10px]">Kontaktperson</span>
                     )}
-                    {person.CanLogin && (
+                    {person.can_login && (
                       <span className="badge text-[10px]" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>
                         Inloggning
                       </span>
                     )}
                   </div>
                   <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--slate-light)" }}>
-                    {person.Email && <span>{person.Email}</span>}
-                    {(person.Phone || person.Mobile) && <span>{person.Phone || person.Mobile}</span>}
-                    {person.CivicRegistrationNumber && (
-                      <span>Personnr: {person.CivicRegistrationNumber}</span>
+                    {person.email && <span>{person.email}</span>}
+                    {(person.phone || person.mobile) && <span>{person.phone || person.mobile}</span>}
+                    {person.civic_registration_number && (
+                      <span>Personnr: {person.civic_registration_number}</span>
                     )}
-                    {person.JobTitle && <span>{person.JobTitle}</span>}
+                    {person.job_title && <span>{person.job_title}</span>}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
@@ -704,7 +686,7 @@ function PersonSection({
                     Ändra
                   </button>
                   <button
-                    onClick={() => onDelete(person.PersonId, `${person.FirstName} ${person.LastName}`)}
+                    onClick={() => onDelete(person.edu_person_id, `${person.first_name} ${person.last_name}`)}
                     className="rounded p-1 transition-colors"
                     style={{ color: "var(--danger)" }}
                   >
