@@ -81,6 +81,12 @@ export default function BookingPage() {
         contactLastName: "",
         contactEmail: "",
         contactPhone: "",
+        invoiceEmail: "",
+        invoiceReference: "",
+        useAlternateInvoiceAddress: false,
+        invoiceStreetAddress: "",
+        invoicePostalCode: "",
+        invoiceCity: "",
       },
       private: {
         firstName: "",
@@ -155,10 +161,17 @@ export default function BookingPage() {
           setValue("company.postalCode", custData.Zip || "");
           setValue("company.city", custData.City || "");
 
-          // Prefill billing address if available
+          // Prefill fakturauppgifter från EduAdmin BillingInfo
           if (custData.BillingInfo) {
             const bi = custData.BillingInfo;
-            if (bi.Email) setValue("company.contactEmail", bi.Email);
+            if (bi.Email) setValue("company.invoiceEmail", bi.Email);
+            if (bi.BuyerReference) setValue("company.invoiceReference", bi.BuyerReference);
+            if (bi.Address && bi.Address !== custData.Address) {
+              setValue("company.useAlternateInvoiceAddress", true);
+              setValue("company.invoiceStreetAddress", bi.Address || "");
+              setValue("company.invoicePostalCode", bi.Zip || "");
+              setValue("company.invoiceCity", bi.City || "");
+            }
           }
         }
       } catch { /* continue without prefill */ }
@@ -461,7 +474,7 @@ export default function BookingPage() {
 
             {/* Company fields (prefilled from EduAdmin) */}
             {isCompany && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
                     Företagsuppgifter
@@ -506,6 +519,40 @@ export default function BookingPage() {
                   <FormField label="Telefon" error={errors.company?.contactPhone?.message}>
                     <input type="tel" {...register("company.contactPhone")} placeholder="070-123 45 67" className="form-input" />
                   </FormField>
+                </div>
+
+                {/* Fakturauppgifter */}
+                <div className="rounded-lg border p-5 space-y-4 mt-2" style={{ borderColor: "var(--border)", background: "#f9fafb" }}>
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
+                    Fakturauppgifter
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <FormField label="Faktura e-post">
+                      <input type="email" {...register("company.invoiceEmail")} placeholder="faktura@foretag.se" className="form-input" />
+                    </FormField>
+                    <FormField label="Er referens / PO-nummer">
+                      <input {...register("company.invoiceReference")} placeholder="T.ex. REF-2026-001" className="form-input" />
+                    </FormField>
+                  </div>
+                  <label className="flex items-center gap-2.5 text-sm cursor-pointer" style={{ color: "var(--slate-deep)" }}>
+                    <input type="checkbox" {...register("company.useAlternateInvoiceAddress")} className="accent-[var(--frost)]" />
+                    Faktura till annan adress än företagsadressen
+                  </label>
+                  {watch("company.useAlternateInvoiceAddress") && (
+                    <div className="space-y-4 pt-1">
+                      <FormField label="Fakturaadress">
+                        <input {...register("company.invoiceStreetAddress")} placeholder="Fakturavägen 1" className="form-input" />
+                      </FormField>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <FormField label="Postnummer">
+                          <input {...register("company.invoicePostalCode")} placeholder="411 01" className="form-input" />
+                        </FormField>
+                        <FormField label="Stad">
+                          <input {...register("company.invoiceCity")} placeholder="Göteborg" className="form-input" />
+                        </FormField>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

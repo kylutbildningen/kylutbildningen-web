@@ -36,6 +36,13 @@ const companySchema = z.object({
   contactLastName: z.string(),
   contactEmail: z.string(),
   contactPhone: z.string(),
+  // Fakturauppgifter
+  invoiceEmail: z.string().optional(),
+  invoiceReference: z.string().optional(),
+  useAlternateInvoiceAddress: z.boolean().optional(),
+  invoiceStreetAddress: z.string().optional(),
+  invoicePostalCode: z.string().optional(),
+  invoiceCity: z.string().optional(),
 });
 
 const privateSchema = z.object({
