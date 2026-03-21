@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eduAdminFetch } from "@/lib/eduadmin/client";
 
-interface EduAdminParticipant {
-  ParticipantId: number;
-  PersonId: number;
-  BookingId: number;
-  Canceled: boolean;
-  FirstName: string;
-  LastName: string;
-  Email: string;
-}
-
 interface EduAdminBooking {
   BookingId: number;
   EventId: number;
@@ -23,6 +13,14 @@ interface EduAdminBooking {
     City: string;
     CourseTemplateId: number;
   };
+  Participants?: Array<{
+    ParticipantId: number;
+    PersonId: number;
+    FirstName: string;
+    LastName: string;
+    Email: string;
+    Canceled: boolean;
+  }>;
 }
 
 export async function GET(request: NextRequest) {
@@ -33,43 +31,23 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Step 1: Get this person's active participant records (no expand — fast)
-    const participantData = await eduAdminFetch<{ value: EduAdminParticipant[] }>("/v1/odata/Participants", {
-      $filter: `PersonId eq ${personId} and Canceled eq false`,
+    const pid = parseInt(personId);
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    // Fetch only future bookings for this customer with both Event and Participants
+    // Date-filtering server-side keeps the result set small
+    const data = await eduAdminFetch<{ value: EduAdminBooking[] }>("/v1/odata/Bookings", {
+      $filter: `CustomerId eq ${customerId} and Event/StartDate ge ${today}`,
+      $expand: "Event,Participants",
       $top: "50",
     });
 
-    const participants = participantData.value ?? [];
-    if (participants.length === 0) return NextResponse.json([]);
+    // Filter client-side to bookings where this person is an active participant
+    const bookings = (data.value ?? []).filter((b) =>
+      (b.Participants ?? []).some((p) => p.PersonId === pid && !p.Canceled),
+    );
 
-    // Step 2: Fetch those bookings with Event expanded, filtered to future only
-    const bookingIdFilter = participants
-      .map((p) => `BookingId eq ${p.BookingId}`)
-      .join(" or ");
-
-    const now = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const bookingData = await eduAdminFetch<{ value: EduAdminBooking[] }>("/v1/odata/Bookings", {
-      $filter: `(${bookingIdFilter})`,
-      $expand: "Event",
-      $top: "50",
-    });
-
-    // Filter to future events client-side
-    const futureBookings = (bookingData.value ?? []).filter((b) => {
-      const start = b.Event?.StartDate;
-      return start && start >= now;
-    });
-
-    // Attach participant info to each booking
-    const result = futureBookings.map((b) => {
-      const participant = participants.find((p) => p.BookingId === b.BookingId);
-      return {
-        ...b,
-        Participants: participant ? [participant] : [],
-      };
-    });
-
-    return NextResponse.json(result);
+    return NextResponse.json(bookings);
   } catch (error) {
     console.error("Failed to fetch participant bookings:", error);
     return NextResponse.json({ error: `Kunde inte hämta dina kurser: ${String(error)}` }, { status: 500 });
