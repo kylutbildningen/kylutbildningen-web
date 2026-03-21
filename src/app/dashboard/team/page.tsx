@@ -33,6 +33,8 @@ export default function TeamPage() {
   const [userEmail, setUserEmail] = useState("");
 
   const [showAdd, setShowAdd] = useState(false);
+  const [editingPerson, setEditingPerson] = useState<SupabasePerson | null>(null);
+  const [personForm, setPersonForm] = useState({ firstName: "", lastName: "", email: "", phone: "", mobile: "", jobTitle: "", civicRegistrationNumber: "", isContactPerson: false });
   const [newPerson, setNewPerson] = useState({ firstName: "", lastName: "", email: "", phone: "", isContactPerson: true });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +102,43 @@ export default function TeamPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Synk misslyckades");
       setLoading(false);
+    }
+  }
+
+  function startEdit(person: SupabasePerson) {
+    setEditingPerson(person);
+    setPersonForm({
+      firstName: person.first_name,
+      lastName: person.last_name,
+      email: person.email || "",
+      phone: person.phone || "",
+      mobile: person.mobile || "",
+      jobTitle: person.job_title || "",
+      civicRegistrationNumber: person.civic_registration_number || "",
+      isContactPerson: person.is_contact_person,
+    });
+    setShowAdd(false);
+    setError(null);
+  }
+
+  async function handleSaveEdit() {
+    if (!editingPerson) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/edu/persons/${editingPerson.edu_person_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...personForm, customerId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setSuccess(`${personForm.firstName} ${personForm.lastName} uppdaterad`);
+      setEditingPerson(null);
+      await fetchPersons(customerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kunde inte spara");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -282,10 +321,17 @@ export default function TeamPage() {
               persons={contactPersons}
               members={members}
               userEmail={userEmail}
+              editingPerson={editingPerson}
+              personForm={personForm}
+              setPersonForm={setPersonForm}
+              onEdit={startEdit}
+              onCancelEdit={() => setEditingPerson(null)}
+              onSaveEdit={handleSaveEdit}
               onDelete={handleDeletePerson}
               onToggleContact={handleToggleContactPerson}
               onSendInvite={handleSendInvite}
               getMemberForPerson={getMemberForPerson}
+              saving={saving}
               highlight
             />
             <PersonSection
@@ -293,10 +339,17 @@ export default function TeamPage() {
               persons={otherPersons}
               members={members}
               userEmail={userEmail}
+              editingPerson={editingPerson}
+              personForm={personForm}
+              setPersonForm={setPersonForm}
+              onEdit={startEdit}
+              onCancelEdit={() => setEditingPerson(null)}
+              onSaveEdit={handleSaveEdit}
               onDelete={handleDeletePerson}
               onToggleContact={handleToggleContactPerson}
               onSendInvite={handleSendInvite}
               getMemberForPerson={getMemberForPerson}
+              saving={saving}
             />
             {persons.length === 0 && (
               <div className="py-12 text-center" style={{ color: "var(--slate-light)" }}>
@@ -311,18 +364,29 @@ export default function TeamPage() {
   );
 }
 
+type PersonForm = { firstName: string; lastName: string; email: string; phone: string; mobile: string; jobTitle: string; civicRegistrationNumber: string; isContactPerson: boolean };
+
 function PersonSection({
   title, persons, members, userEmail,
-  onDelete, onToggleContact, onSendInvite, getMemberForPerson, highlight,
+  editingPerson, personForm, setPersonForm,
+  onEdit, onCancelEdit, onSaveEdit,
+  onDelete, onToggleContact, onSendInvite, getMemberForPerson, saving, highlight,
 }: {
   title: string;
   persons: SupabasePerson[];
   members: Member[];
   userEmail: string;
+  editingPerson: SupabasePerson | null;
+  personForm: PersonForm;
+  setPersonForm: (f: PersonForm) => void;
+  onEdit: (p: SupabasePerson) => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
   onDelete: (p: SupabasePerson) => void;
   onToggleContact: (p: SupabasePerson) => void;
   onSendInvite: (p: SupabasePerson) => void;
   getMemberForPerson: (p: SupabasePerson) => Member | undefined;
+  saving: boolean;
   highlight?: boolean;
 }) {
   if (persons.length === 0) return null;
@@ -337,53 +401,84 @@ function PersonSection({
           const member = getMemberForPerson(person);
           const isCurrentUser = person.email?.toLowerCase() === userEmail.toLowerCase();
           const hasAccount = !!member;
+          const isEditing = editingPerson?.edu_person_id === person.edu_person_id;
 
           return (
-            <div key={person.edu_person_id} className="flex items-center gap-3 px-5 py-3.5 event-row" style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}>
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                style={{ backgroundColor: highlight ? "var(--frost-light)" : "#f0f0f0", color: highlight ? "var(--frost-dark)" : "var(--slate-light)" }}>
-                <UserIcon />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
-                    {person.first_name} {person.last_name}
-                  </span>
-                  {isCurrentUser && <span className="badge text-[10px]" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>Du</span>}
-                  {person.is_contact_person && <span className="badge badge-available text-[10px]">Kontaktperson</span>}
-                  {hasAccount && <span className="badge text-[10px]" style={{ backgroundColor: "#ecfdf5", color: "var(--success)" }}>Har konto</span>}
-                  {member && <RoleBadge role={member.role} />}
+            <div key={person.edu_person_id} style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}>
+              {isEditing ? (
+                <div className="px-5 py-4 space-y-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <input className="form-input text-sm" value={personForm.firstName} onChange={e => setPersonForm({ ...personForm, firstName: e.target.value })} placeholder="Förnamn *" autoFocus />
+                    <input className="form-input text-sm" value={personForm.lastName} onChange={e => setPersonForm({ ...personForm, lastName: e.target.value })} placeholder="Efternamn *" />
+                    <input className="form-input text-sm" value={personForm.civicRegistrationNumber} onChange={e => setPersonForm({ ...personForm, civicRegistrationNumber: e.target.value })} placeholder="Personnummer" />
+                    <input type="email" className="form-input text-sm" value={personForm.email} onChange={e => setPersonForm({ ...personForm, email: e.target.value })} placeholder="E-post" />
+                    <input type="tel" className="form-input text-sm" value={personForm.phone} onChange={e => setPersonForm({ ...personForm, phone: e.target.value })} placeholder="Telefon" />
+                    <input type="tel" className="form-input text-sm" value={personForm.mobile} onChange={e => setPersonForm({ ...personForm, mobile: e.target.value })} placeholder="Mobil" />
+                    <input className="form-input text-sm" value={personForm.jobTitle} onChange={e => setPersonForm({ ...personForm, jobTitle: e.target.value })} placeholder="Befattning" />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm" style={{ color: "var(--slate-light)" }}>
+                      <input type="checkbox" checked={personForm.isContactPerson} onChange={e => setPersonForm({ ...personForm, isContactPerson: e.target.checked })} className="accent-[var(--frost)]" />
+                      Kontaktperson
+                    </label>
+                    <div className="ml-auto flex gap-2">
+                      <button onClick={onCancelEdit} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+                        <XIcon /> Avbryt
+                      </button>
+                      <button onClick={onSaveEdit} disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+                        <CheckIcon /> {saving ? "Sparar..." : "Spara"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--slate-light)" }}>
-                  {person.email && <span>{person.email}</span>}
-                  {(person.phone || person.mobile) && <span>{person.phone || person.mobile}</span>}
-                  <span title="EduAdmin PersonId">ID: {person.edu_person_id}</span>
+              ) : (
+                <div className="flex items-center gap-3 px-5 py-3.5 event-row">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: highlight ? "var(--frost-light)" : "#f0f0f0", color: highlight ? "var(--frost-dark)" : "var(--slate-light)" }}>
+                    <UserIcon />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
+                        {person.first_name} {person.last_name}
+                      </span>
+                      {isCurrentUser && <span className="badge text-[10px]" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>Du</span>}
+                      {person.is_contact_person && <span className="badge badge-available text-[10px]">Kontaktperson</span>}
+                      {hasAccount && <span className="badge text-[10px]" style={{ backgroundColor: "#ecfdf5", color: "var(--success)" }}>Har konto</span>}
+                      {member && <RoleBadge role={member.role} />}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--slate-light)" }}>
+                      {person.email && <span>{person.email}</span>}
+                      {(person.phone || person.mobile) && <span>{person.phone || person.mobile}</span>}
+                      {person.job_title && <span>{person.job_title}</span>}
+                      <span title="EduAdmin PersonId">ID: {person.edu_person_id}</span>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button onClick={() => onEdit(person)} className="rounded px-2 py-1 text-[11px] font-medium transition-colors" style={{ color: "var(--frost)" }}>
+                      Ändra
+                    </button>
+                    <button
+                      onClick={() => onToggleContact(person)}
+                      className="rounded px-2 py-1 text-[11px] font-medium transition-colors"
+                      style={{ color: person.is_contact_person ? "var(--warning)" : "var(--slate-light)" }}
+                      title={person.is_contact_person ? "Ta bort som kontaktperson" : "Gör till kontaktperson"}
+                    >
+                      {person.is_contact_person ? "Ta bort kontakt" : "Gör kontakt"}
+                    </button>
+                    {!hasAccount && person.email && !isCurrentUser && (
+                      <button onClick={() => onSendInvite(person)} className="rounded px-2 py-1 text-[11px] font-medium transition-colors" style={{ color: "var(--frost)" }}>
+                        Bjud in
+                      </button>
+                    )}
+                    {!isCurrentUser && (
+                      <button onClick={() => onDelete(person)} className="rounded p-1 transition-colors" style={{ color: "var(--danger)" }} title="Ta bort">
+                        <TrashIcon />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  onClick={() => onToggleContact(person)}
-                  className="rounded px-2 py-1 text-[11px] font-medium transition-colors"
-                  style={{ color: person.is_contact_person ? "var(--warning)" : "var(--frost)" }}
-                  title={person.is_contact_person ? "Ta bort som kontaktperson" : "Gör till kontaktperson"}
-                >
-                  {person.is_contact_person ? "Ta bort kontakt" : "Gör kontakt"}
-                </button>
-                {!hasAccount && person.email && !isCurrentUser && (
-                  <button
-                    onClick={() => onSendInvite(person)}
-                    className="rounded px-2 py-1 text-[11px] font-medium transition-colors"
-                    style={{ color: "var(--frost)" }}
-                  >
-                    Bjud in
-                  </button>
-                )}
-                {!isCurrentUser && (
-                  <button onClick={() => onDelete(person)} className="rounded p-1 transition-colors" style={{ color: "var(--danger)" }} title="Ta bort">
-                    <TrashIcon />
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           );
         })}
