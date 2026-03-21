@@ -86,7 +86,8 @@ export default function MinaKurserPage() {
       const data = await res.json() as MyBooking[];
       setBookings(data);
     } else {
-      setError("Kunde inte hämta dina kurser");
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      setError(`Kunde inte hämta dina kurser (${res.status}: ${body.error ?? "okänt fel"}, personId=${personRecord.edu_person_id}, customerId=${personRecord.edu_customer_id})`);
     }
   }, []);
 
