@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { verifyEmailOnCustomer } from "@/lib/eduadmin/verify-contact";
 import { getCustomerWithContacts } from "@/lib/eduadmin/customers";
+import { syncPersonsFromEduAdmin } from "@/lib/supabase-persons";
 
 export async function POST(request: Request) {
   try {
@@ -81,6 +82,11 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+
+    // Sync all persons from EduAdmin to Supabase in the background
+    syncPersonsFromEduAdmin(customerId).catch((err) =>
+      console.error("Person sync failed:", err),
+    );
 
     return NextResponse.json({
       success: true,

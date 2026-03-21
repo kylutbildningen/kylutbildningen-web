@@ -6,21 +6,10 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { RoleBadge } from "@/components/dashboard/RoleBadge";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import type { SupabasePerson } from "@/lib/supabase-persons";
 import {
   PlusIcon, TrashIcon, LoaderIcon, UserIcon, CheckIcon, XIcon,
 } from "@/components/icons";
-
-interface EduPerson {
-  PersonId: number;
-  FirstName: string;
-  LastName: string;
-  Email: string;
-  Phone: string;
-  Mobile: string;
-  IsContactPerson: boolean;
-  CanLogin: boolean;
-  CivicRegistrationNumber: string;
-}
 
 interface Member {
   id: string;
@@ -35,7 +24,7 @@ interface Member {
 
 export default function TeamPage() {
   const router = useRouter();
-  const [persons, setPersons] = useState<EduPerson[]>([]);
+  const [persons, setPersons] = useState<SupabasePerson[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [customerId, setCustomerId] = useState<number>(0);
@@ -43,7 +32,6 @@ export default function TeamPage() {
   const [userId, setUserId] = useState("");
   const [userEmail, setUserEmail] = useState("");
 
-  // Add person state
   const [showAdd, setShowAdd] = useState(false);
   const [newPerson, setNewPerson] = useState({ firstName: "", lastName: "", email: "", phone: "", isContactPerson: true });
   const [saving, setSaving] = useState(false);
@@ -96,18 +84,27 @@ export default function TeamPage() {
     setMembers(data || []);
   }
 
-  // Check if a person has a linked Supabase membership
-  function getMemberForPerson(person: EduPerson): Member | undefined {
-    return members.find(m => m.edu_contact_id === person.PersonId);
+  async function handleSync() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/edu/persons/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSuccess(`Synkroniserat ${data.synced} personer från EduAdmin`);
+      await fetchPersons(customerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Synk misslyckades");
+      setLoading(false);
+    }
   }
 
-  // Check if person's email matches any member's auth
-  function isPersonLinked(person: EduPerson): boolean {
-    return !!getMemberForPerson(person) ||
-      members.some(m => {
-        // We don't have the member's email easily, but we check contact_id
-        return m.edu_contact_id === person.PersonId;
-      });
+  function getMemberForPerson(person: SupabasePerson): Member | undefined {
+    return members.find(m => m.edu_contact_id === person.edu_person_id);
   }
 
   async function handleAddPerson(e: React.FormEvent) {
@@ -136,8 +133,8 @@ export default function TeamPage() {
     }
   }
 
-  async function handleDeletePerson(person: EduPerson) {
-    const name = `${person.FirstName?.trim()} ${person.LastName?.trim()}`;
+  async function handleDeletePerson(person: SupabasePerson) {
+    const name = `${person.first_name} ${person.last_name}`;
     const member = getMemberForPerson(person);
     const msg = member
       ? `Ta bort ${name}s åtkomst till portalen? Personen finns kvar i EduAdmin.`
@@ -157,13 +154,16 @@ export default function TeamPage() {
     }
   }
 
-  async function handleToggleContactPerson(person: EduPerson) {
+  async function handleToggleContactPerson(person: SupabasePerson) {
     setError(null);
     try {
-      const res = await fetch(`/api/edu/persons/${person.PersonId}`, {
+      const res = await fetch(`/api/edu/persons/${person.edu_person_id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isContactPerson: !person.IsContactPerson }),
+        body: JSON.stringify({
+          isContactPerson: !person.is_contact_person,
+          customerId,
+        }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       await fetchPersons(customerId);
@@ -172,25 +172,24 @@ export default function TeamPage() {
     }
   }
 
-  async function handleSendInvite(person: EduPerson) {
-    if (!person.Email) {
+  async function handleSendInvite(person: SupabasePerson) {
+    if (!person.email) {
       setError("Personen saknar e-postadress — lägg till en först.");
       return;
     }
     setError(null);
     setSaving(true);
     try {
-      // Send magic link via Supabase
       const supabase = createSupabaseBrowser();
       const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: person.Email,
+        email: person.email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
           shouldCreateUser: true,
         },
       });
       if (otpError) throw otpError;
-      setSuccess(`Inloggningslänk skickad till ${person.Email}`);
+      setSuccess(`Inloggningslänk skickad till ${person.email}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kunde inte skicka inbjudan");
     } finally {
@@ -198,9 +197,8 @@ export default function TeamPage() {
     }
   }
 
-  const contactPersons = persons.filter(p => p.IsContactPerson);
-  const otherPersons = persons.filter(p => !p.IsContactPerson);
-  const isMe = (person: EduPerson) => person.Email?.toLowerCase() === userEmail.toLowerCase();
+  const contactPersons = persons.filter(p => p.is_contact_person);
+  const otherPersons = persons.filter(p => !p.is_contact_person);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
@@ -216,16 +214,26 @@ export default function TeamPage() {
               Hantera team
             </h1>
             <p className="mt-1 text-sm" style={{ color: "var(--slate-light)" }}>
-              {companyName} — {persons.length} person{persons.length !== 1 ? "er" : ""} i EduAdmin
+              {companyName} — {persons.length} person{persons.length !== 1 ? "er" : ""}
             </p>
           </div>
-          <button
-            onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)" }}
-          >
-            <PlusIcon /> Lägg till person
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSync}
+              className="flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all hover:bg-gray-50"
+              style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}
+              title="Hämta senaste från EduAdmin"
+            >
+              ↻ Synka
+            </button>
+            <button
+              onClick={() => setShowAdd(!showAdd)}
+              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
+              style={{ background: "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)" }}
+            >
+              <PlusIcon /> Lägg till person
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -239,7 +247,6 @@ export default function TeamPage() {
           </div>
         )}
 
-        {/* Add person form */}
         {showAdd && (
           <form onSubmit={handleAddPerson} className="mb-6 rounded-lg border bg-white p-5" style={{ borderColor: "var(--border)" }}>
             <h3 className="mb-4 text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>Lägg till ny person</h3>
@@ -270,12 +277,10 @@ export default function TeamPage() {
           <div className="flex items-center justify-center py-16"><LoaderIcon className="animate-spin" /></div>
         ) : (
           <>
-            {/* Contact persons */}
             <PersonSection
               title="Kontaktpersoner"
               persons={contactPersons}
               members={members}
-              userId={userId}
               userEmail={userEmail}
               onDelete={handleDeletePerson}
               onToggleContact={handleToggleContactPerson}
@@ -283,23 +288,19 @@ export default function TeamPage() {
               getMemberForPerson={getMemberForPerson}
               highlight
             />
-
-            {/* Other persons */}
             <PersonSection
               title="Övriga personer"
               persons={otherPersons}
               members={members}
-              userId={userId}
               userEmail={userEmail}
               onDelete={handleDeletePerson}
               onToggleContact={handleToggleContactPerson}
               onSendInvite={handleSendInvite}
               getMemberForPerson={getMemberForPerson}
             />
-
             {persons.length === 0 && (
               <div className="py-12 text-center" style={{ color: "var(--slate-light)" }}>
-                Inga personer registrerade i EduAdmin.
+                Inga personer synkade ännu. Klicka på ↻ Synka för att hämta från EduAdmin.
               </div>
             )}
           </>
@@ -311,26 +312,17 @@ export default function TeamPage() {
 }
 
 function PersonSection({
-  title,
-  persons,
-  members,
-  userId,
-  userEmail,
-  onDelete,
-  onToggleContact,
-  onSendInvite,
-  getMemberForPerson,
-  highlight,
+  title, persons, members, userEmail,
+  onDelete, onToggleContact, onSendInvite, getMemberForPerson, highlight,
 }: {
   title: string;
-  persons: EduPerson[];
+  persons: SupabasePerson[];
   members: Member[];
-  userId: string;
   userEmail: string;
-  onDelete: (p: EduPerson) => void;
-  onToggleContact: (p: EduPerson) => void;
-  onSendInvite: (p: EduPerson) => void;
-  getMemberForPerson: (p: EduPerson) => Member | undefined;
+  onDelete: (p: SupabasePerson) => void;
+  onToggleContact: (p: SupabasePerson) => void;
+  onSendInvite: (p: SupabasePerson) => void;
+  getMemberForPerson: (p: SupabasePerson) => Member | undefined;
   highlight?: boolean;
 }) {
   if (persons.length === 0) return null;
@@ -343,11 +335,11 @@ function PersonSection({
       <div className="rounded-lg border bg-white" style={{ borderColor: "var(--border)" }}>
         {persons.map((person, i) => {
           const member = getMemberForPerson(person);
-          const isCurrentUser = person.Email?.toLowerCase() === userEmail.toLowerCase();
+          const isCurrentUser = person.email?.toLowerCase() === userEmail.toLowerCase();
           const hasAccount = !!member;
 
           return (
-            <div key={person.PersonId} className="flex items-center gap-3 px-5 py-3.5 event-row" style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}>
+            <div key={person.edu_person_id} className="flex items-center gap-3 px-5 py-3.5 event-row" style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}>
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                 style={{ backgroundColor: highlight ? "var(--frost-light)" : "#f0f0f0", color: highlight ? "var(--frost-dark)" : "var(--slate-light)" }}>
                 <UserIcon />
@@ -355,43 +347,37 @@ function PersonSection({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
-                    {person.FirstName?.trim()} {person.LastName?.trim()}
+                    {person.first_name} {person.last_name}
                   </span>
                   {isCurrentUser && <span className="badge text-[10px]" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>Du</span>}
-                  {person.IsContactPerson && <span className="badge badge-available text-[10px]">Kontaktperson</span>}
+                  {person.is_contact_person && <span className="badge badge-available text-[10px]">Kontaktperson</span>}
                   {hasAccount && <span className="badge text-[10px]" style={{ backgroundColor: "#ecfdf5", color: "var(--success)" }}>Har konto</span>}
                   {member && <RoleBadge role={member.role} />}
                 </div>
                 <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--slate-light)" }}>
-                  {person.Email && <span>{person.Email}</span>}
-                  {(person.Phone || person.Mobile) && <span>{person.Phone || person.Mobile}</span>}
-                  <span title="EduAdmin PersonId">ID: {person.PersonId}</span>
+                  {person.email && <span>{person.email}</span>}
+                  {(person.phone || person.mobile) && <span>{person.phone || person.mobile}</span>}
+                  <span title="EduAdmin PersonId">ID: {person.edu_person_id}</span>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
-                {/* Toggle contact person */}
                 <button
                   onClick={() => onToggleContact(person)}
                   className="rounded px-2 py-1 text-[11px] font-medium transition-colors"
-                  style={{ color: person.IsContactPerson ? "var(--warning)" : "var(--frost)" }}
-                  title={person.IsContactPerson ? "Ta bort som kontaktperson" : "Gör till kontaktperson"}
+                  style={{ color: person.is_contact_person ? "var(--warning)" : "var(--frost)" }}
+                  title={person.is_contact_person ? "Ta bort som kontaktperson" : "Gör till kontaktperson"}
                 >
-                  {person.IsContactPerson ? "Ta bort kontakt" : "Gör kontakt"}
+                  {person.is_contact_person ? "Ta bort kontakt" : "Gör kontakt"}
                 </button>
-
-                {/* Send invite if no account */}
-                {!hasAccount && person.Email && !isCurrentUser && (
+                {!hasAccount && person.email && !isCurrentUser && (
                   <button
                     onClick={() => onSendInvite(person)}
                     className="rounded px-2 py-1 text-[11px] font-medium transition-colors"
                     style={{ color: "var(--frost)" }}
-                    title="Skicka inloggningslänk"
                   >
                     Bjud in
                   </button>
                 )}
-
-                {/* Delete */}
                 {!isCurrentUser && (
                   <button onClick={() => onDelete(person)} className="rounded p-1 transition-colors" style={{ color: "var(--danger)" }} title="Ta bort">
                     <TrashIcon />
@@ -404,16 +390,4 @@ function PersonSection({
       </div>
     </div>
   );
-}
-
-interface EduPerson {
-  PersonId: number;
-  FirstName: string;
-  LastName: string;
-  Email: string;
-  Phone: string;
-  Mobile: string;
-  IsContactPerson: boolean;
-  CanLogin: boolean;
-  CivicRegistrationNumber: string;
 }
