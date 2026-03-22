@@ -4,6 +4,7 @@ import { draftMode } from "next/headers";
 import { VisualEditing } from "next-sanity/visual-editing";
 import { SanityLive } from "@/sanity/lib/live";
 import { SectionNav } from "@/components/home/SectionNav";
+import { CookieBanner } from "@/components/CookieBanner";
 import "./globals.css";
 
 const barlow = Barlow({
@@ -38,6 +39,7 @@ export default async function RootLayout({
         <SectionNav />
         <SanityLive />
         {draft.isEnabled && <VisualEditing />}
+        <CookieBanner />
       </body>
     </html>
   );
