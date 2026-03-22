@@ -272,7 +272,7 @@ export type AllSanitySchemaTypes =
 
 // Source: src/sanity/lib/queries.ts
 // Variable: HOME_PAGE_QUERY
-// Query: *[_type == "homePage"][0] {    heroHeading,    heroSubheading,    heroCtaText,    heroImage,    uspItems,    aboutHeading,    aboutText,    aboutImage { asset->, alt },    courseCategoryHeading,    courseCategories[] {      tagline,      eduAdminCourseTemplateId,      coursePage-> {        title,        slug,        eduAdminCourseTemplateId,        shortDescription      }    },    upcomingCoursesHeading,    upcomingCoursesSubtext,    contactHeading,    contactText  }
+// Query: *[_type == "homePage"][0] {    heroHeading,    heroSubheading,    heroCtaText,    heroImage,    uspItems,    aboutHeading,    aboutText,    aboutImage { asset->, alt },    courseCategoryHeading,    courseCategories[] {      tagline,      eduAdminCourseTemplateId,      coursePage-> {        title,        slug,        eduAdminCourseTemplateId,        shortDescription      }    },    upcomingCoursesHeading,    upcomingCoursesSubtext,    contactHeading,    contactText,    layout[] { sectionType, visible }  }
 export type HOME_PAGE_QUERY_RESULT = {
   heroHeading: string | null;
   heroSubheading: string | null;
@@ -349,11 +349,12 @@ export type HOME_PAGE_QUERY_RESULT = {
   upcomingCoursesSubtext: string | null;
   contactHeading: string | null;
   contactText: string | null;
+  layout: null;
 } | null;
 
 // Source: src/sanity/lib/queries.ts
 // Variable: COURSE_PAGE_QUERY
-// Query: *[_type == "coursePage" && slug.current == $slug][0] {    title,    slug,    eduAdminCourseTemplateId,    shortDescription,    description,    antalDagar,    omUtbildningen,    innehall,    upplagg,    upplaggText,    certifiering,    lodprov,    targetGroup,    prerequisites  }
+// Query: *[_type == "coursePage" && slug.current == $slug][0] {    title,    slug,    eduAdminCourseTemplateId,    shortDescription,    description,    antalDagar,    omUtbildningen,    innehall,    upplagg,    upplaggText,    certifiering,    lodprov,    targetGroup,    prerequisites,    layout[] { sectionType, visible }  }
 export type COURSE_PAGE_QUERY_RESULT = {
   title: string | null;
   slug: Slug | null;
@@ -386,6 +387,7 @@ export type COURSE_PAGE_QUERY_RESULT = {
   lodprov: null;
   targetGroup: string | null;
   prerequisites: string | null;
+  layout: null;
 } | null;
 
 // Source: src/sanity/lib/queries.ts
@@ -416,8 +418,8 @@ export type SITE_SETTINGS_QUERY_RESULT = {
 import "@sanity/client";
 declare module "@sanity/client" {
   interface SanityQueries {
-    '\n  *[_type == "homePage"][0] {\n    heroHeading,\n    heroSubheading,\n    heroCtaText,\n    heroImage,\n    uspItems,\n    aboutHeading,\n    aboutText,\n    aboutImage { asset->, alt },\n    courseCategoryHeading,\n    courseCategories[] {\n      tagline,\n      eduAdminCourseTemplateId,\n      coursePage-> {\n        title,\n        slug,\n        eduAdminCourseTemplateId,\n        shortDescription\n      }\n    },\n    upcomingCoursesHeading,\n    upcomingCoursesSubtext,\n    contactHeading,\n    contactText\n  }\n': HOME_PAGE_QUERY_RESULT;
-    '\n  *[_type == "coursePage" && slug.current == $slug][0] {\n    title,\n    slug,\n    eduAdminCourseTemplateId,\n    shortDescription,\n    description,\n    antalDagar,\n    omUtbildningen,\n    innehall,\n    upplagg,\n    upplaggText,\n    certifiering,\n    lodprov,\n    targetGroup,\n    prerequisites\n  }\n': COURSE_PAGE_QUERY_RESULT;
+    '\n  *[_type == "homePage"][0] {\n    heroHeading,\n    heroSubheading,\n    heroCtaText,\n    heroImage,\n    uspItems,\n    aboutHeading,\n    aboutText,\n    aboutImage { asset->, alt },\n    courseCategoryHeading,\n    courseCategories[] {\n      tagline,\n      eduAdminCourseTemplateId,\n      coursePage-> {\n        title,\n        slug,\n        eduAdminCourseTemplateId,\n        shortDescription\n      }\n    },\n    upcomingCoursesHeading,\n    upcomingCoursesSubtext,\n    contactHeading,\n    contactText,\n    layout[] { sectionType, visible }\n  }\n': HOME_PAGE_QUERY_RESULT;
+    '\n  *[_type == "coursePage" && slug.current == $slug][0] {\n    title,\n    slug,\n    eduAdminCourseTemplateId,\n    shortDescription,\n    description,\n    antalDagar,\n    omUtbildningen,\n    innehall,\n    upplagg,\n    upplaggText,\n    certifiering,\n    lodprov,\n    targetGroup,\n    prerequisites,\n    layout[] { sectionType, visible }\n  }\n': COURSE_PAGE_QUERY_RESULT;
     '\n  *[_type == "coursePage" && defined(slug.current)] {\n    "slug": slug.current\n  }\n': ALL_COURSE_SLUGS_QUERY_RESULT;
     '\n  *[_type == "coursePage" && defined(slug.current) && defined(eduAdminCourseTemplateId)] {\n    eduAdminCourseTemplateId,\n    "slug": slug.current\n  }\n': COURSE_TEMPLATE_SLUG_MAP_QUERY_RESULT;
     '\n  *[_type == "siteSettings"][0] {\n    contactEmail,\n    contactPhone,\n    address\n  }\n': SITE_SETTINGS_QUERY_RESULT;

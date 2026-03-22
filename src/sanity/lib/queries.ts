@@ -24,7 +24,8 @@ export const HOME_PAGE_QUERY = groq`
     upcomingCoursesHeading,
     upcomingCoursesSubtext,
     contactHeading,
-    contactText
+    contactText,
+    layout[] { sectionType, visible }
   }
 `
 
@@ -43,7 +44,8 @@ export const COURSE_PAGE_QUERY = groq`
     certifiering,
     lodprov,
     targetGroup,
-    prerequisites
+    prerequisites,
+    layout[] { sectionType, visible }
   }
 `
 

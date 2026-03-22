@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
+import { draftMode } from "next/headers";
+import { VisualEditing } from "next-sanity/visual-editing";
+import { SanityLive } from "@/sanity/lib/live";
 import { SectionNav } from "@/components/home/SectionNav";
 import "./globals.css";
 
@@ -21,16 +24,20 @@ export const metadata: Metadata = {
     "Boka certifierade kylutbildningar. F-gasförordningen, köldmediehantering, läckagekontroll och mer.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const draft = await draftMode();
+
   return (
     <html lang="sv" className={`${barlow.variable} ${barlowCondensed.variable}`}>
       <body className="antialiased">
         {children}
         <SectionNav />
+        <SanityLive />
+        {draft.isEnabled && <VisualEditing />}
       </body>
     </html>
   );

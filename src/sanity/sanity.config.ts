@@ -1,6 +1,7 @@
 import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { visionTool } from '@sanity/vision'
+import { presentationTool } from 'sanity/presentation'
 import { sanityConfig } from './config'
 import { schemaTypes } from './schema'
 
@@ -23,6 +24,15 @@ export default defineConfig({
             S.divider(),
             S.documentTypeListItem('coursePage').title('Kurssidor'),
           ]),
+    }),
+    presentationTool({
+      previewUrl: {
+        initial: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+        previewMode: {
+          enable: '/api/draft-mode/enable',
+          disable: '/api/draft-mode/disable',
+        },
+      },
     }),
     visionTool(),
   ],

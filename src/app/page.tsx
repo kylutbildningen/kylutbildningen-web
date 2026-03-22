@@ -1,4 +1,4 @@
-import { client } from '@/sanity/lib/client'
+import { sanityFetch } from '@/sanity/lib/live'
 import { HOME_PAGE_QUERY, SITE_SETTINGS_QUERY, COURSE_TEMPLATE_SLUG_MAP_QUERY } from '@/sanity/lib/queries'
 import { getUpcomingEvents } from '@/lib/eduadmin'
 import { SiteHeader } from '@/components/layout/SiteHeader'
@@ -9,20 +9,30 @@ import { CourseCategories } from '@/components/home/CourseCategories'
 import { UspBar } from '@/components/home/UspBar'
 import { ContactTeaser } from '@/components/home/ContactTeaser'
 
+const DEFAULT_HOME_LAYOUT = [
+  { sectionType: 'usp', visible: true },
+  { sectionType: 'kommandeKurser', visible: true },
+  { sectionType: 'utbildningsomraden', visible: true },
+  { sectionType: 'kontakt', visible: true },
+]
+
 export default async function HomePage() {
-  const [homeData, siteSettings, events, courseSlugList] = await Promise.all([
-    client.fetch(HOME_PAGE_QUERY, {}, { next: { tags: ['homePage'], revalidate: 0 } }).catch(() => null),
-    client.fetch(SITE_SETTINGS_QUERY, {}, { next: { tags: ['siteSettings'], revalidate: 0 } }).catch(() => null),
+  const [homeResult, settingsResult, events, slugResult] = await Promise.all([
+    sanityFetch({ query: HOME_PAGE_QUERY }).catch(() => ({ data: null })),
+    sanityFetch({ query: SITE_SETTINGS_QUERY }).catch(() => ({ data: null })),
     getUpcomingEvents().catch(() => []),
-    client.fetch(COURSE_TEMPLATE_SLUG_MAP_QUERY, {}, { next: { tags: ['coursePage'], revalidate: 3600 } }).catch(() => []),
+    sanityFetch({ query: COURSE_TEMPLATE_SLUG_MAP_QUERY }).catch(() => ({ data: [] })),
   ])
+
+  const homeData = homeResult.data
+  const siteSettings = settingsResult.data
+  const courseSlugList = slugResult.data ?? []
 
   const templateSlugMap: Record<number, string> = {}
   for (const c of (courseSlugList ?? [])) {
     if (c.eduAdminCourseTemplateId) templateSlugMap[c.eduAdminCourseTemplateId] = c.slug
   }
 
-  // USP: från Sanity om de finns, annars fallback
   const uspItems = homeData?.uspItems?.length
     ? homeData.uspItems
     : [
@@ -31,7 +41,6 @@ export default async function HomePage() {
         { label: 'Göteborg — flexibla datum', icon: 'calendar' },
       ]
 
-  // Kurskategorier: från Sanity om de finns, annars från EduAdmin
   const sanityCategories = homeData?.courseCategories?.map((cat: any) => {
     const templateId = cat.coursePage?.eduAdminCourseTemplateId ?? cat.eduAdminCourseTemplateId ?? 0
     const name = cat.coursePage?.title ?? ''
@@ -50,6 +59,7 @@ export default async function HomePage() {
 
   const categories = sanityCategories?.length ? sanityCategories : eduAdminCategories
 
+  const layout = homeData?.layout?.length ? homeData.layout : DEFAULT_HOME_LAYOUT
 
   return (
     <div className="min-h-screen">
@@ -61,22 +71,43 @@ export default async function HomePage() {
         heroImage={homeData?.heroImage}
         events={events}
       />
-      <UspBar items={uspItems} />
-      <UpcomingCourses
-        heading={homeData?.upcomingCoursesHeading}
-        events={events}
-        templateSlugMap={templateSlugMap}
-      />
-      <CourseCategories
-        heading={homeData?.courseCategoryHeading}
-        categories={categories}
-      />
-      <ContactTeaser
-        heading={homeData?.contactHeading}
-        text={homeData?.contactText}
-        contactEmail={siteSettings?.contactEmail ?? 'info@kylutbildningen.se'}
-        contactPhone={siteSettings?.contactPhone ?? '031-000 00 00'}
-      />
+      {layout.map((section: { sectionType: string; visible: boolean }, i: number) => {
+        if (section.visible === false) return null
+
+        switch (section.sectionType) {
+          case 'usp':
+            return <UspBar key={i} items={uspItems} />
+          case 'kommandeKurser':
+            return (
+              <UpcomingCourses
+                key={i}
+                heading={homeData?.upcomingCoursesHeading}
+                events={events}
+                templateSlugMap={templateSlugMap}
+              />
+            )
+          case 'utbildningsomraden':
+            return (
+              <CourseCategories
+                key={i}
+                heading={homeData?.courseCategoryHeading}
+                categories={categories}
+              />
+            )
+          case 'kontakt':
+            return (
+              <ContactTeaser
+                key={i}
+                heading={homeData?.contactHeading}
+                text={homeData?.contactText}
+                contactEmail={siteSettings?.contactEmail ?? 'info@kylutbildningen.se'}
+                contactPhone={siteSettings?.contactPhone ?? '031-000 00 00'}
+              />
+            )
+          default:
+            return null
+        }
+      })}
       <SiteFooter />
     </div>
   )
