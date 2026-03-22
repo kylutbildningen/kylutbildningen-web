@@ -59,10 +59,24 @@ export const coursePage = defineType({
     defineField({
       name: 'omUtbildningen',
       title: 'Om utbildningen',
-      type: 'text',
+      type: 'array',
       group: 'content',
-      rows: 4,
       description: 'Kort intro — vilket regelverk kursen uppfyller och vad den ger.',
+      of: [
+        {
+          type: 'block',
+          styles: [
+            { title: 'Normal', value: 'normal' },
+            { title: 'Rubrik', value: 'h2' },
+          ],
+          marks: {
+            decorators: [
+              { title: 'Fet', value: 'strong' },
+              { title: 'Kursiv', value: 'em' },
+            ],
+          },
+        },
+      ],
     }),
     defineField({
       name: 'innehall',

@@ -216,11 +216,13 @@ function BeskrivningSection({ course }: { course: any }) {
 }
 
 function OmUtbildningenSection({ course }: { course: any }) {
-  if (!course.omUtbildningen) return null
+  if (!course.omUtbildningen?.length) return null
   return (
     <div>
       <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Om utbildningen</h2>
-      <p className="text-[15px] leading-relaxed" style={{ color: 'var(--muted)' }}>{course.omUtbildningen}</p>
+      <div className="text-[15px] leading-relaxed prose prose-sm" style={{ color: 'var(--muted)' }}>
+        <PortableText value={course.omUtbildningen} />
+      </div>
     </div>
   )
 }
