@@ -269,3 +269,157 @@ export type AllSanitySchemaTypes =
   | SanityAssetSourceData
   | SanityImageAsset
   | Geopoint;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: HOME_PAGE_QUERY
+// Query: *[_type == "homePage"][0] {    heroHeading,    heroSubheading,    heroCtaText,    heroImage,    uspItems,    aboutHeading,    aboutText,    aboutImage { asset->, alt },    courseCategoryHeading,    courseCategories[] {      tagline,      eduAdminCourseTemplateId,      coursePage-> {        title,        slug,        eduAdminCourseTemplateId,        shortDescription      }    },    upcomingCoursesHeading,    upcomingCoursesSubtext,    contactHeading,    contactText  }
+export type HOME_PAGE_QUERY_RESULT = {
+  heroHeading: string | null;
+  heroSubheading: string | null;
+  heroCtaText: string | null;
+  heroImage: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    alt?: string;
+    _type: "image";
+  } | null;
+  uspItems: Array<{
+    label?: string;
+    icon?: "calendar" | "certificate" | "location" | "people" | "shield";
+    _key: string;
+  }> | null;
+  aboutHeading: string | null;
+  aboutText: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: "span";
+      _key: string;
+    }>;
+    style?: "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "normal";
+    listItem?: "bullet" | "number";
+    markDefs?: Array<{
+      href?: string;
+      _type: "link";
+      _key: string;
+    }>;
+    level?: number;
+    _type: "block";
+    _key: string;
+  }> | null;
+  aboutImage: {
+    asset: {
+      _id: string;
+      _type: "sanity.imageAsset";
+      _createdAt: string;
+      _updatedAt: string;
+      _rev: string;
+      originalFilename?: string;
+      label?: string;
+      title?: string;
+      description?: string;
+      altText?: string;
+      sha1hash?: string;
+      extension?: string;
+      mimeType?: string;
+      size?: number;
+      assetId?: string;
+      uploadId?: string;
+      path?: string;
+      url?: string;
+      metadata?: SanityImageMetadata;
+      source?: SanityAssetSourceData;
+    } | null;
+    alt: string | null;
+  } | null;
+  courseCategoryHeading: string | null;
+  courseCategories: Array<{
+    tagline: string | null;
+    eduAdminCourseTemplateId: null;
+    coursePage: {
+      title: string | null;
+      slug: Slug | null;
+      eduAdminCourseTemplateId: number | null;
+      shortDescription: string | null;
+    } | null;
+  }> | null;
+  upcomingCoursesHeading: string | null;
+  upcomingCoursesSubtext: string | null;
+  contactHeading: string | null;
+  contactText: string | null;
+} | null;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: COURSE_PAGE_QUERY
+// Query: *[_type == "coursePage" && slug.current == $slug][0] {    title,    slug,    eduAdminCourseTemplateId,    shortDescription,    description,    antalDagar,    omUtbildningen,    innehall,    upplagg,    upplaggText,    certifiering,    lodprov,    targetGroup,    prerequisites  }
+export type COURSE_PAGE_QUERY_RESULT = {
+  title: string | null;
+  slug: Slug | null;
+  eduAdminCourseTemplateId: number | null;
+  shortDescription: string | null;
+  description: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: "span";
+      _key: string;
+    }>;
+    style?: "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "normal";
+    listItem?: "bullet" | "number";
+    markDefs?: Array<{
+      href?: string;
+      _type: "link";
+      _key: string;
+    }>;
+    level?: number;
+    _type: "block";
+    _key: string;
+  }> | null;
+  antalDagar: null;
+  omUtbildningen: null;
+  innehall: null;
+  upplagg: null;
+  upplaggText: null;
+  certifiering: null;
+  lodprov: null;
+  targetGroup: string | null;
+  prerequisites: string | null;
+} | null;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: ALL_COURSE_SLUGS_QUERY
+// Query: *[_type == "coursePage" && defined(slug.current)] {    "slug": slug.current  }
+export type ALL_COURSE_SLUGS_QUERY_RESULT = Array<{
+  slug: string | null;
+}>;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: COURSE_TEMPLATE_SLUG_MAP_QUERY
+// Query: *[_type == "coursePage" && defined(slug.current) && defined(eduAdminCourseTemplateId)] {    eduAdminCourseTemplateId,    "slug": slug.current  }
+export type COURSE_TEMPLATE_SLUG_MAP_QUERY_RESULT = Array<{
+  eduAdminCourseTemplateId: number | null;
+  slug: string | null;
+}>;
+
+// Source: src/sanity/lib/queries.ts
+// Variable: SITE_SETTINGS_QUERY
+// Query: *[_type == "siteSettings"][0] {    contactEmail,    contactPhone,    address  }
+export type SITE_SETTINGS_QUERY_RESULT = {
+  contactEmail: string | null;
+  contactPhone: string | null;
+  address: string | null;
+} | null;
+
+// Query TypeMap
+import "@sanity/client";
+declare module "@sanity/client" {
+  interface SanityQueries {
+    '\n  *[_type == "homePage"][0] {\n    heroHeading,\n    heroSubheading,\n    heroCtaText,\n    heroImage,\n    uspItems,\n    aboutHeading,\n    aboutText,\n    aboutImage { asset->, alt },\n    courseCategoryHeading,\n    courseCategories[] {\n      tagline,\n      eduAdminCourseTemplateId,\n      coursePage-> {\n        title,\n        slug,\n        eduAdminCourseTemplateId,\n        shortDescription\n      }\n    },\n    upcomingCoursesHeading,\n    upcomingCoursesSubtext,\n    contactHeading,\n    contactText\n  }\n': HOME_PAGE_QUERY_RESULT;
+    '\n  *[_type == "coursePage" && slug.current == $slug][0] {\n    title,\n    slug,\n    eduAdminCourseTemplateId,\n    shortDescription,\n    description,\n    antalDagar,\n    omUtbildningen,\n    innehall,\n    upplagg,\n    upplaggText,\n    certifiering,\n    lodprov,\n    targetGroup,\n    prerequisites\n  }\n': COURSE_PAGE_QUERY_RESULT;
+    '\n  *[_type == "coursePage" && defined(slug.current)] {\n    "slug": slug.current\n  }\n': ALL_COURSE_SLUGS_QUERY_RESULT;
+    '\n  *[_type == "coursePage" && defined(slug.current) && defined(eduAdminCourseTemplateId)] {\n    eduAdminCourseTemplateId,\n    "slug": slug.current\n  }\n': COURSE_TEMPLATE_SLUG_MAP_QUERY_RESULT;
+    '\n  *[_type == "siteSettings"][0] {\n    contactEmail,\n    contactPhone,\n    address\n  }\n': SITE_SETTINGS_QUERY_RESULT;
+  }
+}

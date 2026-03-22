@@ -68,37 +68,112 @@ export default async function CourseSlugPage({ params }: PageProps) {
 
       <div className="max-w-4xl mx-auto px-18 py-12 space-y-12">
 
-        {/* Beskrivning */}
-        {(course.description || course.targetGroup || course.prerequisites) && (
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            {course.description && (
-              <div>
-                <h2 className="font-condensed font-bold uppercase text-lg mb-3" style={{ color: 'var(--navy)' }}>
-                  Om kursen
-                </h2>
-                <div className="text-sm leading-relaxed prose prose-sm" style={{ color: 'var(--muted)' }}>
-                  <PortableText value={course.description} />
-                </div>
+        {/* Snabbfakta */}
+        {(course.antalDagar || course.targetGroup || course.prerequisites || course.certifiering) && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-px rounded-lg overflow-hidden" style={{ background: '#DDE4ED', border: '1px solid #DDE4ED' }}>
+            {course.antalDagar && (
+              <div className="bg-white p-6">
+                <div className="text-[11px] font-bold tracking-[0.1em] uppercase mb-1" style={{ color: 'var(--muted)' }}>Antal dagar</div>
+                <div className="font-condensed font-bold text-2xl" style={{ color: 'var(--navy)' }}>{course.antalDagar}</div>
               </div>
             )}
-            <div className="space-y-6">
-              {course.targetGroup && (
-                <div>
-                  <h2 className="font-condensed font-bold uppercase text-lg mb-2" style={{ color: 'var(--navy)' }}>
-                    Målgrupp
-                  </h2>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>{course.targetGroup}</p>
-                </div>
-              )}
-              {course.prerequisites && (
-                <div>
-                  <h2 className="font-condensed font-bold uppercase text-lg mb-2" style={{ color: 'var(--navy)' }}>
-                    Förkunskaper
-                  </h2>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>{course.prerequisites}</p>
-                </div>
-              )}
+            {course.targetGroup && (
+              <div className="bg-white p-6">
+                <div className="text-[11px] font-bold tracking-[0.1em] uppercase mb-1" style={{ color: 'var(--muted)' }}>Målgrupp</div>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--navy)' }}>{course.targetGroup}</p>
+              </div>
+            )}
+            {course.prerequisites && (
+              <div className="bg-white p-6">
+                <div className="text-[11px] font-bold tracking-[0.1em] uppercase mb-1" style={{ color: 'var(--muted)' }}>Förkunskaper</div>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--navy)' }}>{course.prerequisites}</p>
+              </div>
+            )}
+            {course.certifiering && (
+              <div className="bg-white p-6">
+                <div className="text-[11px] font-bold tracking-[0.1em] uppercase mb-1" style={{ color: 'var(--muted)' }}>Certifiering</div>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--navy)' }}>{course.certifiering}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Beskrivning (PortableText) */}
+        {course.description && (
+          <div>
+            <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>
+              Beskrivning
+            </h2>
+            <div className="text-[15px] leading-relaxed prose prose-sm" style={{ color: 'var(--muted)' }}>
+              <PortableText value={course.description} />
             </div>
+          </div>
+        )}
+
+        {/* Om utbildningen */}
+        {course.omUtbildningen && (
+          <div>
+            <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>
+              Om utbildningen
+            </h2>
+            <p className="text-[15px] leading-relaxed" style={{ color: 'var(--muted)' }}>
+              {course.omUtbildningen}
+            </p>
+          </div>
+        )}
+
+        {/* Innehåll */}
+        {course.innehall && course.innehall.length > 0 && (
+          <div>
+            <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>
+              Innehåll — vad vi går igenom
+            </h2>
+            <ul className="space-y-2">
+              {course.innehall.map((item: string, i: number) => (
+                <li key={i} className="flex items-start gap-3 text-[15px] leading-relaxed" style={{ color: 'var(--muted)' }}>
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--blue)' }} />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Upplägg */}
+        {((course.upplagg && course.upplagg.length > 0) || course.upplaggText) && (
+          <div>
+            <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>
+              Upplägg — dag för dag
+            </h2>
+            {course.upplagg && course.upplagg.length > 0 && (
+              <div className="space-y-3 mb-4">
+                {course.upplagg.map((item: string, i: number) => (
+                  <div key={i} className="flex items-start gap-4 p-4 rounded-lg" style={{ background: 'var(--gray-bg)' }}>
+                    <span className="font-condensed font-bold text-lg flex-shrink-0" style={{ color: 'var(--blue)' }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span className="text-[15px] leading-relaxed" style={{ color: 'var(--muted)' }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {course.upplaggText && (
+              <p className="text-[15px] leading-relaxed" style={{ color: 'var(--muted)' }}>
+                {course.upplaggText}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Lödprov */}
+        {course.lodprov && (
+          <div>
+            <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>
+              Lödprov
+            </h2>
+            <p className="text-[15px] leading-relaxed" style={{ color: 'var(--muted)' }}>
+              {course.lodprov}
+            </p>
           </div>
         )}
 

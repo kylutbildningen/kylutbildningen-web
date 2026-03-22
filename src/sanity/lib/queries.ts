@@ -35,6 +35,13 @@ export const COURSE_PAGE_QUERY = groq`
     eduAdminCourseTemplateId,
     shortDescription,
     description,
+    antalDagar,
+    omUtbildningen,
+    innehall,
+    upplagg,
+    upplaggText,
+    certifiering,
+    lodprov,
     targetGroup,
     prerequisites
   }

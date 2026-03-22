@@ -14,7 +14,7 @@ interface Props {
 
 export function CourseCategories({ heading, categories }: Props) {
   return (
-    <section className="py-24 px-18" style={{ background: 'var(--navy)' }}>
+    <section id="utbildningsomraden" className="py-24 px-18" style={{ background: 'var(--navy)' }}>
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center gap-2.5 text-[11px] font-bold tracking-[0.12em] uppercase text-[#00C4FF] mb-3">
           <span className="block w-6 h-0.5 bg-[#00C4FF]" />

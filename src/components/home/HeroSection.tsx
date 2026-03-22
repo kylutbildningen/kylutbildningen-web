@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { HeroUpcomingPanel } from './HeroUpcomingPanel'
+import { ScrollArrow } from './ScrollArrow'
 import { urlFor } from '@/sanity/lib/image'
 import type { EventCard } from '@/types/eduadmin'
 
@@ -103,6 +104,9 @@ export function HeroSection({ heading, subheading, ctaText, heroImage, events }:
       <div className="relative z-10 flex items-center justify-center pt-20 pb-20 pr-16">
         <HeroUpcomingPanel events={events} />
       </div>
+
+      {/* Scroll-pil */}
+      <ScrollArrow />
     </section>
   )
 }

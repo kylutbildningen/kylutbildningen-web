@@ -167,6 +167,15 @@ input:focus, textarea:focus, select:focus, .form-input:focus {
   box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
 }
 
+/* Bounce arrow */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+.animate-bounce-slow {
+  animation: bounce 2s ease-in-out infinite;
+}
+
 /* Spinner animation */
 @keyframes spin {
   to { transform: rotate(360deg); }

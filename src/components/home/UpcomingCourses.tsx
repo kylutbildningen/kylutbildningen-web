@@ -10,7 +10,7 @@ interface Props {
 
 export function UpcomingCourses({ heading, events, templateSlugMap = {} }: Props) {
   return (
-    <section className="py-24 px-18 bg-white">
+    <section id="kommande-kurser" className="py-24 px-18 bg-white">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center gap-2.5 text-[11px] font-bold tracking-[0.12em] uppercase text-[#1A5EA8] mb-3">
           <span className="block w-6 h-0.5 bg-[#1A5EA8]" />

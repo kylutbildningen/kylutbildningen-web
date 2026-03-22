@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Barlow, Barlow_Condensed } from "next/font/google";
+import { SectionNav } from "@/components/home/SectionNav";
 import "./globals.css";
 
 const barlow = Barlow({
@@ -29,6 +30,7 @@ export default function RootLayout({
     <html lang="sv" className={`${barlow.variable} ${barlowCondensed.variable}`}>
       <body className="antialiased">
         {children}
+        <SectionNav />
       </body>
     </html>
   );

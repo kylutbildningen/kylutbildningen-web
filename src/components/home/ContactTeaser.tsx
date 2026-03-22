@@ -9,7 +9,7 @@ interface Props {
 
 export function ContactTeaser({ heading, text, contactEmail, contactPhone }: Props) {
   return (
-    <section className="py-20 px-18 border-t" style={{ background: '#F0F3F7', borderColor: '#DDE4ED' }}>
+    <section id="kontakt" className="py-20 px-18 border-t" style={{ background: '#F0F3F7', borderColor: '#DDE4ED' }}>
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-12">
         <div>
           <h2 className="font-condensed font-bold text-4xl uppercase mb-2" style={{ color: 'var(--navy)' }}>
