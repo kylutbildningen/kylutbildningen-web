@@ -25,21 +25,12 @@ export function DaySchedule({ dagar }: Props) {
 
   const currentDay = dagar[active]
 
-  const slotStyle = (typ: string) => {
-    switch (typ) {
-      case 'break': return 'bg-gray-50'
-      case 'exam':  return 'bg-blue-50'
-      case 'end':   return ''
-      default:      return 'bg-white'
-    }
-  }
-
   const textStyle = (typ: string) => {
     switch (typ) {
       case 'break': return 'text-gray-400 uppercase text-xs tracking-wider font-medium'
-      case 'exam':  return 'text-blue-800 font-semibold'
+      case 'exam':  return 'text-[#0C447C] font-semibold'
       case 'end':   return 'text-gray-400 font-medium'
-      default:      return 'text-gray-800'
+      default:      return 'text-gray-800 text-[13px]'
     }
   }
 
@@ -82,7 +73,7 @@ export function DaySchedule({ dagar }: Props) {
       <div className="divide-y divide-[#EEF1F5]">
         {currentDay.pass?.map((p, i) => (
           <div key={i}
-            className={`grid ${slotStyle(p.typ ?? 'lesson')}`}
+            className={`grid ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
             style={{ gridTemplateColumns: '88px 1fr' }}>
 
             {/* Tid */}

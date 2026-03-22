@@ -165,11 +165,63 @@ export const coursePage = defineType({
       ],
     }),
     defineField({
+      name: 'infoFlikar',
+      title: 'Infoflikar',
+      type: 'array',
+      group: 'content',
+      description: 'Klickbara flikar med PortableText-innehåll och valfri highlight-ruta',
+      of: [
+        {
+          type: 'object',
+          name: 'infoFlik',
+          title: 'Flik',
+          fields: [
+            defineField({
+              name: 'titel',
+              title: 'Fliktitel',
+              type: 'string',
+              validation: Rule => Rule.required(),
+            }),
+            defineField({
+              name: 'text',
+              title: 'Innehåll',
+              type: 'array',
+              of: [{ type: 'block' }],
+            }),
+            defineField({
+              name: 'highlightText',
+              title: 'Highlight-text',
+              type: 'text',
+              rows: 3,
+              description: 'Visas i en blå highlight-ruta under innehållet',
+            }),
+          ],
+          preview: {
+            select: { title: 'titel' },
+          },
+        },
+      ],
+    }),
+    defineField({
       name: 'certifiering',
       title: 'Certifiering',
-      type: 'text',
+      type: 'object',
       group: 'content',
-      rows: 3,
+      fields: [
+        defineField({
+          name: 'text',
+          title: 'Innehåll',
+          type: 'array',
+          of: [{ type: 'block' }],
+        }),
+        defineField({
+          name: 'highlightText',
+          title: 'Framhävd text (blå ruta)',
+          type: 'text',
+          rows: 3,
+          description: 'Valfri text som visas i en blå framhävd ruta under innehållet.',
+        }),
+      ],
     }),
     defineField({
       name: 'lodprov',
@@ -219,6 +271,7 @@ export const coursePage = defineType({
                   { title: 'Certifiering', value: 'certifiering' },
                   { title: 'Lödprov', value: 'lodprov' },
                   { title: 'Dagschema', value: 'dagSchema' },
+                  { title: 'Infoflikar', value: 'infoFlikar' },
                   { title: 'Kommande tillfällen', value: 'kommandeTillfallen' },
                 ],
               },
@@ -243,6 +296,7 @@ export const coursePage = defineType({
                 certifiering: 'Certifiering',
                 lodprov: 'Lödprov',
                 dagSchema: 'Dagschema',
+                infoFlikar: 'Infoflikar',
                 kommandeTillfallen: 'Kommande tillfällen',
               }
               return {

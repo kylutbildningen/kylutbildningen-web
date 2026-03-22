@@ -62,13 +62,14 @@ export function SiteHeader() {
 
   return (
     <header
-      className="sticky top-0 z-50 flex items-center justify-between px-12 h-16"
+      className="sticky top-0 z-50 h-16"
       style={{
         background: 'rgba(11,31,58,0.95)',
         backdropFilter: 'blur(12px)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}
     >
+      <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-full">
       <Link href="/" className="font-condensed font-bold text-lg tracking-widest uppercase text-white">
         Kyl<span className="text-[#00C4FF]">utbildningen</span>
       </Link>
@@ -146,6 +147,7 @@ export function SiteHeader() {
           </Link>
         )}
       </nav>
+      </div>
     </header>
   )
 }

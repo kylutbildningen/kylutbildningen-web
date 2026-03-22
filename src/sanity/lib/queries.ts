@@ -50,7 +50,15 @@ export const COURSE_PAGE_QUERY = groq`
         aktiviteter
       }
     },
-    certifiering,
+    infoFlikar[] {
+      titel,
+      text,
+      highlightText
+    },
+    certifiering {
+      text,
+      highlightText
+    },
     lodprov,
     targetGroup,
     prerequisites,

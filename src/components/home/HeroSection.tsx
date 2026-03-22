@@ -44,7 +44,7 @@ export function HeroSection({ heading, subheading, ctaText, heroImage, events }:
       }} />
 
       {/* Vänster — text */}
-      <div className="relative z-10 flex flex-col justify-center px-18 pt-20 pb-20">
+      <div className="relative z-10 flex flex-col justify-center pt-20 pb-20 max-w-6xl mx-auto px-6">
 
         {/* Badge */}
         <div className="inline-flex items-center gap-2 mb-8 px-3.5 py-1.5 rounded-sm w-fit"

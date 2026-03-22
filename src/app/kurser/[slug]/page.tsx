@@ -8,6 +8,7 @@ import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 import { EventCard } from '@/components/kurser/EventCard'
 import { DaySchedule } from '@/components/kurser/DaySchedule'
+import { InfoTabs } from '@/components/kurser/InfoTabs'
 import { PortableText } from '@portabletext/react'
 import Link from 'next/link'
 import type { EventCard as EventCardType } from '@/types/eduadmin'
@@ -35,7 +36,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 // Default section order when no layout is defined in Sanity
 const DEFAULT_LAYOUT = [
-  { sectionType: 'snabbfakta', visible: true },
+  { sectionType: 'snabbfakta', visible: false },
   { sectionType: 'beskrivning', visible: true },
   { sectionType: 'omUtbildningen', visible: true },
   { sectionType: 'innehall', visible: true },
@@ -43,6 +44,7 @@ const DEFAULT_LAYOUT = [
   { sectionType: 'certifiering', visible: true },
   { sectionType: 'lodprov', visible: true },
   { sectionType: 'dagSchema', visible: true },
+  { sectionType: 'infoFlikar', visible: true },
   { sectionType: 'kommandeTillfallen', visible: true },
 ]
 
@@ -67,8 +69,8 @@ export default async function CourseSlugPage({ params }: PageProps) {
       <SiteHeader />
 
       {/* Header */}
-      <div className="pt-16 pb-12 px-18" style={{ background: 'var(--navy)' }}>
-        <div className="max-w-4xl mx-auto">
+      <div className="pt-16 pb-12" style={{ background: 'var(--navy)' }}>
+        <div className="max-w-6xl mx-auto px-6">
           <Link href="/kurser" className="inline-flex items-center gap-1.5 text-xs font-medium mb-6 transition-colors hover:text-white"
             style={{ color: 'rgba(255,255,255,0.45)' }}>
             ← Alla kurser
@@ -85,33 +87,79 @@ export default async function CourseSlugPage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-18 py-12 space-y-12">
-        {layout.map((section: { sectionType: string; visible: boolean }, i: number) => {
-          if (section.visible === false) return null
+      <div className="max-w-6xl mx-auto px-6 py-12 space-y-12">
+        {(() => {
+          const twoColTypes = new Set(['upplagg', 'innehall'])
+          const visibleSections = layout.filter(
+            (s: { sectionType: string; visible: boolean }) => s.visible !== false
+          )
 
-          switch (section.sectionType) {
-            case 'snabbfakta':
-              return <SnabbfaktaSection key={i} course={course} />
-            case 'beskrivning':
-              return <BeskrivningSection key={i} course={course} />
-            case 'omUtbildningen':
-              return <OmUtbildningenSection key={i} course={course} />
-            case 'innehall':
-              return <InnehallSection key={i} course={course} />
-            case 'upplagg':
-              return <UpplaggSection key={i} course={course} />
-            case 'certifiering':
-              return <CertifieringSection key={i} course={course} />
-            case 'lodprov':
-              return <LodprovSection key={i} course={course} />
-            case 'dagSchema':
-              return <DagSchemaSection key={i} course={course} />
-            case 'kommandeTillfallen':
-              return <KommandeTillfallenSection key={i} events={events} />
-            default:
-              return null
+          // Check if the two-column sections have content
+          const showUpplagg = visibleSections.some((s: { sectionType: string }) => s.sectionType === 'upplagg') && (course.upplagg?.length > 0 || course.upplaggText)
+          const showInnehall = visibleSections.some((s: { sectionType: string }) => s.sectionType === 'innehall') && course.innehall?.length > 0
+          const showTwoCol = showUpplagg && showInnehall
+
+          const elements: React.ReactNode[] = []
+          let twoColRendered = false
+
+          for (let i = 0; i < visibleSections.length; i++) {
+            const section = visibleSections[i]
+
+            // When we hit the first two-col section, render the grid
+            if (twoColTypes.has(section.sectionType) && !twoColRendered) {
+              twoColRendered = true
+              if (showTwoCol) {
+                elements.push(
+                  <div key="two-col" className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+                    <div>
+                      <InnehallSection course={course} />
+                    </div>
+                    <div>
+                      <UpplaggSection course={course} />
+                    </div>
+                  </div>
+                )
+              } else {
+                // Not enough content for two columns — render individually
+                elements.push(<UpplaggSection key="upplagg" course={course} />)
+                elements.push(<InnehallSection key="innehall" course={course} />)
+              }
+              continue
+            }
+
+            // Skip remaining two-col types (already rendered above)
+            if (twoColTypes.has(section.sectionType)) continue
+
+            switch (section.sectionType) {
+              case 'snabbfakta':
+                elements.push(<SnabbfaktaSection key={i} course={course} />)
+                break
+              case 'beskrivning':
+                elements.push(<BeskrivningSection key={i} course={course} />)
+                break
+              case 'omUtbildningen':
+                elements.push(<OmUtbildningenSection key={i} course={course} />)
+                break
+              case 'dagSchema':
+                elements.push(<DagSchemaSection key={i} course={course} />)
+                break
+              case 'certifiering':
+                elements.push(<CertifieringSection key={i} course={course} />)
+                break
+              case 'lodprov':
+                elements.push(<LodprovSection key={i} course={course} />)
+                break
+              case 'infoFlikar':
+                elements.push(<InfoFlikarSection key={i} course={course} />)
+                break
+              case 'kommandeTillfallen':
+                elements.push(<KommandeTillfallenSection key={i} events={events} />)
+                break
+            }
           }
-        })}
+
+          return elements
+        })()}
       </div>
 
       <SiteFooter />
@@ -122,7 +170,7 @@ export default async function CourseSlugPage({ params }: PageProps) {
 /* ---------- Section components ---------- */
 
 function SnabbfaktaSection({ course }: { course: any }) {
-  if (!course.antalDagar && !course.targetGroup && !course.prerequisites && !course.certifiering) return null
+  if (!course.antalDagar && !course.targetGroup && !course.prerequisites) return null
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-px rounded-lg overflow-hidden" style={{ background: '#DDE4ED', border: '1px solid #DDE4ED' }}>
       {course.antalDagar && (
@@ -143,10 +191,12 @@ function SnabbfaktaSection({ course }: { course: any }) {
           <p className="text-sm leading-relaxed" style={{ color: 'var(--navy)' }}>{course.prerequisites}</p>
         </div>
       )}
-      {course.certifiering && (
+      {course.certifiering?.text && (
         <div className="bg-white p-6">
           <div className="text-[11px] font-bold tracking-[0.1em] uppercase mb-1" style={{ color: 'var(--muted)' }}>Certifiering</div>
-          <p className="text-sm leading-relaxed" style={{ color: 'var(--navy)' }}>{course.certifiering}</p>
+          <div className="text-sm leading-relaxed prose prose-sm" style={{ color: 'var(--navy)' }}>
+            <PortableText value={course.certifiering.text} />
+          </div>
         </div>
       )}
     </div>
@@ -217,11 +267,29 @@ function UpplaggSection({ course }: { course: any }) {
 }
 
 function CertifieringSection({ course }: { course: any }) {
-  if (!course.certifiering) return null
+  if (!course.certifiering?.text && !course.certifiering?.highlightText) return null
   return (
     <div>
-      <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Certifiering</h2>
-      <p className="text-[15px] leading-relaxed" style={{ color: 'var(--muted)' }}>{course.certifiering}</p>
+      <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>
+        Certifiering
+      </h2>
+
+      {course.certifiering.text && (
+        <div className="text-sm leading-relaxed prose prose-sm" style={{ color: 'var(--muted)' }}>
+          <PortableText value={course.certifiering.text} />
+        </div>
+      )}
+
+      {course.certifiering.highlightText && (
+        <div className="mt-4 p-4 text-sm leading-relaxed rounded-r-md"
+          style={{
+            background: '#F0F5FF',
+            borderLeft: '3px solid #1A5EA8',
+            color: '#0C447C',
+          }}>
+          {course.certifiering.highlightText}
+        </div>
+      )}
     </div>
   )
 }
@@ -242,6 +310,16 @@ function DagSchemaSection({ course }: { course: any }) {
     <div>
       <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Schema</h2>
       <DaySchedule dagar={course.dagSchema} />
+    </div>
+  )
+}
+
+function InfoFlikarSection({ course }: { course: any }) {
+  if (!course.infoFlikar?.length) return null
+  return (
+    <div>
+      <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Information</h2>
+      <InfoTabs flikar={course.infoFlikar} />
     </div>
   )
 }

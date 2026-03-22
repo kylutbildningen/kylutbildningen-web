@@ -60,8 +60,8 @@ export default async function KurserPage({ searchParams }: PageProps) {
       <SiteHeader />
 
       {/* Page header */}
-      <div className="pt-16 pb-12 px-18" style={{ background: 'var(--navy)' }}>
-        <div className="max-w-5xl mx-auto">
+      <div className="pt-16 pb-12" style={{ background: 'var(--navy)' }}>
+        <div className="max-w-6xl mx-auto px-6">
           <div className="flex items-center gap-2.5 text-[11px] font-bold tracking-[0.12em] uppercase text-[#00C4FF] mb-3">
             <span className="block w-6 h-0.5 bg-[#00C4FF]" />
             Kursutbud
@@ -76,7 +76,7 @@ export default async function KurserPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-18 py-8 space-y-10">
+      <div className="max-w-6xl mx-auto px-6 py-8 space-y-10">
         {/* Filterrad */}
         <Suspense fallback={null}>
           <CourseFilter categories={categories} cities={cities} />

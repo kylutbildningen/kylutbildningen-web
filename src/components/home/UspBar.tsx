@@ -8,8 +8,8 @@ const ICONS: Record<string, React.ReactNode> = {
 
 export function UspBar({ items }: { items: { label: string; icon: string }[] }) {
   return (
-    <div className="px-18 border-b" style={{ background: 'var(--gray-bg, #F0F3F7)', borderColor: '#DDE4ED' }}>
-      <div className="max-w-6xl mx-auto flex items-stretch">
+    <div className="border-b" style={{ background: 'var(--gray-bg, #F0F3F7)', borderColor: '#DDE4ED' }}>
+      <div className="max-w-6xl mx-auto px-6 flex items-stretch">
         {items.map((item, i) => (
           <div key={i} className="flex items-center gap-3.5 py-5 flex-1"
             style={{

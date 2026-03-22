@@ -3,9 +3,10 @@ import Link from 'next/link'
 export function SiteFooter() {
   return (
     <footer
-      className="flex items-center justify-between px-12 py-8"
+      className="py-8"
       style={{ background: 'var(--navy)', borderTop: '1px solid rgba(255,255,255,0.06)' }}
     >
+      <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
       <div className="font-condensed font-bold text-sm tracking-widest uppercase"
         style={{ color: 'rgba(255,255,255,0.4)' }}>
         Kyl<span style={{ color: '#00C4FF' }}>utbildningen</span> i Göteborg AB
@@ -18,6 +19,7 @@ export function SiteFooter() {
         <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>
           © {new Date().getFullYear()}
         </p>
+      </div>
       </div>
     </footer>
   )
