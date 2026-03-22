@@ -44,7 +44,7 @@ export const COURSE_PAGE_QUERY = groq`
     dagSchema[] {
       dagTitel,
       dagSubtitel,
-      slots[] {
+      pass[] {
         tid,
         typ,
         aktiviteter

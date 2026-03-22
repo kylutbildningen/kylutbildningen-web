@@ -2,16 +2,16 @@
 
 import { useState } from 'react'
 
-interface Slot {
+interface Pass {
   tid?: string
-  typ?: 'normal' | 'rast' | 'prov' | 'slut'
+  typ?: 'lesson' | 'break' | 'exam' | 'end'
   aktiviteter?: string[]
 }
 
 interface Dag {
-  dagTitel?: string
+  dagTitel: string
   dagSubtitel?: string
-  slots?: Slot[]
+  pass?: Pass[]
 }
 
 interface Props {
@@ -23,114 +23,82 @@ export function DaySchedule({ dagar }: Props) {
 
   if (!dagar?.length) return null
 
-  const dag = dagar[active]
+  const currentDay = dagar[active]
+
+  const slotStyle = (typ: string) => {
+    switch (typ) {
+      case 'break': return 'bg-gray-50'
+      case 'exam':  return 'bg-blue-50'
+      case 'end':   return ''
+      default:      return 'bg-white'
+    }
+  }
+
+  const textStyle = (typ: string) => {
+    switch (typ) {
+      case 'break': return 'text-gray-400 uppercase text-xs tracking-wider font-medium'
+      case 'exam':  return 'text-blue-800 font-semibold'
+      case 'end':   return 'text-gray-400 font-medium'
+      default:      return 'text-gray-800'
+    }
+  }
 
   return (
-    <div className="rounded-lg overflow-hidden"
-      style={{ border: '0.5px solid #DDE4ED' }}>
+    <div className="rounded-lg overflow-hidden border"
+      style={{ borderColor: '#DDE4ED' }}>
 
-      {/* Flik-rad */}
-      <div className="grid"
-        style={{ gridTemplateColumns: `repeat(${dagar.length}, 1fr)` }}>
-        {dagar.map((d, i) => (
+      {/* Dag-flikar */}
+      <div className="grid border-b"
+        style={{
+          gridTemplateColumns: `repeat(${dagar.length}, 1fr)`,
+          borderColor: '#DDE4ED',
+        }}>
+        {dagar.map((dag, i) => (
           <button
             key={i}
             onClick={() => setActive(i)}
-            className="py-3 px-4 text-center transition-all"
+            className={`py-3.5 px-5 text-left transition-colors border-r last:border-r-0
+              ${active === i
+                ? 'bg-white border-b-2 -mb-px'
+                : 'bg-gray-50 hover:bg-gray-100'
+              }`}
             style={{
-              background: active === i ? 'white' : '#F0F3F7',
-              borderBottom: active === i
-                ? '2px solid #1A5EA8'
-                : '0.5px solid #DDE4ED',
-              borderRight: i < dagar.length - 1
-                ? '0.5px solid #DDE4ED'
-                : 'none',
-              cursor: 'pointer',
-            }}
-          >
-            <div className="text-sm font-semibold"
-              style={{ color: active === i ? '#1A5EA8' : '#556678' }}>
-              {d.dagTitel}
+              borderColor: active === i ? '#1A5EA8' : '#DDE4ED',
+              borderBottomColor: active === i ? '#1A5EA8' : '#DDE4ED',
+            }}>
+            <div className={`text-sm font-semibold ${active === i ? 'text-[#1A5EA8]' : 'text-gray-600'}`}>
+              {dag.dagTitel}
             </div>
-            {d.dagSubtitel && (
-              <div className="text-[11px] mt-0.5"
-                style={{ color: active === i ? '#1A5EA8' : '#8BA3BE', opacity: 0.8 }}>
-                {d.dagSubtitel}
+            {dag.dagSubtitel && (
+              <div className={`text-[11px] mt-0.5 ${active === i ? 'text-[#1A5EA8] opacity-70' : 'text-gray-400'}`}>
+                {dag.dagSubtitel}
               </div>
             )}
           </button>
         ))}
       </div>
 
-      {/* Slots */}
-      <div style={{ background: 'white' }}>
-        {dag.slots?.map((slot, i) => (
-          <div
-            key={i}
-            className="grid"
-            style={{
-              gridTemplateColumns: '72px 1fr',
-              borderBottom: i < (dag.slots?.length ?? 0) - 1
-                ? '0.5px solid #EEF1F5'
-                : 'none',
-              background: slot.typ === 'rast'
-                ? '#F8F9FA'
-                : slot.typ === 'prov'
-                ? 'rgba(26,94,168,0.03)'
-                : 'white',
-            }}
-          >
+      {/* Schema-rader */}
+      <div className="divide-y divide-[#EEF1F5]">
+        {currentDay.pass?.map((p, i) => (
+          <div key={i}
+            className={`grid ${slotStyle(p.typ ?? 'lesson')}`}
+            style={{ gridTemplateColumns: '88px 1fr' }}>
+
             {/* Tid */}
-            <div className="flex items-start pt-3.5 px-4"
-              style={{
-                borderRight: '0.5px solid #EEF1F5',
-                color: '#8BA3BE',
-                fontSize: '11px',
-                fontWeight: 700,
-                letterSpacing: '0.03em',
-              }}>
-              {slot.tid}
+            <div className="px-4 py-3.5 text-[11px] font-bold text-gray-400
+              border-r flex items-start pt-4 tracking-wide leading-tight"
+              style={{ borderColor: '#EEF1F5' }}>
+              {p.tid}
             </div>
 
             {/* Aktiviteter */}
-            <div className="py-3 px-5">
-              {slot.typ === 'rast' ? (
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color: '#B4B2A9',
-                }}>
-                  {slot.aktiviteter?.[0] ?? 'Rast'}
+            <div className="px-5 py-3.5 flex flex-col gap-1">
+              {p.aktiviteter?.map((aktivitet, j) => (
+                <span key={j} className={`text-[13px] leading-snug ${textStyle(p.typ ?? 'lesson')}`}>
+                  {aktivitet}
                 </span>
-              ) : slot.typ === 'slut' ? (
-                <span style={{ fontSize: '13px', color: '#8BA3BE', fontWeight: 500 }}>
-                  {slot.aktiviteter?.[0] ?? 'Slut för dagen'}
-                </span>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  {slot.aktiviteter?.map((a, j) => (
-                    <div key={j} className="flex items-start gap-2">
-                      {slot.typ === 'prov' ? (
-                        <span className="mt-1 w-1.5 h-1.5 rounded-sm flex-shrink-0"
-                          style={{ background: '#1A5EA8', marginTop: '5px' }} />
-                      ) : (
-                        <span className="mt-1 w-1 h-1 rounded-full flex-shrink-0"
-                          style={{ background: '#B4B2A9', marginTop: '6px' }} />
-                      )}
-                      <span style={{
-                        fontSize: '13px',
-                        color: slot.typ === 'prov' ? '#0C447C' : '#556678',
-                        fontWeight: slot.typ === 'prov' ? 600 : 400,
-                        lineHeight: 1.5,
-                      }}>
-                        {a}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
           </div>
         ))}

@@ -91,9 +91,9 @@ export const coursePage = defineType({
     defineField({
       name: 'dagSchema',
       title: 'Dagschema',
-      description: 'Klickbart schema med en flik per dag.',
       type: 'array',
       group: 'content',
+      description: 'Klickbart dagschema — lägg till en rad per dag',
       of: [
         {
           type: 'object',
@@ -102,46 +102,53 @@ export const coursePage = defineType({
           fields: [
             defineField({
               name: 'dagTitel',
-              title: 'Dagnamn',
+              title: 'Dagtitel',
               type: 'string',
               description: 'T.ex. "Dag 1", "Dag 2", "Provdag"',
+              validation: Rule => Rule.required(),
             }),
             defineField({
               name: 'dagSubtitel',
               title: 'Undertitel',
               type: 'string',
-              description: 'T.ex. "Teori", "Examination"',
+              description: 'T.ex. "Teori", "Teori & examination"',
             }),
             defineField({
-              name: 'slots',
-              title: 'Tidsblock',
+              name: 'pass',
+              title: 'Schemapass',
               type: 'array',
               of: [
                 {
                   type: 'object',
-                  name: 'slot',
+                  name: 'pass',
+                  title: 'Pass',
                   fields: [
-                    defineField({ name: 'tid', title: 'Tid', type: 'string', description: 'T.ex. "09:00"' }),
+                    defineField({
+                      name: 'tid',
+                      title: 'Tid',
+                      type: 'string',
+                      description: 'T.ex. "09:00" eller "10:00–10:20"',
+                    }),
                     defineField({
                       name: 'typ',
                       title: 'Typ',
                       type: 'string',
                       options: {
                         list: [
-                          { title: 'Normal', value: 'normal' },
-                          { title: 'Rast (kaffe/lunch)', value: 'rast' },
-                          { title: 'Prov/examination', value: 'prov' },
-                          { title: 'Slut', value: 'slut' },
+                          { title: 'Lektion', value: 'lesson' },
+                          { title: 'Rast (kaffe/lunch)', value: 'break' },
+                          { title: 'Prov/examination', value: 'exam' },
+                          { title: 'Slut', value: 'end' },
                         ],
                       },
-                      initialValue: 'normal',
+                      initialValue: 'lesson',
                     }),
                     defineField({
                       name: 'aktiviteter',
                       title: 'Aktiviteter',
                       type: 'array',
                       of: [{ type: 'string' }],
-                      description: 'En rad per aktivitet',
+                      description: 'En rad per aktivitet, t.ex. "F-gasförordningen (EU nr 2024/573)"',
                     }),
                   ],
                   preview: {
