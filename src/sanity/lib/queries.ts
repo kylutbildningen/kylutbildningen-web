@@ -79,6 +79,15 @@ export const COURSE_TEMPLATE_SLUG_MAP_QUERY = groq`
   }
 `
 
+export const PAGE_QUERY = groq`
+  *[_type == "page" && slug.current == $slug][0] {
+    title,
+    heroHeading,
+    heroText,
+    content
+  }
+`
+
 export const SITE_SETTINGS_QUERY = groq`
   *[_type == "siteSettings"][0] {
     contactEmail,

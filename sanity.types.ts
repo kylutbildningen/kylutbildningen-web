@@ -408,6 +408,11 @@ export type COURSE_TEMPLATE_SLUG_MAP_QUERY_RESULT = Array<{
 }>;
 
 // Source: src/sanity/lib/queries.ts
+// Variable: PAGE_QUERY
+// Query: *[_type == "page" && slug.current == $slug][0] {    title,    heroHeading,    heroText,    content  }
+export type PAGE_QUERY_RESULT = null;
+
+// Source: src/sanity/lib/queries.ts
 // Variable: SITE_SETTINGS_QUERY
 // Query: *[_type == "siteSettings"][0] {    contactEmail,    contactPhone,    address  }
 export type SITE_SETTINGS_QUERY_RESULT = {
@@ -424,6 +429,7 @@ declare module "@sanity/client" {
     '\n  *[_type == "coursePage" && slug.current == $slug][0] {\n    title,\n    slug,\n    eduAdminCourseTemplateId,\n    shortDescription,\n    description,\n    antalDagar,\n    omUtbildningen,\n    innehall,\n    upplagg,\n    upplaggText,\n    dagSchema[] {\n      dagTitel,\n      dagSubtitel,\n      pass[] {\n        tid,\n        typ,\n        aktiviteter\n      }\n    },\n    infoFlikar[] {\n      titel,\n      text,\n      highlightText\n    },\n    certifiering {\n      text,\n      highlightText\n    },\n    lodprov,\n    targetGroup,\n    prerequisites,\n    layout[] { sectionType, visible }\n  }\n': COURSE_PAGE_QUERY_RESULT;
     '\n  *[_type == "coursePage" && defined(slug.current)] {\n    "slug": slug.current\n  }\n': ALL_COURSE_SLUGS_QUERY_RESULT;
     '\n  *[_type == "coursePage" && defined(slug.current) && defined(eduAdminCourseTemplateId)] {\n    eduAdminCourseTemplateId,\n    "slug": slug.current\n  }\n': COURSE_TEMPLATE_SLUG_MAP_QUERY_RESULT;
+    '\n  *[_type == "page" && slug.current == $slug][0] {\n    title,\n    heroHeading,\n    heroText,\n    content\n  }\n': PAGE_QUERY_RESULT;
     '\n  *[_type == "siteSettings"][0] {\n    contactEmail,\n    contactPhone,\n    address\n  }\n': SITE_SETTINGS_QUERY_RESULT;
   }
 }
