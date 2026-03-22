@@ -89,6 +89,75 @@ export const coursePage = defineType({
       description: 'T.ex. "Under den sista dagen examineras du..."',
     }),
     defineField({
+      name: 'dagSchema',
+      title: 'Dagschema',
+      description: 'Klickbart schema med en flik per dag.',
+      type: 'array',
+      group: 'content',
+      of: [
+        {
+          type: 'object',
+          name: 'dag',
+          title: 'Dag',
+          fields: [
+            defineField({
+              name: 'dagTitel',
+              title: 'Dagnamn',
+              type: 'string',
+              description: 'T.ex. "Dag 1", "Dag 2", "Provdag"',
+            }),
+            defineField({
+              name: 'dagSubtitel',
+              title: 'Undertitel',
+              type: 'string',
+              description: 'T.ex. "Teori", "Examination"',
+            }),
+            defineField({
+              name: 'slots',
+              title: 'Tidsblock',
+              type: 'array',
+              of: [
+                {
+                  type: 'object',
+                  name: 'slot',
+                  fields: [
+                    defineField({ name: 'tid', title: 'Tid', type: 'string', description: 'T.ex. "09:00"' }),
+                    defineField({
+                      name: 'typ',
+                      title: 'Typ',
+                      type: 'string',
+                      options: {
+                        list: [
+                          { title: 'Normal', value: 'normal' },
+                          { title: 'Rast (kaffe/lunch)', value: 'rast' },
+                          { title: 'Prov/examination', value: 'prov' },
+                          { title: 'Slut', value: 'slut' },
+                        ],
+                      },
+                      initialValue: 'normal',
+                    }),
+                    defineField({
+                      name: 'aktiviteter',
+                      title: 'Aktiviteter',
+                      type: 'array',
+                      of: [{ type: 'string' }],
+                      description: 'En rad per aktivitet',
+                    }),
+                  ],
+                  preview: {
+                    select: { title: 'tid', subtitle: 'typ' },
+                  },
+                },
+              ],
+            }),
+          ],
+          preview: {
+            select: { title: 'dagTitel', subtitle: 'dagSubtitel' },
+          },
+        },
+      ],
+    }),
+    defineField({
       name: 'certifiering',
       title: 'Certifiering',
       type: 'text',
@@ -142,6 +211,7 @@ export const coursePage = defineType({
                   { title: 'Upplägg — dag för dag', value: 'upplagg' },
                   { title: 'Certifiering', value: 'certifiering' },
                   { title: 'Lödprov', value: 'lodprov' },
+                  { title: 'Dagschema', value: 'dagSchema' },
                   { title: 'Kommande tillfällen', value: 'kommandeTillfallen' },
                 ],
               },
@@ -165,6 +235,7 @@ export const coursePage = defineType({
                 upplagg: 'Upplägg',
                 certifiering: 'Certifiering',
                 lodprov: 'Lödprov',
+                dagSchema: 'Dagschema',
                 kommandeTillfallen: 'Kommande tillfällen',
               }
               return {

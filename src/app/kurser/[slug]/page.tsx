@@ -7,6 +7,7 @@ import { getUpcomingEvents } from '@/lib/eduadmin'
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 import { EventCard } from '@/components/kurser/EventCard'
+import { DaySchedule } from '@/components/kurser/DaySchedule'
 import { PortableText } from '@portabletext/react'
 import Link from 'next/link'
 import type { EventCard as EventCardType } from '@/types/eduadmin'
@@ -41,6 +42,7 @@ const DEFAULT_LAYOUT = [
   { sectionType: 'upplagg', visible: true },
   { sectionType: 'certifiering', visible: true },
   { sectionType: 'lodprov', visible: true },
+  { sectionType: 'dagSchema', visible: true },
   { sectionType: 'kommandeTillfallen', visible: true },
 ]
 
@@ -102,6 +104,8 @@ export default async function CourseSlugPage({ params }: PageProps) {
               return <CertifieringSection key={i} course={course} />
             case 'lodprov':
               return <LodprovSection key={i} course={course} />
+            case 'dagSchema':
+              return <DagSchemaSection key={i} course={course} />
             case 'kommandeTillfallen':
               return <KommandeTillfallenSection key={i} events={events} />
             default:
@@ -228,6 +232,16 @@ function LodprovSection({ course }: { course: any }) {
     <div>
       <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Lödprov</h2>
       <p className="text-[15px] leading-relaxed" style={{ color: 'var(--muted)' }}>{course.lodprov}</p>
+    </div>
+  )
+}
+
+function DagSchemaSection({ course }: { course: any }) {
+  if (!course.dagSchema?.length) return null
+  return (
+    <div>
+      <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Schema</h2>
+      <DaySchedule dagar={course.dagSchema} />
     </div>
   )
 }

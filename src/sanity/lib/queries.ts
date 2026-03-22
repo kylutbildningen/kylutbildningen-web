@@ -41,6 +41,15 @@ export const COURSE_PAGE_QUERY = groq`
     innehall,
     upplagg,
     upplaggText,
+    dagSchema[] {
+      dagTitel,
+      dagSubtitel,
+      slots[] {
+        tid,
+        typ,
+        aktiviteter
+      }
+    },
     certifiering,
     lodprov,
     targetGroup,
