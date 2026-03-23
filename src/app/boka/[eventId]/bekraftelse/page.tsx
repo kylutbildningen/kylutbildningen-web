@@ -1,8 +1,25 @@
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
+import { stripe } from '@/lib/stripe'
 import Link from 'next/link'
 
-export default function BekraftelseSida() {
+export default async function BekraftelseSida({
+  searchParams,
+}: {
+  searchParams: Promise<{ session_id?: string }>
+}) {
+  const { session_id } = await searchParams
+  let customerEmail: string | null = null
+
+  if (session_id) {
+    try {
+      const session = await stripe.checkout.sessions.retrieve(session_id)
+      customerEmail = session.customer_email ?? null
+    } catch {
+      // Session not found or expired — show page without email
+    }
+  }
+
   return (
     <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
       <SiteHeader />
@@ -29,8 +46,15 @@ export default function BekraftelseSida() {
           style={{ color: 'var(--navy)' }}>
           Tack för din bokning!
         </h2>
+
+        {customerEmail && (
+          <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
+            Kvitto skickat till <strong>{customerEmail}</strong>
+          </p>
+        )}
+
         <p className="text-sm mb-8" style={{ color: 'var(--muted)' }}>
-          Du kommer att få en bekräftelse via e-post inom kort.
+          Du kommer att få en kursbekräftelse via e-post inom kort.
           Välkommen till oss!
         </p>
 

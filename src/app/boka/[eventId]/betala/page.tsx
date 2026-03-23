@@ -6,7 +6,6 @@ import { SiteFooter } from '@/components/layout/SiteFooter'
 
 export default function BetalaSida({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = use(params)
-  const [snippet, setSnippet] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -20,7 +19,7 @@ export default function BetalaSida({ params }: { params: Promise<{ eventId: stri
 
     const formData = JSON.parse(bookingData)
 
-    fetch('/api/svea/create-order', {
+    fetch('/api/stripe/create-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -31,29 +30,18 @@ export default function BetalaSida({ params }: { params: Promise<{ eventId: stri
       .then(r => r.json())
       .then(data => {
         if (data.error) throw new Error(data.error)
-        setSnippet(data.snippet)
+        if (data.url) {
+          window.location.href = data.url
+        } else {
+          setError('Kunde inte starta betalning. Försök igen.')
+          setLoading(false)
+        }
       })
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false))
+      .catch(err => {
+        setError(err.message)
+        setLoading(false)
+      })
   }, [eventId])
-
-  // Render Svea snippet with script execution
-  useEffect(() => {
-    if (!snippet) return
-    const container = document.getElementById('svea-checkout')
-    if (!container) return
-
-    container.innerHTML = snippet
-
-    container.querySelectorAll('script').forEach(oldScript => {
-      const newScript = document.createElement('script')
-      Array.from(oldScript.attributes).forEach(attr =>
-        newScript.setAttribute(attr.name, attr.value),
-      )
-      newScript.textContent = oldScript.textContent
-      oldScript.replaceWith(newScript)
-    })
-  }, [snippet])
 
   return (
     <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
@@ -68,11 +56,15 @@ export default function BetalaSida({ params }: { params: Promise<{ eventId: stri
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-6 py-16 text-center">
         {loading && (
-          <div className="text-center py-16 text-sm" style={{ color: 'var(--muted)' }}>
-            Laddar betalning...
-          </div>
+          <>
+            <div className="animate-spin rounded-full h-10 w-10 border-2 mx-auto mb-4"
+              style={{ borderColor: 'var(--navy)', borderTopColor: 'transparent' }} />
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>
+              Förbereder betalning via Stripe...
+            </p>
+          </>
         )}
 
         {error && (
@@ -81,8 +73,6 @@ export default function BetalaSida({ params }: { params: Promise<{ eventId: stri
             {error}
           </div>
         )}
-
-        <div id="svea-checkout" />
       </div>
 
       <SiteFooter />

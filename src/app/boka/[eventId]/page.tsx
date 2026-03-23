@@ -291,7 +291,7 @@ export default function BookingPage() {
     setSubmitting(true);
 
     try {
-      // Card payments go through Svea Checkout
+      // Card payments go through Stripe Checkout
       if (formData.paymentMethod === "card") {
         // sessionStorage data is kept — betala page reads it
         router.push(`/boka/${eventId}/betala`);
