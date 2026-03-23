@@ -6,6 +6,32 @@ interface Props {
   email: string
 }
 
+function Field({
+  label, value, onChange, type = 'text', placeholder = '', required = true, disabled = false,
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  type?: string; placeholder?: string; required?: boolean; disabled?: boolean;
+}) {
+  return (
+    <div>
+      <label className="text-[11px] font-bold tracking-widest uppercase block mb-1.5"
+        style={{ color: '#1A5EA8' }}>
+        {label}{required && ' *'}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        disabled={disabled}
+        className="w-full text-sm rounded border px-3 py-2 disabled:opacity-50 disabled:bg-gray-50"
+        style={{ borderColor: '#DDE4ED' }}
+      />
+    </div>
+  )
+}
+
 export function NewCustomerForm({ email }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -54,30 +80,6 @@ export function NewCustomerForm({ email }: Props) {
       setLoading(false)
     }
   }
-
-  const Field = ({
-    label, value, onChange, type = 'text', placeholder = '', required = true, disabled = false,
-  }: {
-    label: string; value: string; onChange: (v: string) => void;
-    type?: string; placeholder?: string; required?: boolean; disabled?: boolean;
-  }) => (
-    <div>
-      <label className="text-[11px] font-bold tracking-widest uppercase block mb-1.5"
-        style={{ color: '#1A5EA8' }}>
-        {label}{required && ' *'}
-      </label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        required={required}
-        disabled={disabled}
-        className="w-full text-sm rounded border px-3 py-2 disabled:opacity-50 disabled:bg-gray-50"
-        style={{ borderColor: '#DDE4ED' }}
-      />
-    </div>
-  )
 
   return (
     <div className="space-y-8">
