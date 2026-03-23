@@ -45,8 +45,10 @@ export async function createSveaOrder(orderData: SveaOrderData): Promise<SveaOrd
   })
 
   if (!res.ok) {
-    const error = await res.text()
-    throw new Error(`Svea API error ${res.status}: ${error}`)
+    const errorBody = await res.text()
+    const errorDetail = `Svea ${res.status} | body sent: ${body.substring(0, 500)} | response: ${errorBody || '(empty)'}`
+    console.error(errorDetail)
+    throw new Error(errorDetail)
   }
 
   return res.json()
