@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
 
       // Mark booking as paid in EduAdmin
       if (bookingId) {
-        const patchRes = await fetch(`${API_URL}/v1/Bookings(${bookingId})`, {
+        const patchRes = await fetch(`${API_URL}/v1/Booking/${bookingId}`, {
           method: 'PATCH',
           headers: {
             Authorization: `bearer ${token}`,
