@@ -1,6 +1,6 @@
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
-import { stripe } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import Link from 'next/link'
 
 export default async function BekraftelseSida({
@@ -13,7 +13,7 @@ export default async function BekraftelseSida({
 
   if (session_id) {
     try {
-      const session = await stripe.checkout.sessions.retrieve(session_id)
+      const session = await getStripe().checkout.sessions.retrieve(session_id)
       customerEmail = session.customer_email ?? null
     } catch {
       // Session not found or expired — show page without email

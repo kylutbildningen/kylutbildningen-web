@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import { getEvent } from '@/lib/eduadmin'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const participantCount = formData.participants.length
     const unitPriceKr = eventData.eventCard.lowestPrice ?? 0
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
       customer_email: contactEmail,
