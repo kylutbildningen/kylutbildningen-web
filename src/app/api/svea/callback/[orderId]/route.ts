@@ -135,7 +135,25 @@ export async function POST(
     }
 
     const eduResult = await eduRes.json()
-    console.log('Svea callback: EduAdmin booking created:', eduResult.BookingId)
+    const bookingId = eduResult.BookingId
+    console.log('Svea callback: EduAdmin booking created:', bookingId)
+
+    // Mark booking as paid in EduAdmin
+    if (bookingId) {
+      const patchRes = await fetch(`${API_URL}/v1/Bookings(${bookingId})`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ Paid: true }),
+      })
+      if (patchRes.ok) {
+        console.log(`EduAdmin booking ${bookingId} marked as paid`)
+      } else {
+        console.error(`EduAdmin PATCH paid failed: ${patchRes.status}`, await patchRes.text())
+      }
+    }
 
     // Save booking to Supabase bookings table
     const eventData = await getEvent(ourOrder.event_id)
