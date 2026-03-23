@@ -12,23 +12,36 @@ const BASE_URL = process.env.SVEA_ENV === 'prod'
 const MERCHANT_ID = process.env.SVEA_MERCHANT_ID!
 const SECRET = process.env.SVEA_CHECKOUT_SECRET!
 
-function generateAuth(body: string): string {
+function generateAuth(body: string, timestamp: string): string {
+  // 1. SHA-512 of body + secret + timestamp
   const hash = crypto
-    .createHmac('sha512', Buffer.from(SECRET, 'utf-8'))
-    .update(body + SECRET)
-    .digest('base64')
-  return `Svea ${hash}`
+    .createHash('sha512')
+    .update(body + SECRET + timestamp, 'utf-8')
+    .digest('hex')
+    .toLowerCase()
+  // 2. Base64-encode the hex hash
+  const b64Hash = Buffer.from(hash, 'utf-8').toString('base64')
+  // 3. Combine merchantId:b64Hash and base64-encode the whole thing
+  const token = Buffer.from(`${MERCHANT_ID}:${b64Hash}`, 'utf-8').toString('base64')
+  return `Svea ${token}`
+}
+
+function formatTimestamp(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`
 }
 
 export async function createSveaOrder(orderData: SveaOrderData): Promise<SveaOrderResponse> {
   const body = JSON.stringify(orderData)
+  const timestamp = formatTimestamp()
 
   const res = await fetch(`${BASE_URL}/api/orders`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Authorization': generateAuth(body),
-      'Timestamp': new Date().toISOString(),
+      'Authorization': generateAuth(body, timestamp),
+      'Timestamp': timestamp,
     },
     body,
   })
@@ -43,10 +56,11 @@ export async function createSveaOrder(orderData: SveaOrderData): Promise<SveaOrd
 
 export async function getSveaOrder(orderId: number): Promise<SveaOrderResponse> {
   const body = ''
+  const timestamp = formatTimestamp()
   const res = await fetch(`${BASE_URL}/api/orders/${orderId}`, {
     headers: {
-      'Authorization': generateAuth(body),
-      'Timestamp': new Date().toISOString(),
+      'Authorization': generateAuth(body, timestamp),
+      'Timestamp': timestamp,
     },
   })
 
