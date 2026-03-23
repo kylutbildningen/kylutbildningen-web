@@ -43,13 +43,12 @@ export async function POST(req: NextRequest) {
           Unit: 'st',
         })),
       },
-      PresetValues: [
-        { Key: 'EmailAddress', Value: contactEmail, IsReadonly: false },
-        ...(contactPhone ? [{ Key: 'PhoneNumber', Value: contactPhone, IsReadonly: false }] : []),
+      presetValues: [
+        { typeName: 'EmailAddress', value: contactEmail, isReadonly: false },
+        ...(contactPhone ? [{ typeName: 'PhoneNumber', value: contactPhone, isReadonly: false }] : []),
       ],
     }
 
-    console.log('Svea order request:', JSON.stringify(orderData, null, 2))
     const sveaOrder = await createSveaOrder(orderData)
 
     // Save order mapping in Supabase

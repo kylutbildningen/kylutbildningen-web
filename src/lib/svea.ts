@@ -80,10 +80,10 @@ export interface SveaOrderData {
   Cart: {
     Items: SveaOrderItem[]
   }
-  PresetValues?: {
-    Key: string
-    Value: string
-    IsReadonly?: boolean
+  presetValues?: {
+    typeName: string
+    value: string
+    isReadonly?: boolean
   }[]
 }
 
