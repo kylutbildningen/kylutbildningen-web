@@ -67,18 +67,18 @@ export async function getSveaOrder(orderId: number): Promise<SveaOrderResponse> 
 }
 
 export interface SveaOrderData {
-  currency: 'SEK'
-  locale: 'sv-SE'
-  countryCode: 'SE'
+  countryCode: string
+  currency: string
+  locale: string
   clientOrderNumber: string
   merchantSettings: {
-    pushUri: string
-    termsUri: string
-    checkoutUri: string
-    confirmationUri: string
+    PushUri: string
+    TermsUri: string
+    CheckoutUri: string
+    ConfirmationUri: string
   }
   cart: {
-    items: SveaOrderItem[]
+    Items: SveaOrderItem[]
   }
   presetValues?: {
     key: string
@@ -88,13 +88,13 @@ export interface SveaOrderData {
 }
 
 export interface SveaOrderItem {
-  articleNumber: string
-  name: string
-  quantity: number
-  unitPrice: number
-  discountPercent: number
-  vatPercent: number
-  unit: 'st'
+  ArticleNumber: string
+  Name: string
+  Quantity: number
+  UnitPrice: number
+  DiscountPercent: number
+  VatPercent: number
+  Unit: string
 }
 
 export interface SveaOrderResponse {

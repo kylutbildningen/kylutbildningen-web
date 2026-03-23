@@ -22,25 +22,25 @@ export async function POST(req: NextRequest) {
     const unitPriceKr = eventData.eventCard.lowestPrice ?? 0
 
     const orderData = {
-      currency: 'SEK' as const,
-      locale: 'sv-SE' as const,
-      countryCode: 'SE' as const,
+      countryCode: 'SE',
+      currency: 'SEK',
+      locale: 'sv-se',
       clientOrderNumber,
       merchantSettings: {
-        pushUri: `${siteUrl}/api/svea/callback/{checkout.order.uri}`,
-        termsUri: `${siteUrl}/villkor`,
-        checkoutUri: `${siteUrl}/boka/${eventId}`,
-        confirmationUri: `${siteUrl}/boka/${eventId}/bekraftelse?order={checkout.order.uri}`,
+        PushUri: `${siteUrl}/api/svea/callback/{checkout.order.uri}`,
+        TermsUri: `${siteUrl}/villkor`,
+        CheckoutUri: `${siteUrl}/boka/${eventId}`,
+        ConfirmationUri: `${siteUrl}/boka/${eventId}/bekraftelse?order={checkout.order.uri}`,
       },
       cart: {
-        items: Array.from({ length: participantCount }, (_, i) => ({
-          articleNumber: `KURS-${eventId}-${i + 1}`,
-          name: eventData.eventCard.courseName ?? 'Kursplats',
-          quantity: 100,
-          unitPrice: unitPriceKr * 100,
-          discountPercent: 0,
-          vatPercent: 2500,
-          unit: 'st' as const,
+        Items: Array.from({ length: participantCount }, (_, i) => ({
+          ArticleNumber: `KURS-${eventId}-${i + 1}`,
+          Name: eventData.eventCard.courseName ?? 'Kursplats',
+          Quantity: 100,
+          UnitPrice: unitPriceKr * 100,
+          DiscountPercent: 0,
+          VatPercent: 2500,
+          Unit: 'st',
         })),
       },
       presetValues: [
