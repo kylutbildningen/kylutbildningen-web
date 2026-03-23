@@ -291,7 +291,14 @@ export default function BookingPage() {
     setSubmitting(true);
 
     try {
-      // Get auth token for server-side booking creation
+      // Card payments go through Svea Checkout
+      if (formData.paymentMethod === "card") {
+        // sessionStorage data is kept — betala page reads it
+        router.push(`/boka/${eventId}/betala`);
+        return;
+      }
+
+      // Invoice payments go directly to EduAdmin
       const supabase = createSupabaseBrowser();
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -339,7 +346,7 @@ export default function BookingPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [eventId, event]);
+  }, [eventId, event, router]);
 
   // Loading / auth check
   if (loading || !authChecked) {

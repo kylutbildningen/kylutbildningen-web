@@ -1,73 +1,96 @@
 /**
- * Svea WebPay checkout integration.
+ * Svea Checkout REST API integration.
+ * Auth: HMAC SHA512 signature over request body + shared secret.
  */
 
-const SVEA_MERCHANT_ID = process.env.SVEA_MERCHANT_ID ?? "";
-const SVEA_SECRET_KEY = process.env.SVEA_SECRET_KEY ?? "";
-const SVEA_CHECKOUT_URL =
-  process.env.SVEA_CHECKOUT_URL ?? "https://checkoutapistage.svea.com";
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://kylutbildningen.com";
+import crypto from 'crypto'
 
-interface SveaCheckoutResponse {
-  OrderId: number;
-  CheckoutUrl: string;
+const BASE_URL = process.env.SVEA_ENV === 'prod'
+  ? 'https://checkoutapi.svea.com'
+  : 'https://checkoutapistage.svea.com'
+
+const MERCHANT_ID = process.env.SVEA_MERCHANT_ID!
+const SECRET = process.env.SVEA_CHECKOUT_SECRET!
+
+function generateAuth(body: string): string {
+  const hash = crypto
+    .createHmac('sha512', Buffer.from(SECRET, 'utf-8'))
+    .update(body + SECRET)
+    .digest('base64')
+  return `Svea ${hash}`
 }
 
-/**
- * Initialize a Svea checkout session and return the redirect URL.
- */
-export async function initSveaCheckout(params: {
-  bookingId: number;
-  bookingNumber: string;
-  totalAmountIncVat: number;
-  customerEmail: string;
-  description: string;
-}): Promise<string> {
-  if (!SVEA_MERCHANT_ID || !SVEA_SECRET_KEY) {
-    console.warn("Svea credentials not configured, returning mock URL");
-    return `${SITE_URL}/boka/bekraftelse?booking=${params.bookingNumber}`;
-  }
+export async function createSveaOrder(orderData: SveaOrderData): Promise<SveaOrderResponse> {
+  const body = JSON.stringify(orderData)
 
-  const amountInMinorUnit = Math.round(params.totalAmountIncVat * 100);
-
-  const res = await fetch(`${SVEA_CHECKOUT_URL}/api/orders`, {
-    method: "POST",
+  const res = await fetch(`${BASE_URL}/api/orders`, {
+    method: 'POST',
     headers: {
-      Authorization: `Bearer ${SVEA_SECRET_KEY}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json; charset=utf-8',
+      'Authorization': generateAuth(body),
+      'Timestamp': new Date().toISOString(),
     },
-    body: JSON.stringify({
-      MerchantId: SVEA_MERCHANT_ID,
-      Currency: "SEK",
-      CountryCode: "SE",
-      Locale: "sv-SE",
-      Cart: {
-        Items: [
-          {
-            ArticleNumber: `BOOKING-${params.bookingNumber}`,
-            Name: params.description,
-            Quantity: 100,
-            UnitPrice: amountInMinorUnit,
-            VatPercent: 2500,
-          },
-        ],
-      },
-      MerchantSettings: {
-        CheckoutUri: `${SITE_URL}/boka/${params.bookingId}`,
-        ConfirmationUri: `${SITE_URL}/boka/bekraftelse?booking=${params.bookingNumber}&svea={checkout.order.uri}`,
-        PushUri: `${SITE_URL}/api/booking/svea-callback?booking=${params.bookingNumber}`,
-        TermsUri: `${SITE_URL}/villkor`,
-      },
-      ClientOrderNumber: params.bookingNumber,
-    }),
-  });
+    body,
+  })
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Svea checkout failed: ${res.status} ${text}`);
+    const error = await res.text()
+    throw new Error(`Svea API error ${res.status}: ${error}`)
   }
 
-  const data: SveaCheckoutResponse = await res.json();
-  return data.CheckoutUrl;
+  return res.json()
+}
+
+export async function getSveaOrder(orderId: number): Promise<SveaOrderResponse> {
+  const body = ''
+  const res = await fetch(`${BASE_URL}/api/orders/${orderId}`, {
+    headers: {
+      'Authorization': generateAuth(body),
+      'Timestamp': new Date().toISOString(),
+    },
+  })
+
+  if (!res.ok) throw new Error(`Svea GET order error ${res.status}`)
+  return res.json()
+}
+
+export interface SveaOrderData {
+  currency: 'SEK'
+  locale: 'sv-SE'
+  countryCode: 'SE'
+  clientOrderNumber: string
+  merchantSettings: {
+    pushUri: string
+    termsUri: string
+    checkoutUri: string
+    confirmationUri: string
+  }
+  cart: {
+    items: SveaOrderItem[]
+  }
+  presetValues?: {
+    key: string
+    value: string
+    isReadonly?: boolean
+  }[]
+}
+
+export interface SveaOrderItem {
+  articleNumber: string
+  name: string
+  quantity: number
+  unitPrice: number
+  discountPercent: number
+  vatPercent: number
+  unit: 'st'
+}
+
+export interface SveaOrderResponse {
+  orderId: number
+  status: string
+  gui: {
+    layout: string
+    snippet: string
+  }
+  clientOrderNumber: string
 }
