@@ -40,7 +40,7 @@ export async function POST(
     // Verify order directly with Svea API
     const sveaOrder = await getSveaOrder(orderId)
 
-    if (sveaOrder.status !== 'Final') {
+    if (sveaOrder.Status !== 'Final') {
       return NextResponse.json({ ok: true })
     }
 

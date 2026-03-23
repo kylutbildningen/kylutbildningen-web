@@ -22,17 +22,17 @@ export async function POST(req: NextRequest) {
     const unitPriceKr = eventData.eventCard.lowestPrice ?? 0
 
     const orderData = {
-      countryCode: 'SE',
-      currency: 'SEK',
-      locale: 'sv-se',
-      clientOrderNumber,
-      merchantSettings: {
+      CountryCode: 'SE',
+      Currency: 'SEK',
+      Locale: 'sv-se',
+      ClientOrderNumber: clientOrderNumber,
+      MerchantSettings: {
         PushUri: `${siteUrl}/api/svea/callback/{checkout.order.uri}`,
         TermsUri: `${siteUrl}/villkor`,
         CheckoutUri: `${siteUrl}/boka/${eventId}`,
         ConfirmationUri: `${siteUrl}/boka/${eventId}/bekraftelse?order={checkout.order.uri}`,
       },
-      cart: {
+      Cart: {
         Items: Array.from({ length: participantCount }, (_, i) => ({
           ArticleNumber: `KURS-${eventId}-${i + 1}`,
           Name: eventData.eventCard.courseName ?? 'Kursplats',
@@ -43,9 +43,9 @@ export async function POST(req: NextRequest) {
           Unit: 'st',
         })),
       },
-      presetValues: [
-        { key: 'emailAddress', value: contactEmail, isReadonly: false },
-        ...(contactPhone ? [{ key: 'phoneNumber', value: contactPhone, isReadonly: false }] : []),
+      PresetValues: [
+        { Key: 'EmailAddress', Value: contactEmail, IsReadonly: false },
+        ...(contactPhone ? [{ Key: 'PhoneNumber', Value: contactPhone, IsReadonly: false }] : []),
       ],
     }
 
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     const supabase = createSupabaseAdmin()
     await supabase.from('svea_orders').insert({
       client_order_number: clientOrderNumber,
-      svea_order_id: sveaOrder.orderId,
+      svea_order_id: sveaOrder.OrderId,
       event_id: eventId,
       form_data: formData,
       customer_email: contactEmail,
@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({
-      orderId: sveaOrder.orderId,
-      snippet: sveaOrder.gui.snippet,
+      orderId: sveaOrder.OrderId,
+      snippet: sveaOrder.Gui.Snippet,
       clientOrderNumber,
     })
   } catch (err) {
