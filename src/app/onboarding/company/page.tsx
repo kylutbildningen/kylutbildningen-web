@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { StepIndicator } from "@/components/onboarding/StepIndicator";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { LoaderIcon, BuildingIcon, CheckIcon } from "@/components/icons";
-import { NewCustomerForm } from "@/components/onboarding/NewCustomerForm";
+import { NewCustomerModal } from "@/components/onboarding/NewCustomerModal";
 
 interface CompanyMatch {
   customerId: number;
@@ -262,22 +262,16 @@ export default function CompanyPage() {
               </div>
             )}
 
+            {/* Registration modal */}
+            {showRegistration && userEmail && (
+              <NewCustomerModal
+                email={userEmail}
+                onClose={() => setShowRegistration(false)}
+              />
+            )}
+
             {/* Company selection */}
-            {showRegistration ? (
-              <div>
-                <button
-                  onClick={() => setShowRegistration(false)}
-                  className="flex items-center gap-2 text-sm mb-6"
-                  style={{ color: "var(--slate-light)" }}>
-                  ← Tillbaka
-                </button>
-                <h2 className="font-condensed font-bold uppercase text-2xl mb-6"
-                  style={{ color: "var(--navy)" }}>
-                  Skapa nytt konto
-                </h2>
-                <NewCustomerForm email={userEmail!} />
-              </div>
-            ) : companies.length === 0 ? (
+            {companies.length === 0 ? (
               <div className="rounded-lg border bg-white p-6 text-center" style={{ borderColor: "var(--border)" }}>
                 <h3 className="font-semibold mb-2" style={{ color: "var(--navy)" }}>
                   Ny kund?

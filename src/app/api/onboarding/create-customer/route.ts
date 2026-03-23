@@ -23,12 +23,21 @@ export async function POST(req: NextRequest) {
     const {
       email, firstName, lastName, phone,
       companyName, orgNumber, address, zipCode, city,
-      invoiceEmail, reference,
+      invoiceEmail, reference, customerType,
     } = await req.json()
 
-    if (!email || !firstName || !lastName || !companyName || !orgNumber) {
+    const isPrivate = customerType === 'private'
+
+    if (!email || !firstName || !lastName) {
       return NextResponse.json(
         { error: 'Obligatoriska fält saknas' },
+        { status: 400 },
+      )
+    }
+
+    if (!isPrivate && (!companyName || !orgNumber)) {
+      return NextResponse.json(
+        { error: 'Företagsnamn och organisationsnummer krävs' },
         { status: 400 },
       )
     }
@@ -43,36 +52,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Ingen inloggad användare hittades' }, { status: 401 })
     }
 
-    // 1. Check if customer already exists by org number
-    const clean = orgNumber.replace(/\D/g, '')
-    const withDash = clean.length === 10
-      ? `${clean.slice(0, 6)}-${clean.slice(6)}`
-      : orgNumber
-
-    const existingCustomers = await eduAdminFetch<ODataResponse<EduAdminCustomer>>(
-      '/v1/odata/Customers',
-      {
-        $filter: `OrganisationNumber eq '${withDash}' or OrganisationNumber eq '${clean}'`,
-        $top: '1',
-      },
-    )
-
     let customerId: number
+    const customerName = isPrivate ? `${firstName} ${lastName}` : companyName
 
-    if (existingCustomers.value.length > 0) {
-      customerId = existingCustomers.value[0].CustomerId
+    if (!isPrivate && orgNumber) {
+      // 1. Check if customer already exists by org number
+      const clean = orgNumber.replace(/\D/g, '')
+      const withDash = clean.length === 10
+        ? `${clean.slice(0, 6)}-${clean.slice(6)}`
+        : orgNumber
+
+      const existingCustomers = await eduAdminFetch<ODataResponse<EduAdminCustomer>>(
+        '/v1/odata/Customers',
+        {
+          $filter: `OrganisationNumber eq '${withDash}' or OrganisationNumber eq '${clean}'`,
+          $top: '1',
+        },
+      )
+
+      if (existingCustomers.value.length > 0) {
+        customerId = existingCustomers.value[0].CustomerId
+      } else {
+        const newCustomer = await eduAdminFetch<EduAdminNewCustomer>('/v1/Customer', {
+          __method: 'POST',
+          __body: JSON.stringify({
+            CustomerName: customerName,
+            OrganisationNumber: withDash,
+            Address: address || '',
+            Zip: zipCode || '',
+            City: city || '',
+            Country: 'Sverige',
+            Email: invoiceEmail || email,
+          }),
+        })
+        customerId = newCustomer.CustomerId
+      }
     } else {
-      // 2. Create new customer in EduAdmin
+      // Private customer — create without org number
       const newCustomer = await eduAdminFetch<EduAdminNewCustomer>('/v1/Customer', {
         __method: 'POST',
         __body: JSON.stringify({
-          CustomerName: companyName,
-          OrganisationNumber: withDash,
+          CustomerName: customerName,
           Address: address || '',
           Zip: zipCode || '',
           City: city || '',
           Country: 'Sverige',
-          Email: invoiceEmail || email,
+          Email: email,
         }),
       })
       customerId = newCustomer.CustomerId
@@ -104,8 +129,8 @@ export async function POST(req: NextRequest) {
           user_id: authUser.id,
           edu_customer_id: customerId,
           edu_contact_id: newPerson.PersonId,
-          company_name: companyName,
-          org_number: withDash,
+          company_name: customerName,
+          org_number: (!isPrivate && orgNumber) ? orgNumber.replace(/\D/g, '').replace(/^(\d{6})(\d{4})$/, '$1-$2') : null,
           role: 'company_admin',
           is_contact_person: true,
         },
