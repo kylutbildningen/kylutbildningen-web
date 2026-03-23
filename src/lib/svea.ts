@@ -13,16 +13,14 @@ const MERCHANT_ID = process.env.SVEA_MERCHANT_ID!
 const SECRET = process.env.SVEA_CHECKOUT_SECRET!
 
 function generateAuth(body: string, timestamp: string): string {
-  // 1. SHA-512 of body + secret + timestamp
-  const hash = crypto
+  // 1. SHA-512 of body + secret + timestamp → uppercase hex
+  const hashHex = crypto
     .createHash('sha512')
     .update(body + SECRET + timestamp, 'utf-8')
     .digest('hex')
-    .toLowerCase()
-  // 2. Base64-encode the hex hash
-  const b64Hash = Buffer.from(hash, 'utf-8').toString('base64')
-  // 3. Combine merchantId:b64Hash and base64-encode the whole thing
-  const token = Buffer.from(`${MERCHANT_ID}:${b64Hash}`, 'utf-8').toString('base64')
+    .toUpperCase()
+  // 2. Base64-encode "merchantId:hashHex"
+  const token = Buffer.from(`${MERCHANT_ID}:${hashHex}`, 'utf-8').toString('base64')
   return `Svea ${token}`
 }
 
