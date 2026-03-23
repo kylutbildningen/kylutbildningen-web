@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { StepIndicator } from "@/components/onboarding/StepIndicator";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { LoaderIcon, BuildingIcon, CheckIcon } from "@/components/icons";
+import { NewCustomerForm } from "@/components/onboarding/NewCustomerForm";
 
 interface CompanyMatch {
   customerId: number;
@@ -34,6 +35,7 @@ export default function CompanyPage() {
   const [selected, setSelected] = useState<CompanyMatch | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRegistration, setShowRegistration] = useState(false);
 
   // Person data from persons table (pre-filled for participants)
   const [personData, setPersonData] = useState<PersonData | null>(null);
@@ -261,18 +263,42 @@ export default function CompanyPage() {
             )}
 
             {/* Company selection */}
-            {companies.length === 0 ? (
-              <div className="rounded-lg border bg-white p-8 text-center" style={{ borderColor: "var(--border)" }}>
-                <p className="mb-2 text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
-                  Ingen matchning hittades
+            {showRegistration ? (
+              <div>
+                <button
+                  onClick={() => setShowRegistration(false)}
+                  className="flex items-center gap-2 text-sm mb-6"
+                  style={{ color: "var(--slate-light)" }}>
+                  ← Tillbaka
+                </button>
+                <h2 className="font-condensed font-bold uppercase text-2xl mb-6"
+                  style={{ color: "var(--navy)" }}>
+                  Skapa nytt konto
+                </h2>
+                <NewCustomerForm email={userEmail!} />
+              </div>
+            ) : companies.length === 0 ? (
+              <div className="rounded-lg border bg-white p-6 text-center" style={{ borderColor: "var(--border)" }}>
+                <h3 className="font-semibold mb-2" style={{ color: "var(--navy)" }}>
+                  Ny kund?
+                </h3>
+                <p className="text-sm mb-6" style={{ color: "var(--muted)" }}>
+                  Vi hittade inget befintligt konto kopplat till din e-post.
+                  Skapa ett nytt konto nedan — det tar bara någon minut.
                 </p>
-                <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
-                  Din e-post finns inte registrerad som kontaktperson i EduAdmin.
-                  Kontakta oss på{" "}
-                  <a href="mailto:info@kylutbildningen.se" className="underline" style={{ color: "var(--frost)" }}>
-                    info@kylutbildningen.se
-                  </a>{" "}
-                  så hjälper vi dig.
+                <button
+                  onClick={() => setShowRegistration(true)}
+                  className="px-6 py-3 text-sm font-semibold tracking-wider
+                    uppercase text-white rounded"
+                  style={{ background: "var(--navy)" }}>
+                  Skapa nytt konto
+                </button>
+                <p className="text-xs mt-4" style={{ color: "var(--muted)" }}>
+                  Har du ett konto men med en annan e-post?{" "}
+                  <a href="mailto:info@kylutbildningen.se"
+                    className="underline" style={{ color: "#1A5EA8" }}>
+                    Kontakta oss
+                  </a>
                 </p>
               </div>
             ) : (
