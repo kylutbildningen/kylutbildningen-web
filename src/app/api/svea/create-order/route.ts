@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
       ],
     }
 
+    console.log('Svea order request:', JSON.stringify(orderData, null, 2))
     const sveaOrder = await createSveaOrder(orderData)
 
     // Save order mapping in Supabase
