@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { ContactModal } from '@/components/kontakt/ContactModal'
 
 interface UserInfo {
   fullName: string
@@ -15,6 +16,7 @@ export function SiteHeader() {
   const router = useRouter()
   const [user, setUser] = useState<UserInfo | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [contactOpen, setContactOpen] = useState(false)
 
   useEffect(() => {
     async function loadUser() {
@@ -61,6 +63,7 @@ export function SiteHeader() {
   ]
 
   return (
+    <>
     <header
       className="sticky top-0 z-50 h-16"
       style={{
@@ -75,16 +78,27 @@ export function SiteHeader() {
       </Link>
 
       <nav className="flex items-center gap-8">
-        {navLinks.map(({ href, label }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`text-xs font-medium tracking-widest uppercase transition-colors
-              ${pathname === href ? 'text-white' : 'text-white/60 hover:text-white'}`}
-          >
-            {label}
-          </Link>
-        ))}
+        {navLinks.map(({ href, label }) =>
+          href === '/kontakt' ? (
+            <button
+              key={href}
+              onClick={() => setContactOpen(true)}
+              className={`text-xs font-medium tracking-widest uppercase transition-colors
+                ${contactOpen ? 'text-white' : 'text-white/60 hover:text-white'}`}
+            >
+              {label}
+            </button>
+          ) : (
+            <Link
+              key={href}
+              href={href}
+              className={`text-xs font-medium tracking-widest uppercase transition-colors
+                ${pathname === href ? 'text-white' : 'text-white/60 hover:text-white'}`}
+            >
+              {label}
+            </Link>
+          )
+        )}
 
         {user ? (
           <div className="relative">
@@ -149,5 +163,8 @@ export function SiteHeader() {
       </nav>
       </div>
     </header>
+
+    <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
+    </>
   )
 }

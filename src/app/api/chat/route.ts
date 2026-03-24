@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
+import { getUpcomingEvents } from '@/lib/eduadmin'
 
 const client = new Anthropic()
 
@@ -71,15 +72,45 @@ När du nämner en kurs, länka alltid direkt till kurssidan:
 Länka också till kontaktformuläret när du uppmanar att kontakta oss: [kontaktformuläret](/kontakt)
 Avsluta aldrig med "Kontakta oss på info@kylutbildningen.se" utan använd istället länken [kontaktformuläret](/kontakt).
 
-Om du inte kan svara: be dem använda [kontaktformuläret](/kontakt).`
+Om du inte kan svara: be dem använda [kontaktformuläret](/kontakt).
+
+VIKTIGT — BOKNINGSLÄNKAR:
+När du visar ett kurstillfälle med datum, inkludera alltid en bokningslänk:
+[Boka denna kurs](/boka/EVENT_ID) — byt EVENT_ID mot det faktiska eventId.`
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('sv-SE', {
+    year: 'numeric', month: 'short', day: 'numeric',
+  })
+}
+
+async function buildCatalog(): Promise<string> {
+  try {
+    const events = await getUpcomingEvents()
+    if (events.length === 0) return '\n\nINGA KOMMANDE KURSTILLFÄLLEN TILLGÄNGLIGA JUST NU.'
+
+    const lines = events.map(e => {
+      const spots = e.isFullyBooked ? 'FULLBOKAD' : `${e.spotsLeft} platser kvar`
+      const price = e.lowestPrice ? `${Math.round(e.lowestPrice)} kr exkl. moms` : ''
+      return `- ${e.courseName} | ${e.city} | ${formatDate(e.startDate)}–${formatDate(e.endDate)} | ${spots}${price ? ` | ${price}` : ''} | eventId: ${e.eventId}`
+    })
+
+    return `\n\nKOMMERANDE KURSTILLFÄLLEN (realtidsdata — använd detta för att svara på frågor om datum, platser och tillgänglighet):
+${lines.join('\n')}`
+  } catch {
+    return ''
+  }
+}
 
 export async function POST(req: NextRequest) {
   const { messages } = await req.json()
 
+  const catalog = await buildCatalog()
+
   const stream = await client.messages.stream({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
-    system: SYSTEM_PROMPT,
+    system: SYSTEM_PROMPT + catalog,
     messages,
   })
 
