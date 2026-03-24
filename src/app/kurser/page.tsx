@@ -67,7 +67,7 @@ export default async function KurserPage({ searchParams }: PageProps) {
             Kursutbud
           </div>
           <h1 className="font-condensed font-bold uppercase text-white leading-none"
-            style={{ fontSize: 'clamp(40px, 5vw, 64px)' }}>
+            style={{ fontSize: 'clamp(28px, 5vw, 64px)' }}>
             Kommande kurser
           </h1>
           <p className="mt-4 text-base font-light" style={{ color: 'rgba(255,255,255,0.5)' }}>

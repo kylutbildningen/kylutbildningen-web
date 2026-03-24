@@ -44,7 +44,7 @@ export default async function OmOssPage() {
             Om oss
           </div>
           <h1 className="font-condensed font-bold uppercase text-white leading-none"
-            style={{ fontSize: 'clamp(40px, 5vw, 64px)' }}>
+            style={{ fontSize: 'clamp(28px, 5vw, 64px)' }}>
             {pageData?.heroHeading ?? 'Om oss'}
           </h1>
           {pageData?.heroText && (

@@ -14,7 +14,7 @@ export default function KontaktPage() {
             Kontakt
           </div>
           <h1 className="font-condensed font-bold uppercase text-white leading-none"
-            style={{ fontSize: 'clamp(40px, 5vw, 64px)' }}>
+            style={{ fontSize: 'clamp(28px, 5vw, 64px)' }}>
             Hur kan vi hjälpa dig?
           </h1>
           <p className="mt-4 text-lg font-light max-w-xl"

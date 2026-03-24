@@ -20,7 +20,7 @@ interface Props {
 
 export function HeroSection({ heading, subheading, ctaText, heroImage, events }: Props) {
   return (
-    <section className="min-h-screen grid grid-cols-2 relative overflow-hidden"
+    <section className="min-h-screen grid grid-cols-1 lg:grid-cols-2 relative overflow-hidden"
       style={{ background: 'var(--navy)' }}>
 
       {/* Bakgrundsbild från Sanity */}
@@ -57,7 +57,7 @@ export function HeroSection({ heading, subheading, ctaText, heroImage, events }:
 
         {/* Rubrik */}
         <h1 className="font-condensed font-extrabold uppercase leading-[0.95] tracking-tight text-white mb-6"
-          style={{ fontSize: 'clamp(52px, 6vw, 80px)' }}>
+          style={{ fontSize: 'clamp(36px, 6vw, 80px)' }}>
           {heading ?? <>Certifiering<br />för <span className="text-[#00C4FF]">kyl</span><br />branschen</>}
         </h1>
 
@@ -66,14 +66,14 @@ export function HeroSection({ heading, subheading, ctaText, heroImage, events }:
           {subheading ?? 'Vi utbildar och examinerar kyltekniker inom alla F-gas-kategorier 1–5 i Göteborg.'}
         </p>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
           <Link href="/kurser"
-            className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-[#1A5EA8] hover:bg-[#2A7DD4] text-white text-sm font-semibold tracking-wider uppercase rounded transition-all hover:-translate-y-px">
+            className="inline-flex items-center justify-center gap-2.5 px-7 py-3.5 bg-[#1A5EA8] hover:bg-[#2A7DD4] text-white text-sm font-semibold tracking-wider uppercase rounded transition-all hover:-translate-y-px">
             {ctaText ?? 'Se alla kurser'}
             <ArrowIcon />
           </Link>
           <Link href="/om-oss"
-            className="text-sm font-medium tracking-wider uppercase pb-0.5 transition-colors"
+            className="text-sm font-medium tracking-wider uppercase pb-0.5 transition-colors text-center sm:text-left"
             style={{ color: 'rgba(255,255,255,0.45)', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
             Om oss
           </Link>
@@ -101,7 +101,7 @@ export function HeroSection({ heading, subheading, ctaText, heroImage, events }:
       </div>
 
       {/* Höger — live-panel */}
-      <div className="relative z-10 flex items-center justify-center pt-20 pb-20 pr-16">
+      <div className="relative z-10 flex items-center justify-center px-6 pb-16 lg:pt-20 lg:pb-20 lg:pr-16 lg:px-0">
         <HeroUpcomingPanel events={events} />
       </div>
 

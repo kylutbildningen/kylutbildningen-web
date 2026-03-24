@@ -47,17 +47,17 @@ export function EventCard({ event }: { event: EventCardType }) {
           {city && <span className="mx-1.5">·</span>}
           {city?.trim()}
         </div>
-        <div className="flex items-center justify-between">
-          <div>
-            {lowestPrice ? (
-              <>
-                <div className="text-sm font-semibold" style={{ color: 'var(--navy)' }}>fr. {formatPrice(lowestPrice)} kr</div>
-                <div className="text-[11px]" style={{ color: 'var(--muted)' }}>exkl. moms</div>
-              </>
-            ) : (
-              <span className="text-xs" style={{ color: 'var(--muted)' }}>—</span>
-            )}
-          </div>
+        <div className="mb-3">
+          {lowestPrice ? (
+            <>
+              <span className="text-sm font-semibold" style={{ color: 'var(--navy)' }}>fr. {formatPrice(lowestPrice)} kr</span>
+              <span className="text-[11px] ml-1" style={{ color: 'var(--muted)' }}>exkl. moms</span>
+            </>
+          ) : (
+            <span className="text-xs" style={{ color: 'var(--muted)' }}>—</span>
+          )}
+        </div>
+        <div className="[&>a]:block [&>a]:w-full [&>a]:text-center [&>span]:block [&>span]:w-full [&>span]:text-center">
           {bookButton}
         </div>
       </div>
