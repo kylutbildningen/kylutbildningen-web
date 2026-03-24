@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
           "ContactPerson($select=PersonId,FirstName,LastName,Email,Phone)",
           "Participants($select=ParticipantId,PersonId,FirstName,LastName,Email,CivicRegistrationNumber,Canceled,PriceNameId)",
         ].join(","),
-        $select: "BookingId,EventId,TotalPriceExVat,TotalPriceIncVat,NumberOfParticipants,Created,Paid,Preliminary,PaymentMethodId,Invoiced,Notes,Reference",
+        $select: "BookingId,EventId,TotalPriceExVat,TotalPriceIncVat,NumberOfParticipants,Created,Paid,Preliminary,PaymentMethodId,Invoiced,Notes,Reference,Canceled",
         $orderby: "Created desc",
         $top: "500",
       },
