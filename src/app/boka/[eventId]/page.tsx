@@ -16,6 +16,7 @@ import { ParticipantForm } from "@/components/bokning/ParticipantForm";
 import { PaymentSelector } from "@/components/bokning/PaymentSelector";
 import { BookingSummary } from "@/components/bokning/BookingSummary";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { StripeModal } from "@/components/bokning/StripeModal";
 import {
   CalendarIcon,
   MapPinIcon,
@@ -48,6 +49,7 @@ export default function BookingPage() {
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<BookingStep>(1);
   const [submitting, setSubmitting] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
   const [bookingResult, setBookingResult] = useState<{
     bookingId: number;
     bookingNumber: string;
@@ -291,10 +293,10 @@ export default function BookingPage() {
     setSubmitting(true);
 
     try {
-      // Card payments go through Stripe Checkout
+      // Card payments open Stripe Embedded Checkout modal
       if (formData.paymentMethod === "card") {
-        // sessionStorage data is kept — betala page reads it
-        router.push(`/boka/${eventId}/betala`);
+        setShowPayment(true);
+        setSubmitting(false);
         return;
       }
 
@@ -781,6 +783,14 @@ export default function BookingPage() {
           </div>
         )}
       </div>
+
+      {showPayment && step1Data && event && (
+        <StripeModal
+          eventId={event.eventId}
+          formData={step1Data}
+          onClose={() => setShowPayment(false)}
+        />
+      )}
 
       <SiteFooter />
     </div>

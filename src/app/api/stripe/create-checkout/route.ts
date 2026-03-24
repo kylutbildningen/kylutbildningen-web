@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     const session = await getStripe().checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
+      ui_mode: 'embedded',
       customer_email: contactEmail,
       locale: 'sv',
       line_items: Array.from({ length: participantCount }, () => ({
@@ -37,8 +38,7 @@ export async function POST(req: NextRequest) {
       payment_intent_data: {
         receipt_email: contactEmail,
       },
-      success_url: `${siteUrl}/boka/${eventId}/bekraftelse?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/boka/${eventId}`,
+      return_url: `${siteUrl}/dashboard/bokningar?session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         eventId: eventId.toString(),
       },
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       status: 'pending',
     })
 
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({ clientSecret: session.client_secret })
   } catch (err) {
     console.error('Stripe create checkout error:', err)
     return NextResponse.json(

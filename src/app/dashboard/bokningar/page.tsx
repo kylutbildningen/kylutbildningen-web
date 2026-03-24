@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -49,6 +49,8 @@ function classifyBooking(b: Booking): Tab {
 
 export default function BookingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get("session_id");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("aktuella");
@@ -102,6 +104,24 @@ export default function BookingsPage() {
         <h1 className="mb-6 text-2xl" style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}>
           Bokningar
         </h1>
+
+        {sessionId && (
+          <div className="mb-6 p-4 rounded-lg flex items-center gap-3"
+            style={{ background: '#F0F5FF', border: '1px solid #1A5EA8' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="#1A5EA8" strokeWidth="2" strokeLinecap="round">
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: '#0C447C' }}>
+                Bokning bekräftad!
+              </p>
+              <p className="text-xs" style={{ color: '#1A5EA8' }}>
+                Kvitto har skickats till din e-postadress.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="mb-6 flex gap-1 rounded-lg border p-1" style={{ borderColor: "var(--border)", backgroundColor: "#fff" }}>
