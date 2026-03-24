@@ -76,7 +76,19 @@ Om du inte kan svara: be dem använda [kontaktformuläret](/kontakt).
 
 VIKTIGT — BOKNINGSLÄNKAR:
 När du visar ett kurstillfälle med datum, inkludera alltid en bokningslänk:
-[Boka denna kurs](/boka/EVENT_ID) — byt EVENT_ID mot det faktiska eventId.`
+[Boka denna kurs](/boka/EVENT_ID) — byt EVENT_ID mot det faktiska eventId.
+
+ESKALERING TILL MÄNNISKA:
+Om du inte kan svara på frågan, eller om kunden behöver personlig
+hjälp, avbokning, företagsbokning eller annan komplex hantering,
+avsluta svaret med exakt denna rad (och ingenting annat efter):
+[ESKALERA]
+Exempel på när du ska eskalera:
+- Frågor om avbokning eller ombyte av kurs
+- Klagomål eller reklamationer
+- Företagsbokning för fler än 3 personer
+- Frågor du inte kan besvara med din information
+- Om kunden explicit ber att få tala med någon`
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('sv-SE', {
