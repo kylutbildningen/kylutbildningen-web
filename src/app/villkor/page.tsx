@@ -7,21 +7,6 @@ export const metadata: Metadata = {
 }
 
 export default function VillkorPage() {
-  const sveaLinks = [
-    {
-      text: 'Betalning via faktura',
-      href: 'https://cdn.svea.com/webpay/sv-SE/WP_Fakturavillkor.pdf',
-    },
-    {
-      text: 'Allmänna villkor kontokredit',
-      href: 'https://cdn.svea.com/webpay/sv-SE/WP_Allmanna%20villkor%20Delbetalning_Konto.pdf',
-    },
-    {
-      text: 'Standardiserad europeisk konsumentkreditinformation',
-      href: 'https://cdn.svea.com/webpay/sv-SE/WP_SEKKI.pdf',
-    },
-  ]
-
   return (
     <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
       <SiteHeader />
@@ -95,41 +80,16 @@ export default function VillkorPage() {
             Betalning
           </h2>
           <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--muted)' }}>
-            Vi erbjuder betalning via Svea Bank Checkout med följande alternativ:
-            faktura, delbetalning, Swish samt kort- eller bankbetalning. Tjänsten är
-            kostnadsfri men eventuella avgifter kan tillkomma beroende på valt betalsätt.
-            Genom att använda tjänsten godkänner du{' '}
-            <a href="https://cdn.svea.com/webpay/sv-SE/SE_Checkout_villkor.pdf"
+            Vi erbjuder betalning via Stripe med följande alternativ:
+            kortbetalning (Visa, Mastercard) och Klarna (faktura/delbetalning).
+            Betalningen hanteras säkert av Stripe och din kortinformation
+            lagras aldrig hos oss. Läs mer i{' '}
+            <a href="https://stripe.com/se/privacy"
               target="_blank" rel="noopener noreferrer"
               className="text-[#1A5EA8] hover:underline">
-              Sveas villkor
+              Stripes integritetspolicy
             </a>.
           </p>
-
-          {/* Svea PDF-länkar */}
-          <div className="rounded-lg overflow-hidden border"
-            style={{ borderColor: '#DDE4ED' }}>
-            {sveaLinks.map((link, i) => (
-              <a
-                key={i}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between px-5 py-4
-                  hover:bg-gray-50 transition-colors"
-                style={{
-                  borderBottom: i < sveaLinks.length - 1 ? '1px solid #EEF1F5' : 'none',
-                  color: 'var(--navy)',
-                }}
-              >
-                <span className="text-sm font-medium">{link.text}</span>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-                  stroke="#1A5EA8" strokeWidth="1.5" strokeLinecap="round">
-                  <path d="M3 8h10M9 4l4 4-4 4" />
-                </svg>
-              </a>
-            ))}
-          </div>
         </section>
 
         {/* Personuppgifter */}

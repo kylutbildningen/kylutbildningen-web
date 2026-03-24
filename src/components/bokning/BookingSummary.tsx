@@ -164,7 +164,7 @@ export function BookingSummary({ event, formData, priceOptions = [] }: BookingSu
           className="mt-2 text-xs"
           style={{ color: "var(--slate-light)" }}
         >
-          Betalning: {formData.paymentMethod === "card" ? "Kort (Svea)" : "Faktura"}
+          Betalning: {formData.paymentMethod === "card" ? "Kort (Stripe)" : "Faktura"}
         </p>
       </div>
     </div>

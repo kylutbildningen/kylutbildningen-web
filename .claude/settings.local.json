@@ -20,7 +20,20 @@
       "Bash(curl:*)",
       "Bash(cd:*)",
       "Bash(npx tsc:*)",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "mcp__claude_ai_Vercel__get_runtime_logs",
+      "Bash(find C:Usersmartieduadminkylutbildningen-web/src/app -type d -name *onboarding* -o -type d -name *auth*)",
+      "WebSearch",
+      "WebFetch(domain:www.sanity.io)",
+      "Bash(npm ls:*)",
+      "Bash(node:*)",
+      "Bash(source .env.local)",
+      "Bash(find C:Usersmartieduadminkylutbildningen-web -name *supabase*server* -type f)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(find C:Usersmartieduadminkylutbildningen-web/src -type f \\\\\\(-name *onboard* -o -name *invitation* -o -name *invite* \\\\\\) -o -path *onboarding*)",
+      "Bash(npx supabase:*)",
+      "Bash(curl -s -X POST \"https://ombbgasscrpkuejpgwvc.supabase.co/pg\" -H \"apikey: $SUPABASE_SERVICE_ROLE_KEY\" -H \"Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY\" -H \"Content-Type: application/json\" -d '{\"\"query\"\": \"\"CREATE TABLE IF NOT EXISTS public.svea_orders \\(id UUID PRIMARY KEY DEFAULT gen_random_uuid\\(\\), client_order_number TEXT NOT NULL, svea_order_id BIGINT NOT NULL UNIQUE, event_id INTEGER NOT NULL, form_data JSONB NOT NULL, customer_email TEXT NOT NULL, status TEXT NOT NULL DEFAULT ''''pending'''' CHECK \\(status IN \\(''''pending'''', ''''completed'''', ''''failed''''\\)\\), booking_number TEXT, created_at TIMESTAMPTZ DEFAULT now\\(\\)\\); ALTER TABLE public.svea_orders ENABLE ROW LEVEL SECURITY;\"\"}')",
+      "WebFetch(domain:paymentsdocs.svea.com)"
     ]
   }
 }

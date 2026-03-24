@@ -49,6 +49,8 @@ export default function CookiesPage() {
                 ['cookie-consent', 'Sparar ditt val om cookies', '1 år'],
                 ['sb-access-token', 'Inloggningssession (Supabase)', 'Session'],
                 ['sb-refresh-token', 'Förnyar inloggning (Supabase)', '7 dagar'],
+                ['__stripe_mid', 'Bedrägeriförebyggande (Stripe)', '1 år'],
+                ['__stripe_sid', 'Bedrägeriförebyggande (Stripe)', '30 min'],
               ].map((row, i) => (
                 row.map((cell, j) => (
                   <div key={`${i}-${j}`}
