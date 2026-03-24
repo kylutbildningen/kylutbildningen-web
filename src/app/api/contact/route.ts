@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const resend = getResend()
   await Promise.all([
     resend.emails.send({
-      from: 'noreply@kylutbildningen.com',
+      from: 'noreply@kylutbildningen.se',
       to: 'info@kylutbildningen.se',
       subject: `Kontaktformulär: ${subject} — ${name}`,
       html: `<h2>Nytt meddelande</h2>
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
         <p>${message.replace(/\n/g, '<br>')}</p>`,
     }),
     resend.emails.send({
-      from: 'noreply@kylutbildningen.com',
+      from: 'noreply@kylutbildningen.se',
       to: email,
       subject: 'Tack för ditt meddelande — Kylutbildningen i Göteborg',
       html: `<p>Hej ${name},</p>

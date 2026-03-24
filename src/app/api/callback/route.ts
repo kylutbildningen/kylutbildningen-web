@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   })
 
   await getResend().emails.send({
-    from: 'noreply@kylutbildningen.com',
+    from: 'noreply@kylutbildningen.se',
     to: 'info@kylutbildningen.se',
     subject: `Återuppringning önskad: ${name}`,
     html: `

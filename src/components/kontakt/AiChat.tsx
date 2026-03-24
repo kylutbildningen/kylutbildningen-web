@@ -15,10 +15,11 @@ export function AiChat() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [started, setStarted] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [messages])
 
   const send = async (text: string) => {
@@ -69,7 +70,7 @@ export function AiChat() {
       </div>
 
       {/* Meddelandevy */}
-      <div className="bg-white overflow-y-auto" style={{ minHeight: '320px', maxHeight: '420px' }}>
+      <div ref={scrollRef} className="bg-white overflow-y-auto" style={{ minHeight: '320px', maxHeight: '420px' }}>
         {!started ? (
           <div className="p-6">
             <p className="text-sm mb-5" style={{ color: 'var(--muted)' }}>
@@ -99,7 +100,7 @@ export function AiChat() {
                 </div>
               </div>
             ))}
-            <div ref={bottomRef} />
+            <div />
           </div>
         )}
       </div>
