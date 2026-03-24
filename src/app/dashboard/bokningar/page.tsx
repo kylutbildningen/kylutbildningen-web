@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -47,7 +47,15 @@ function classifyBooking(b: Booking): Tab {
   return isPast ? "avslutade" : "aktuella";
 }
 
-export default function BookingsPage() {
+export default function BookingsPageWrapper() {
+  return (
+    <Suspense>
+      <BookingsPage />
+    </Suspense>
+  );
+}
+
+function BookingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
