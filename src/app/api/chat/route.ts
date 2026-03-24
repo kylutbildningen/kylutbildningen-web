@@ -57,7 +57,21 @@ PRISER (ungefärliga, exkl. moms):
 - Nyexaminering Kat V: ca 14 500 kr
 - Omexaminering Kat V: ca 9 500 kr
 
-Om du inte kan svara: be dem kontakta oss via formuläret eller maila info@kylutbildningen.se`
+VIKTIGT — ANVÄND ALLTID MARKDOWN-LÄNKAR:
+När du nämner en kurs, länka alltid direkt till kurssidan:
+- Nyexaminering Kategori I & II → [Nyexaminering Kategori I & II](/kurser/nyexaminering-kategori-i-ii)
+- Omexaminering Kategori I & II → [Omexaminering Kategori I & II](/kurser/omexaminering-kategori-i-ii)
+- Nyexaminering Kategori V → [Nyexaminering Kategori V](/kurser/nyexaminering-kategori-v)
+- Omexaminering Kategori V → [Omexaminering Kategori V](/kurser/omexaminering-kategori-v)
+- Praktisk Kylteknik 5 dagar → [Praktisk Kylteknik 5 dagar](/kurser/praktisk-kylteknik-5-dagar)
+- Omprov / Examineringsprov → [Omprov](/kurser/omprov)
+- Provtryckningskurs → [Provtryckningskurs](/kurser/provtryckningskurs)
+- Utbildningsintyg → [Utbildningsintyg](/kurser/utbildningsintyg)
+
+Länka också till kontaktformuläret när du uppmanar att kontakta oss: [kontaktformuläret](/kontakt)
+Avsluta aldrig med "Kontakta oss på info@kylutbildningen.se" utan använd istället länken [kontaktformuläret](/kontakt).
+
+Om du inte kan svara: be dem använda [kontaktformuläret](/kontakt).`
 
 export async function POST(req: NextRequest) {
   const { messages } = await req.json()

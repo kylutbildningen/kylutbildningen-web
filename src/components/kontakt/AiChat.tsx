@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 interface Message { role: 'user' | 'assistant'; content: string }
 
@@ -96,7 +97,37 @@ export function AiChat() {
                     background: msg.role === 'user' ? 'var(--navy)' : 'var(--gray-bg)',
                     color: msg.role === 'user' ? 'white' : 'var(--text)',
                   }}>
-                  {msg.content || <span className="opacity-40">Skriver...</span>}
+                  {msg.role === 'assistant' ? (
+                    msg.content ? (
+                      <ReactMarkdown
+                        components={{
+                          a: ({ href, children }) => (
+                            <a
+                              href={href}
+                              target={href?.startsWith('/') ? undefined : '_blank'}
+                              rel={href?.startsWith('/') ? undefined : 'noopener noreferrer'}
+                              className="underline font-medium"
+                              style={{ color: '#1A5EA8' }}
+                            >
+                              {children}
+                            </a>
+                          ),
+                          p: ({ children }) => (
+                            <p className="mb-2 last:mb-0">{children}</p>
+                          ),
+                          strong: ({ children }) => (
+                            <strong className="font-semibold">{children}</strong>
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    ) : (
+                      <span className="opacity-40">Skriver...</span>
+                    )
+                  ) : (
+                    msg.content
+                  )}
                 </div>
               </div>
             ))}
