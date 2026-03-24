@@ -77,7 +77,8 @@ export function SiteHeader() {
         Kyl<span className="text-[#00C4FF]">utbildningen</span>
       </Link>
 
-      <nav className="flex items-center gap-8">
+      {/* Desktop nav */}
+      <nav className="hidden md:flex items-center gap-8">
         {navLinks.map(({ href, label }) =>
           href === '/kontakt' ? (
             <button
@@ -161,7 +162,64 @@ export function SiteHeader() {
           </Link>
         )}
       </nav>
+
+      {/* Hamburger */}
+      <button className="md:hidden flex flex-col gap-1.5 p-2" onClick={() => setMenuOpen(!menuOpen)} aria-label="Meny">
+        <span className={`block w-6 h-0.5 bg-white transition-transform ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+        <span className={`block w-6 h-0.5 bg-white transition-opacity ${menuOpen ? 'opacity-0' : ''}`} />
+        <span className={`block w-6 h-0.5 bg-white transition-transform ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+      </button>
       </div>
+
+      {/* Mobilmeny */}
+      {menuOpen && (
+        <div className="md:hidden absolute top-16 left-0 right-0 z-40 py-4"
+          style={{ background: 'rgba(11,31,58,0.98)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          {navLinks.map(item =>
+            item.href === '/kontakt' ? (
+              <button
+                key={item.href}
+                onClick={() => { setMenuOpen(false); setContactOpen(true) }}
+                className="block w-full text-left px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                {item.label}
+              </button>
+            ) : (
+              <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)}
+                className="block px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors">
+                {item.label}
+              </Link>
+            )
+          )}
+
+          {user ? (
+            <>
+              <div className="px-6 pt-3 pb-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <p className="text-[10px] tracking-wider uppercase mb-2" style={{ color: '#8BA3BE' }}>
+                  {user.companyName || user.fullName}
+                </p>
+              </div>
+              <Link href="/dashboard" onClick={() => setMenuOpen(false)}
+                className="block px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors">
+                Dashboard
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left px-6 py-3 text-sm font-medium tracking-wider uppercase transition-colors"
+                style={{ color: '#8BA3BE' }}>
+                Logga ut
+              </button>
+            </>
+          ) : (
+            <div className="px-6 pt-3 pb-1">
+              <Link href="/logga-in" onClick={() => setMenuOpen(false)}
+                className="block text-center py-3 bg-[#1A5EA8] text-white text-xs font-semibold tracking-wider uppercase rounded transition-colors hover:bg-[#2A7DD4]">
+                Logga in
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </header>
 
     <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
