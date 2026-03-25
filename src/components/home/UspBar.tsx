@@ -9,13 +9,12 @@ const ICONS: Record<string, React.ReactNode> = {
 export function UspBar({ items }: { items: { label: string; icon: string }[] }) {
   return (
     <div className="border-b" style={{ background: 'var(--gray-bg, #F0F3F7)', borderColor: '#DDE4ED' }}>
-      <div className="max-w-6xl mx-auto px-6 flex items-stretch">
+      <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-stretch">
         {items.map((item, i) => (
-          <div key={i} className="flex items-center gap-3.5 py-5 flex-1"
+          <div key={i} className="flex items-center gap-3.5 py-4 sm:py-5 sm:flex-1"
             style={{
               paddingRight: i < items.length - 1 ? '40px' : 0,
               marginRight: i < items.length - 1 ? '40px' : 0,
-              borderRight: i < items.length - 1 ? '1px solid #DDE4ED' : 'none'
             }}>
             <div className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded"
               style={{ background: 'var(--navy)' }}>
@@ -27,6 +26,10 @@ export function UspBar({ items }: { items: { label: string; icon: string }[] }) 
             <strong className="block text-[13px] font-semibold" style={{ color: 'var(--navy)' }}>
               {item.label}
             </strong>
+            {/* Separator — only on desktop, not on last item */}
+            {i < items.length - 1 && (
+              <div className="hidden sm:block absolute right-0 top-0 bottom-0" />
+            )}
           </div>
         ))}
       </div>

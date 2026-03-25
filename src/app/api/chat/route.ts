@@ -1,10 +1,26 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { ApifyClient } from 'apify-client'
 import { NextRequest } from 'next/server'
 import { getUpcomingEvents } from '@/lib/eduadmin'
 
 const client = new Anthropic()
+const apify = new ApifyClient({ token: process.env.APIFY_API_TOKEN })
 
 const SYSTEM_PROMPT = `Du är en hjälpsam kursassistent för Kylutbildningen i Göteborg AB. Svara ALLTID på svenska. Var kortfattad och tydlig.
+
+Du har tillgång till ett sökverktyg (search_web) för att hämta aktuell information. Använd det NÄR:
+- Någon frågar om aktuella certifieringskrav eller priser från INCERT
+- Någon frågar om F-gasförordningen eller regelverket
+- Du behöver verifiera aktuell information från incert.se
+
+ANVÄND INTE sökning för:
+- Frågor om våra egna kurser, datum och priser (det vet du redan)
+- Allmänna frågor om kylbranschen
+
+VIKTIGA URLs att söka på vid behov:
+- https://incert.se/teknikomraden/koldmedier/ (certifieringskrav)
+- https://incert.se/prislista (aktuella priser)
+- https://incert.se/examinationscentra-2/ (examinationscenters)
 
 OM FÖRETAGET:
 - INCERT-godkänt examinationscenter sedan 1997
@@ -90,6 +106,47 @@ Exempel på när du ska eskalera:
 - Frågor du inte kan besvara med din information
 - Om kunden explicit ber att få tala med någon`
 
+const tools: Anthropic.Tool[] = [
+  {
+    name: 'search_web',
+    description: 'Hämtar aktuell information från en webbsida. Använd för INCERT-priser och certifieringskrav.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        url: {
+          type: 'string',
+          description: 'URL att hämta information från',
+        },
+        query: {
+          type: 'string',
+          description: 'Vad du letar efter på sidan',
+        },
+      },
+      required: ['url', 'query'],
+    },
+  },
+]
+
+async function searchWeb(url: string, query: string): Promise<string> {
+  try {
+    const run = await apify.actor('apify/rag-web-browser').call({
+      startUrls: [{ url }],
+      query,
+      maxCrawlPages: 1,
+    })
+
+    const { items } = await apify.dataset(run.defaultDatasetId).listItems()
+    if (items.length === 0) return 'Ingen information hittades.'
+
+    const item = items[0] as Record<string, unknown>
+    const text = item.text as string | undefined
+    return text?.substring(0, 2000) || 'Kunde inte läsa sidan.'
+  } catch (err) {
+    console.error('Apify error:', err)
+    return 'Kunde inte hämta information just nu.'
+  }
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('sv-SE', {
     year: 'numeric', month: 'short', day: 'numeric',
@@ -107,7 +164,7 @@ async function buildCatalog(): Promise<string> {
       return `- ${e.courseName} | ${e.city} | ${formatDate(e.startDate)}–${formatDate(e.endDate)} | ${spots}${price ? ` | ${price}` : ''} | eventId: ${e.eventId}`
     })
 
-    return `\n\nKOMMERANDE KURSTILLFÄLLEN (realtidsdata — använd detta för att svara på frågor om datum, platser och tillgänglighet):
+    return `\n\nKOMMANDE KURSTILLFÄLLEN (realtidsdata — använd detta för att svara på frågor om datum, platser och tillgänglighet):
 ${lines.join('\n')}`
   } catch {
     return ''
@@ -118,35 +175,85 @@ export async function POST(req: NextRequest) {
   const { messages } = await req.json()
 
   const catalog = await buildCatalog()
+  const systemPrompt = SYSTEM_PROMPT + catalog
 
-  const stream = await client.messages.stream({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: SYSTEM_PROMPT + catalog,
-    messages,
-  })
+  // Agentic loop — AI kan anropa verktyg flera gånger
+  let currentMessages = [...messages]
 
-  const encoder = new TextEncoder()
-  const readable = new ReadableStream({
-    async start(controller) {
-      for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' &&
-            chunk.delta.type === 'text_delta') {
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`)
-          )
-        }
-      }
-      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-      controller.close()
+  while (true) {
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system: systemPrompt,
+      tools,
+      messages: currentMessages,
+    })
+
+    // Om AI:n är klar — skicka svaret som SSE
+    if (response.stop_reason === 'end_turn') {
+      const text = response.content
+        .filter(b => b.type === 'text')
+        .map(b => (b as Anthropic.TextBlock).text)
+        .join('')
+
+      const encoder = new TextEncoder()
+      const readable = new ReadableStream({
+        start(controller) {
+          const words = text.split(' ')
+          let i = 0
+          const interval = setInterval(() => {
+            if (i >= words.length) {
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+              controller.close()
+              clearInterval(interval)
+              return
+            }
+            const chunk = (i === 0 ? '' : ' ') + words[i]
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`)
+            )
+            i++
+          }, 20)
+        },
+      })
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      })
     }
-  })
 
-  return new Response(readable, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  })
+    // Om AI:n vill använda ett verktyg
+    if (response.stop_reason === 'tool_use') {
+      const toolUse = response.content.find(b => b.type === 'tool_use') as Anthropic.ToolUseBlock
+
+      currentMessages.push({
+        role: 'assistant' as const,
+        content: response.content,
+      })
+
+      if (toolUse.name === 'search_web') {
+        const input = toolUse.input as { url: string; query: string }
+        const result = await searchWeb(input.url, input.query)
+
+        currentMessages.push({
+          role: 'user' as const,
+          content: [{
+            type: 'tool_result' as const,
+            tool_use_id: toolUse.id,
+            content: result,
+          }],
+        })
+      }
+
+      continue
+    }
+
+    break
+  }
+
+  return new Response('Stream error', { status: 500 })
 }

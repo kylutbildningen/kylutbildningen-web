@@ -17,12 +17,12 @@ export function UpcomingCourses({ heading, events, templateSlugMap = {} }: Props
           Aktuellt
         </div>
         <h2 className="font-condensed font-bold uppercase leading-none tracking-tight mb-12"
-          style={{ fontSize: 'clamp(36px, 4vw, 52px)', color: 'var(--navy)' }}>
+          style={{ fontSize: 'clamp(28px, 4vw, 52px)', color: 'var(--navy)' }}>
           {heading ?? 'Kommande kurser'}
         </h2>
 
         {/* Grid */}
-        <div className="grid grid-cols-3 gap-px mb-8"
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px mb-8"
           style={{ background: '#DDE4ED', border: '1px solid #DDE4ED', borderRadius: '6px', overflow: 'hidden' }}>
           {events.slice(0, 6).map(event => {
             const full = event.isFullyBooked

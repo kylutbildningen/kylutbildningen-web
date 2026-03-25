@@ -21,11 +21,11 @@ export function CourseCategories({ heading, categories }: Props) {
           Utbildningar
         </div>
         <h2 className="font-condensed font-bold uppercase leading-none tracking-tight text-white mb-12"
-          style={{ fontSize: 'clamp(36px, 4vw, 52px)' }}>
+          style={{ fontSize: 'clamp(28px, 4vw, 52px)' }}>
           {heading ?? 'Våra utbildningsområden'}
         </h2>
 
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {categories.map((cat, i) => (
             <CategoryCard key={cat.name} cat={cat} index={i} />
           ))}
