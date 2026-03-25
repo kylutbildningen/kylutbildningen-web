@@ -131,7 +131,7 @@ export function AiChat({ compact = false, userContext }: Props) {
   }
 
   return (
-    <div className={compact ? '' : 'rounded-lg overflow-hidden'} style={compact ? undefined : { border: '1px solid var(--border)' }}>
+    <div className={compact ? 'flex flex-col h-full' : 'rounded-lg overflow-hidden'} style={compact ? undefined : { border: '1px solid var(--border)' }}>
       {/* Header — döljs i compact-läge (ChatWidget visar sin egen) */}
       {!compact && (
         <div className="flex items-center gap-3 px-5 py-4"
@@ -145,7 +145,7 @@ export function AiChat({ compact = false, userContext }: Props) {
       )}
 
       {/* Meddelandevy */}
-      <div ref={scrollRef} className="bg-white overflow-y-auto" style={{ minHeight: compact ? '200px' : '320px', maxHeight: compact ? '320px' : '420px' }}>
+      <div ref={scrollRef} className={`bg-white overflow-y-auto ${compact ? 'flex-1' : ''}`} style={compact ? { minHeight: 0 } : { minHeight: '320px', maxHeight: '420px' }}>
         {!started ? (
           <div className="p-6">
             <p className="text-sm mb-5" style={{ color: 'var(--muted)' }}>
@@ -366,7 +366,7 @@ export function AiChat({ compact = false, userContext }: Props) {
       </div>
 
       {/* Input */}
-      <div className="flex gap-2 p-4"
+      <div className="flex gap-2 p-4 flex-shrink-0"
         style={{ borderTop: '1px solid var(--border)', background: '#FAFBFC' }}>
         <input type="text" value={input}
           onChange={e => setInput(e.target.value)}
