@@ -11,7 +11,9 @@ const SUGGESTED = [
   'Vad kostar kursen?',
 ]
 
-export function AiChat() {
+interface Props { compact?: boolean }
+
+export function AiChat({ compact = false }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -104,19 +106,21 @@ export function AiChat() {
   }
 
   return (
-    <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-      {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-4"
-        style={{ background: 'var(--navy)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <span className="w-2 h-2 rounded-full bg-[#00C4FF] animate-pulse" />
-        <span className="text-sm font-semibold text-white">Kursassistent</span>
-        <span className="text-xs ml-auto" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          Svarar direkt
-        </span>
-      </div>
+    <div className={compact ? '' : 'rounded-lg overflow-hidden'} style={compact ? undefined : { border: '1px solid var(--border)' }}>
+      {/* Header — döljs i compact-läge (ChatWidget visar sin egen) */}
+      {!compact && (
+        <div className="flex items-center gap-3 px-5 py-4"
+          style={{ background: 'var(--navy)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <span className="w-2 h-2 rounded-full bg-[#00C4FF] animate-pulse" />
+          <span className="text-sm font-semibold text-white">Kursassistent</span>
+          <span className="text-xs ml-auto" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            Svarar direkt
+          </span>
+        </div>
+      )}
 
       {/* Meddelandevy */}
-      <div ref={scrollRef} className="bg-white overflow-y-auto" style={{ minHeight: '320px', maxHeight: '420px' }}>
+      <div ref={scrollRef} className="bg-white overflow-y-auto" style={{ minHeight: compact ? '200px' : '320px', maxHeight: compact ? '320px' : '420px' }}>
         {!started ? (
           <div className="p-6">
             <p className="text-sm mb-5" style={{ color: 'var(--muted)' }}>

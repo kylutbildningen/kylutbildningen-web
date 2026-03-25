@@ -1,4 +1,3 @@
-import { AiChat } from '@/components/kontakt/AiChat'
 import { ContactForm } from '@/components/kontakt/ContactForm'
 import { CallbackForm } from '@/components/kontakt/CallbackForm'
 
@@ -19,8 +18,8 @@ export default function KontaktPage() {
           </h1>
           <p className="mt-4 text-lg font-light max-w-xl"
             style={{ color: 'rgba(255,255,255,0.55)' }}>
-            Ställ en fråga direkt till vår kursassistent, eller skicka
-            ett meddelande så återkommer vi inom en arbetsdag.
+            Skicka ett meddelande eller lämna ditt nummer så
+            återkommer vi inom en arbetsdag.
           </p>
         </div>
       </div>
@@ -29,20 +28,7 @@ export default function KontaktPage() {
       <div className="max-w-6xl mx-auto px-6 py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
 
-          {/* VÄNSTER — AI-assistent */}
-          <div>
-            <h2 className="font-condensed font-bold uppercase text-2xl mb-2"
-              style={{ color: 'var(--navy)' }}>
-              Fråga kursassistenten
-            </h2>
-            <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>
-              Få svar direkt — assistenten hjälper dig hitta rätt kurs
-              och svarar på vanliga frågor om F-gas-certifiering.
-            </p>
-            <AiChat />
-          </div>
-
-          {/* HÖGER — Kontaktformulär */}
+          {/* VÄNSTER — Skicka meddelande */}
           <div>
             <h2 className="font-condensed font-bold uppercase text-2xl mb-2"
               style={{ color: 'var(--navy)' }}>
@@ -53,23 +39,19 @@ export default function KontaktPage() {
             </p>
             <ContactForm />
           </div>
-        </div>
 
-        {/* Ring mig upp */}
-        <div className="mt-12 pt-12" style={{ borderTop: '1px solid var(--border)' }}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-            <div>
-              <h2 className="font-condensed font-bold uppercase text-2xl mb-2"
-                style={{ color: 'var(--navy)' }}>
-                Vill du bli uppringd?
-              </h2>
-              <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                Lämna ditt nummer så ringer vi upp dig — normalt inom samma arbetsdag.
-                Vi hjälper dig hitta rätt kurs och kan boka direkt i telefon.
-              </p>
-            </div>
+          {/* HÖGER — Ring mig upp */}
+          <div>
+            <h2 className="font-condensed font-bold uppercase text-2xl mb-2"
+              style={{ color: 'var(--navy)' }}>
+              Vill du bli uppringd?
+            </h2>
+            <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>
+              Lämna ditt nummer så ringer vi upp dig inom samma arbetsdag.
+            </p>
             <CallbackForm />
           </div>
+
         </div>
 
         {/* Kontaktinfo */}
