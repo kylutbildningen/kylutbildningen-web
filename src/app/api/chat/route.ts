@@ -104,7 +104,21 @@ Exempel på när du ska eskalera:
 - Klagomål eller reklamationer
 - Företagsbokning för fler än 3 personer
 - Frågor du inte kan besvara med din information
-- Om kunden explicit ber att få tala med någon`
+- Om kunden explicit ber att få tala med någon
+
+PÅMINNELSE VIA MAIL:
+Om en kund visar intresse för en kurs men verkar tveka eller säger att de ska "fundera", "kolla upp" eller "höra med chefen", erbjud ett påminnelsemail.
+
+Avsluta ditt svar med exakt denna rad:
+[ERBJUD_PÅMINNELSE: {kursnamn}]
+
+Exempel:
+- Kund: "Jag ska fundera lite"
+  → [ERBJUD_PÅMINNELSE: Nyexaminering Kategori I & II]
+- Kund: "Ska höra med min chef"
+  → [ERBJUD_PÅMINNELSE: Omexaminering Kategori V]
+- Kund: "Vilka datum finns?"
+  → Svara på frågan, inget erbjudande behövs ännu`
 
 const tools: Anthropic.Tool[] = [
   {
@@ -172,10 +186,28 @@ ${lines.join('\n')}`
 }
 
 export async function POST(req: NextRequest) {
-  const { messages } = await req.json()
+  const { messages, userContext } = await req.json()
 
   const catalog = await buildCatalog()
-  const systemPrompt = SYSTEM_PROMPT + catalog
+  let systemPrompt = SYSTEM_PROMPT + catalog
+
+  if (userContext?.name) {
+    systemPrompt += `
+
+INLOGGAD ANVÄNDARE:
+Namn: ${userContext.name}
+E-post: ${userContext.email || '—'}
+Telefon: ${userContext.phone || '—'}
+Företag: ${userContext.company || '—'}
+Org.nr: ${userContext.orgNumber || '—'}
+
+VIKTIGT: Hälsa användaren med förnamnet i ditt första svar. Ex: "Hej ${userContext.name.split(' ')[0]}! ..."
+
+Om användaren vill boka en kurs:
+- Du vet redan deras uppgifter — bekräfta dem istället för att fråga
+- Ex: "Vill du boka som ${userContext.company || 'ditt företag'}? Dina uppgifter fylls i automatiskt på bokningssidan."
+- Länka direkt till bokningssidan: [Boka denna kurs](/boka/EVENT_ID)`
+  }
 
   // Agentic loop — AI kan anropa verktyg flera gånger
   let currentMessages = [...messages]

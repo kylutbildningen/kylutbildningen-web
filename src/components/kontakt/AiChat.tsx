@@ -11,9 +11,20 @@ const SUGGESTED = [
   'Vad kostar kursen?',
 ]
 
-interface Props { compact?: boolean }
+interface UserContext {
+  name?: string
+  email?: string
+  phone?: string
+  company?: string
+  orgNumber?: string
+}
 
-export function AiChat({ compact = false }: Props) {
+interface Props {
+  compact?: boolean
+  userContext?: UserContext | null
+}
+
+export function AiChat({ compact = false, userContext }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -24,6 +35,11 @@ export function AiChat({ compact = false }: Props) {
   const [escalationStep, setEscalationStep] = useState<'collect' | 'confirm' | 'sent'>('collect')
   const [contactInfo, setContactInfo] = useState({ name: '', email: '', phone: '' })
   const [chatSummary, setChatSummary] = useState('')
+
+  const [showReminder, setShowReminder] = useState(false)
+  const [reminderCourse, setReminderCourse] = useState('')
+  const [reminderEmail, setReminderEmail] = useState('')
+  const [reminderSent, setReminderSent] = useState(false)
 
   useEffect(() => {
     const el = scrollRef.current
@@ -42,7 +58,7 @@ export function AiChat({ compact = false }: Props) {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: newMessages, userContext }),
       })
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
@@ -61,17 +77,26 @@ export function AiChat({ compact = false }: Props) {
         }
       }
 
-      // Check for escalation tag
+      // Check for escalation and reminder tags
       setMessages(prev => {
         const updated = [...prev]
         const lastMsg = updated[updated.length - 1]
-        if (lastMsg.content.includes('[ESKALERA]')) {
-          updated[updated.length - 1] = {
-            ...lastMsg,
-            content: lastMsg.content.replace('[ESKALERA]', '').trim()
-          }
+        let content = lastMsg.content
+
+        if (content.includes('[ESKALERA]')) {
+          content = content.replace('[ESKALERA]', '').trim()
           setTimeout(() => setShowEscalation(true), 800)
         }
+
+        const reminderMatch = content.match(/\[ERBJUD_PÅMINNELSE: (.+?)\]/)
+        if (reminderMatch) {
+          content = content.replace(reminderMatch[0], '').trim()
+          setReminderCourse(reminderMatch[1])
+          if (userContext?.email) setReminderEmail(userContext.email)
+          setTimeout(() => setShowReminder(true), 800)
+        }
+
+        updated[updated.length - 1] = { ...lastMsg, content }
         return updated
       })
     } finally {
@@ -124,7 +149,9 @@ export function AiChat({ compact = false }: Props) {
         {!started ? (
           <div className="p-6">
             <p className="text-sm mb-5" style={{ color: 'var(--muted)' }}>
-              Hej! Ställ en fråga om våra kurser eller välj ett av alternativen nedan.
+              {userContext?.name
+                ? `Hej ${userContext.name.split(' ')[0]}! Ställ en fråga om våra kurser eller välj ett av alternativen nedan.`
+                : 'Hej! Ställ en fråga om våra kurser eller välj ett av alternativen nedan.'}
             </p>
             <div className="space-y-2">
               {SUGGESTED.map((q, i) => (
@@ -275,6 +302,61 @@ export function AiChat({ compact = false }: Props) {
                 <p className="text-xs mt-1" style={{ color: '#1A5EA8' }}>
                   Vi återkommer till {contactInfo.email} inom en arbetsdag.
                 </p>
+              </div>
+            )}
+
+            {/* Reminder offer */}
+            {showReminder && !reminderSent && (
+              <div className="p-4 rounded-lg"
+                style={{ background: '#F0F5FF', border: '1px solid #B5D4F4' }}>
+                <p className="text-xs font-semibold mb-1" style={{ color: '#0C447C' }}>
+                  Vill du ha en påminnelse?
+                </p>
+                <p className="text-xs mb-3" style={{ color: '#1A5EA8' }}>
+                  Jag kan skicka dig kommande datum för{' '}
+                  <strong>{reminderCourse}</strong> via mail.
+                </p>
+                <input
+                  type="email"
+                  value={reminderEmail}
+                  onChange={e => setReminderEmail(e.target.value)}
+                  placeholder="Din e-postadress"
+                  className="w-full text-xs px-3 py-2 rounded border mb-2"
+                  style={{ borderColor: '#B5D4F4' }}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowReminder(false)}
+                    className="flex-1 py-2 text-xs rounded"
+                    style={{ border: '1px solid #B5D4F4', color: '#1A5EA8' }}>
+                    Nej tack
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await fetch('/api/reminder', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          email: reminderEmail,
+                          course: reminderCourse,
+                        }),
+                      })
+                      setReminderSent(true)
+                      setShowReminder(false)
+                    }}
+                    disabled={!reminderEmail.includes('@')}
+                    className="flex-1 py-2 text-xs text-white rounded disabled:opacity-40"
+                    style={{ background: '#1A5EA8' }}>
+                    Skicka datum
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {reminderSent && (
+              <div className="p-3 rounded-lg text-xs text-center"
+                style={{ background: '#F0F5FF', color: '#1A5EA8' }}>
+                ✓ Kursdatum skickade till {reminderEmail}
               </div>
             )}
 

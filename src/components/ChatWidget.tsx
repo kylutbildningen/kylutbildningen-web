@@ -1,49 +1,145 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { AiChat } from '@/components/kontakt/AiChat'
+
+export interface UserContext {
+  name?: string
+  email?: string
+  phone?: string
+  company?: string
+  orgNumber?: string
+}
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [dragging, setDragging] = useState(false)
+  const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
+  const [userContext, setUserContext] = useState<UserContext | null>(null)
   const pathname = usePathname()
 
-  // Dölj på kontaktsidan
+  useEffect(() => {
+    const supabase = createSupabaseBrowser()
+
+    const loadUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const [{ data: profile }, { data: membership }] = await Promise.all([
+        supabase.from('profiles').select('full_name, phone').eq('id', user.id).single(),
+        supabase.from('company_memberships').select('company_name, org_number').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single(),
+      ])
+
+      setUserContext({
+        name: profile?.full_name,
+        email: user.email,
+        phone: profile?.phone,
+        company: membership?.company_name,
+        orgNumber: membership?.org_number,
+      })
+    }
+
+    loadUser()
+  }, [])
+
   if (pathname === '/kontakt') return null
 
-  return (
-    <div className="fixed bottom-6 right-6 z-50">
+  const onDragStart = (e: React.MouseEvent) => {
+    setDragging(true)
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      px: position.x,
+      py: position.y,
+    }
+  }
 
-      {/* Chat-fönster */}
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragging) return
+      setPosition({
+        x: dragStart.current.px + (e.clientX - dragStart.current.x),
+        y: dragStart.current.py + (e.clientY - dragStart.current.y),
+      })
+    }
+    const onUp = () => setDragging(false)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [dragging])
+
+  return (
+    <div
+      className="fixed z-50"
+      style={{
+        bottom: `${24 - position.y}px`,
+        right: `${24 - position.x}px`,
+      }}
+    >
       {open && (
-        <div className="mb-4 rounded-xl overflow-hidden shadow-2xl"
+        <div
+          className="mb-4 rounded-xl overflow-hidden shadow-2xl flex flex-col"
           style={{
-            width: '360px',
-            maxHeight: '520px',
+            width: '380px',
+            height: '520px',
             border: '1px solid rgba(11,31,58,0.15)',
             background: 'white',
-          }}>
-
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3"
-            style={{ background: 'var(--navy)' }}>
+            resize: 'both',
+            overflow: 'auto',
+            minWidth: '300px',
+            minHeight: '400px',
+            maxWidth: '600px',
+          }}
+        >
+          {/* Header — drag-handle */}
+          <div
+            className="flex items-center justify-between px-4 py-3 cursor-move flex-shrink-0 select-none"
+            style={{ background: 'var(--navy)' }}
+            onMouseDown={onDragStart}
+          >
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#00C4FF] animate-pulse" />
               <span className="text-sm font-semibold text-white">Kursassistent</span>
-              <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                Svarar direkt
-              </span>
+              {userContext?.name ? (
+                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  — Hej {userContext.name.split(' ')[0]}!
+                </span>
+              ) : (
+                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  Svarar direkt
+                </span>
+              )}
             </div>
-            <button onClick={() => setOpen(false)}
-              className="text-white/40 hover:text-white transition-colors p-1">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M18 6L6 18M6 6l12 12"/>
+            {/* Drag-ikon + stäng */}
+            <div className="flex items-center gap-3">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="rgba(255,255,255,0.4)" strokeWidth="2">
+                <circle cx="9" cy="5" r="1" fill="currentColor"/>
+                <circle cx="15" cy="5" r="1" fill="currentColor"/>
+                <circle cx="9" cy="12" r="1" fill="currentColor"/>
+                <circle cx="15" cy="12" r="1" fill="currentColor"/>
+                <circle cx="9" cy="19" r="1" fill="currentColor"/>
+                <circle cx="15" cy="19" r="1" fill="currentColor"/>
               </svg>
-            </button>
+              <button onClick={() => setOpen(false)}
+                className="text-white/40 hover:text-white transition-colors">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Chatt */}
-          <AiChat compact />
+          <div className="flex-1 overflow-hidden">
+            <AiChat compact userContext={userContext} />
+          </div>
         </div>
       )}
 
@@ -51,7 +147,7 @@ export function ChatWidget() {
       <button
         onClick={() => setOpen(!open)}
         className="w-14 h-14 rounded-full shadow-xl flex items-center
-          justify-center transition-all hover:scale-110 active:scale-95"
+          justify-center transition-all hover:scale-110 active:scale-95 ml-auto"
         style={{ background: 'var(--navy)' }}
         aria-label="Öppna kursassistent">
         {open ? (
