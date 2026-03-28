@@ -359,10 +359,10 @@ export function AiChat({ compact = false, userContext, onNewMessage }: Props) {
                                     return (
                                       <a
                                         href={`/logga-in?redirect=${encodeURIComponent(href!)}`}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold no-underline transition-colors"
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold no-underline transition-colors hover:opacity-80"
                                         style={{ background: 'var(--navy)', color: '#00C4FF' }}
                                       >
-                                        🔒 Logga in för att boka
+                                        🔒 Logga in
                                       </a>
                                     )
                                   }
@@ -370,10 +370,10 @@ export function AiChat({ compact = false, userContext, onNewMessage }: Props) {
                                     return (
                                       <a
                                         href={href}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold no-underline transition-colors hover:opacity-90"
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold no-underline transition-colors hover:opacity-80"
                                         style={{ background: '#1A5EA8', color: 'white' }}
                                       >
-                                        ✓ Boka — uppgifter fylls i automatiskt
+                                        Boka →
                                       </a>
                                     )
                                   }
