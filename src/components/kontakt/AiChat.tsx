@@ -353,17 +353,42 @@ export function AiChat({ compact = false, userContext, onNewMessage }: Props) {
                           <>
                             <ReactMarkdown
                               components={{
-                                a: ({ href, children }) => (
-                                  <a
-                                    href={href}
-                                    target={href?.startsWith('/') ? undefined : '_blank'}
-                                    rel={href?.startsWith('/') ? undefined : 'noopener noreferrer'}
-                                    className="underline font-medium"
-                                    style={{ color: '#1A5EA8' }}
-                                  >
-                                    {children}
-                                  </a>
-                                ),
+                                a: ({ href, children }) => {
+                                  const isBooking = href?.startsWith('/boka/')
+                                  if (isBooking && !userContext) {
+                                    return (
+                                      <a
+                                        href={`/logga-in?redirect=${encodeURIComponent(href!)}`}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold no-underline transition-colors"
+                                        style={{ background: 'var(--navy)', color: '#00C4FF' }}
+                                      >
+                                        🔒 Logga in för att boka
+                                      </a>
+                                    )
+                                  }
+                                  if (isBooking && userContext) {
+                                    return (
+                                      <a
+                                        href={href}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold no-underline transition-colors hover:opacity-90"
+                                        style={{ background: '#1A5EA8', color: 'white' }}
+                                      >
+                                        ✓ Boka — uppgifter fylls i automatiskt
+                                      </a>
+                                    )
+                                  }
+                                  return (
+                                    <a
+                                      href={href}
+                                      target={href?.startsWith('/') ? undefined : '_blank'}
+                                      rel={href?.startsWith('/') ? undefined : 'noopener noreferrer'}
+                                      className="underline font-medium"
+                                      style={{ color: '#1A5EA8' }}
+                                    >
+                                      {children}
+                                    </a>
+                                  )
+                                },
                                 p: ({ children }) => (
                                   <p className="mb-2 last:mb-0">{children}</p>
                                 ),
