@@ -1,10 +1,35 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { ApifyClient } from 'apify-client'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getUpcomingEvents } from '@/lib/eduadmin'
 
 const client = new Anthropic()
 const apify = new ApifyClient({ token: process.env.APIFY_API_TOKEN })
+
+// --- Rate limiter ---
+const RATE_LIMIT = { perMinute: 10, perHour: 40 }
+const hits = new Map<string, number[]>()
+
+// Clean old entries every 10 minutes
+setInterval(() => {
+  const cutoff = Date.now() - 3600_000
+  for (const [ip, timestamps] of hits) {
+    const fresh = timestamps.filter(t => t > cutoff)
+    if (fresh.length === 0) hits.delete(ip)
+    else hits.set(ip, fresh)
+  }
+}, 600_000)
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now()
+  const timestamps = hits.get(ip) || []
+  const lastMinute = timestamps.filter(t => now - t < 60_000).length
+  const lastHour = timestamps.filter(t => now - t < 3600_000).length
+  if (lastMinute >= RATE_LIMIT.perMinute || lastHour >= RATE_LIMIT.perHour) return true
+  timestamps.push(now)
+  hits.set(ip, timestamps)
+  return false
+}
 
 const SYSTEM_PROMPT = `Du är en hjälpsam kursassistent för Kylutbildningen i Göteborg AB. Svara ALLTID på svenska. Var kortfattad och tydlig.
 
@@ -63,7 +88,7 @@ VANLIGA FRÅGOR:
 → Tillsvidare, men kräver omexaminering vart femte år.
 
 "Behöver jag förkunskaper?"
-→ Inga formella krav.
+→ Inga formella förkunskaper krävs för att gå kursen, men det är bra om man har praktisk erfarenhet sedan tidigare.
 
 "Kan vi boka för flera anställda?"
 → Ja, kontakta oss för gruppbokning.
@@ -186,6 +211,17 @@ ${lines.join('\n')}`
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-real-ip')
+    || 'unknown'
+
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: 'För många förfrågningar. Försök igen om en stund.' },
+      { status: 429 }
+    )
+  }
+
   const { messages, userContext } = await req.json()
 
   const catalog = await buildCatalog()

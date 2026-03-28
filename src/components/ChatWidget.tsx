@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { AiChat } from '@/components/kontakt/AiChat'
@@ -14,9 +14,12 @@ export interface UserContext {
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [minimized, setMinimized] = useState(false)
   const [chatKey, setChatKey] = useState(0)
   const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [maximized, setMaximized] = useState(false)
   const dragging = useRef(false)
   const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
   const [userContext, setUserContext] = useState<UserContext | null>(null)
@@ -46,7 +49,12 @@ export function ChatWidget() {
     loadUser()
   }, [])
 
-  if (pathname === '/kontakt') return null
+  // Listen for open-chat events from header/footer
+  useEffect(() => {
+    const handler = () => { handleOpen() }
+    window.addEventListener('open-chat-widget', handler)
+    return () => window.removeEventListener('open-chat-widget', handler)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onDragStart = (e: React.MouseEvent) => {
     dragging.current = true
@@ -76,10 +84,32 @@ export function ChatWidget() {
   }, [])
 
   const handleClose = () => {
-    setOpen(false)
-    setMinimized(false)
-    setChatKey(k => k + 1)
+    setClosing(true)
+    setTimeout(() => {
+      setOpen(false)
+      setClosing(false)
+      setMinimized(false)
+      setMaximized(false)
+      setChatKey(k => k + 1)
+    }, 200)
   }
+
+  const handleOpen = () => {
+    setOpen(true)
+    setMinimized(false)
+    setUnreadCount(0)
+  }
+
+  const handleUnminimize = () => {
+    setMinimized(false)
+    setUnreadCount(0)
+  }
+
+  const onNewMessage = useCallback(() => {
+    if (minimized) {
+      setUnreadCount(c => c + 1)
+    }
+  }, [minimized])
 
   return (
     <div
@@ -89,59 +119,67 @@ export function ChatWidget() {
         right: `${24 - position.x}px`,
       }}
     >
-      {open && (
+      {(open || closing) && (
         <div
-          className="mb-4 rounded-xl shadow-2xl flex flex-col"
+          className={`mb-4 rounded-2xl flex flex-col ${closing ? 'chat-window-exit' : 'chat-window-enter'}`}
           style={{
-            width: minimized ? '280px' : '380px',
-            height: minimized ? 'auto' : undefined,
-            border: '1px solid rgba(11,31,58,0.15)',
+            width: minimized ? '280px' : maximized ? '600px' : '380px',
+            height: minimized ? 'auto' : maximized ? '80vh' : undefined,
             background: 'white',
-            resize: minimized ? 'none' : 'both',
+            resize: minimized || maximized ? 'none' : 'both',
             overflow: 'hidden',
             minWidth: minimized ? '280px' : '300px',
             minHeight: minimized ? 'auto' : '400px',
             maxWidth: '600px',
             maxHeight: minimized ? 'none' : '80vh',
+            boxShadow: '0 25px 50px -12px rgba(11,31,58,0.25), 0 0 0 1px rgba(11,31,58,0.06)',
+            transformOrigin: 'bottom right',
+            transition: 'width 0.25s ease, height 0.25s ease',
           }}
         >
-          {/* Header — drag-handle */}
+          {/* Header */}
           <div
             className="flex items-center justify-between px-4 py-3 flex-shrink-0 select-none"
-            style={{ background: 'var(--navy)', cursor: 'move' }}
+            style={{
+              background: 'linear-gradient(135deg, #0B1F3A 0%, #112847 100%)',
+              borderBottom: '1px solid rgba(0,196,255,0.1)',
+              cursor: 'move',
+            }}
             onMouseDown={onDragStart}
           >
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#00C4FF] animate-pulse" />
-              <span className="text-sm font-semibold text-white">Kursassistent</span>
-              {!minimized && (
-                userContext?.name ? (
-                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                    — Hej {userContext.name.split(' ')[0]}!
+            <div className="flex items-center gap-3">
+              {/* Robot avatar */}
+              <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(0,196,255,0.15)' }}>
+                <span className="text-xs">🤖</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-white leading-tight">Kursassistent</span>
+                {!minimized && (
+                  <span className="text-[10px] leading-tight" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                    {userContext?.name
+                      ? `Hej ${userContext.name.split(' ')[0]}!`
+                      : 'Svarar direkt'}
                   </span>
-                ) : (
-                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    Svarar direkt
-                  </span>
-                )
-              )}
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {/* Drag-ikoner */}
-              <svg width="10" height="14" viewBox="0 0 10 14" fill="none">
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="opacity-30">
                 {[0, 4, 8].map(y => (
                   <g key={y}>
-                    <circle cx="2" cy={y + 3} r="1" fill="rgba(255,255,255,0.3)"/>
-                    <circle cx="8" cy={y + 3} r="1" fill="rgba(255,255,255,0.3)"/>
+                    <circle cx="2" cy={y + 3} r="1" fill="white"/>
+                    <circle cx="8" cy={y + 3} r="1" fill="white"/>
                   </g>
                 ))}
               </svg>
 
-              {/* Minimera-knapp */}
+              {/* Minimera */}
               <button
-                onClick={(e) => { e.stopPropagation(); setMinimized(m => !m) }}
-                className="text-white/40 hover:text-white transition-colors p-1"
+                onClick={(e) => { e.stopPropagation(); setMinimized(m => !m); if (minimized) setUnreadCount(0) }}
+                className="text-white/40 hover:text-white transition-colors p-1 rounded hover:bg-white/10"
                 title={minimized ? 'Expandera' : 'Minimera'}
               >
                 {minimized ? (
@@ -157,10 +195,37 @@ export function ChatWidget() {
                 )}
               </button>
 
-              {/* Stäng-knapp — rensar historik */}
+              {/* Maximera/Återställ */}
+              {!minimized && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMaximized(m => !m) }}
+                  className="text-white/40 hover:text-white transition-colors p-1 rounded hover:bg-white/10"
+                  title={maximized ? 'Återställ' : 'Maximera'}
+                >
+                  {maximized ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="4 14 10 14 10 20"/>
+                      <polyline points="20 10 14 10 14 4"/>
+                      <line x1="14" y1="10" x2="21" y2="3"/>
+                      <line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 3 21 3 21 9"/>
+                      <polyline points="9 21 3 21 3 15"/>
+                      <line x1="21" y1="3" x2="14" y2="10"/>
+                      <line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                  )}
+                </button>
+              )}
+
+              {/* Stäng */}
               <button
                 onClick={(e) => { e.stopPropagation(); handleClose() }}
-                className="text-white/40 hover:text-white transition-colors p-1"
+                className="text-white/40 hover:text-white transition-colors p-1 rounded hover:bg-white/10"
                 title="Stäng och rensa"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -171,39 +236,57 @@ export function ChatWidget() {
             </div>
           </div>
 
-          {/* Chatt — flex-1 fyller fönstret vid resize */}
+          {/* Chat */}
           {!minimized && (
             <div className="flex-1 flex flex-col overflow-hidden">
-              <AiChat key={chatKey} compact userContext={userContext} />
+              <AiChat key={chatKey} compact userContext={userContext} onNewMessage={onNewMessage} />
             </div>
           )}
         </div>
       )}
 
-      {/* Floating-knapp */}
+      {/* Floating button */}
       <button
         onClick={() => {
           if (!open) {
-            setOpen(true)
-            setMinimized(false)
+            handleOpen()
+          } else if (minimized) {
+            handleUnminimize()
           } else {
-            setMinimized(m => !m)
+            setMinimized(true)
           }
         }}
-        className="w-14 h-14 rounded-full shadow-xl flex items-center
-          justify-center transition-all hover:scale-110 active:scale-95 ml-auto"
+        className="relative w-14 h-14 rounded-full shadow-xl flex items-center
+          justify-center transition-all duration-200 hover:scale-110 active:scale-95 ml-auto"
         style={{ background: 'var(--navy)' }}
         aria-label="Öppna kursassistent"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-          stroke="#00C4FF" strokeWidth="1.5" strokeLinecap="round">
-          <line x1="12" y1="2" x2="12" y2="22"/>
-          <line x1="2" y1="12" x2="22" y2="12"/>
-          <line x1="5" y1="5" x2="19" y2="19"/>
-          <line x1="19" y1="5" x2="5" y2="19"/>
-          <circle cx="12" cy="12" r="2" fill="#0B1F3A"
-            stroke="#00C4FF" strokeWidth="1.5"/>
-        </svg>
+        {/* Pulse ring */}
+        {!open && (
+          <span className="absolute inset-0 rounded-full chat-pulse-ring"
+            style={{ background: 'rgba(0,196,255,0.2)' }} />
+        )}
+
+        {/* Icon: chat bubble or X */}
+        {open ? (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+            stroke="#00C4FF" strokeWidth="2" strokeLinecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        ) : (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke="#00C4FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+          </svg>
+        )}
+
+        {/* Unread badge */}
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"
+            style={{ animation: 'messagePop 0.3s ease-out' }}>
+            {unreadCount}
+          </span>
+        )}
       </button>
     </div>
   )

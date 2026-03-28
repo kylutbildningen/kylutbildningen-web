@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { ContactModal } from '@/components/kontakt/ContactModal'
+function openChatWidget() {
+  window.dispatchEvent(new Event('open-chat-widget'))
+}
 
 interface UserInfo {
   fullName: string
@@ -16,7 +18,6 @@ export function SiteHeader() {
   const router = useRouter()
   const [user, setUser] = useState<UserInfo | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [contactOpen, setContactOpen] = useState(false)
 
   useEffect(() => {
     async function loadUser() {
@@ -83,9 +84,8 @@ export function SiteHeader() {
           href === '/kontakt' ? (
             <button
               key={href}
-              onClick={() => setContactOpen(true)}
-              className={`text-xs font-medium tracking-widest uppercase transition-colors
-                ${contactOpen ? 'text-white' : 'text-white/60 hover:text-white'}`}
+              onClick={openChatWidget}
+              className="text-xs font-medium tracking-widest uppercase transition-colors text-white/60 hover:text-white"
             >
               {label}
             </button>
@@ -179,7 +179,7 @@ export function SiteHeader() {
             item.href === '/kontakt' ? (
               <button
                 key={item.href}
-                onClick={() => { setMenuOpen(false); setContactOpen(true) }}
+                onClick={() => { setMenuOpen(false); openChatWidget() }}
                 className="block w-full text-left px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors"
               >
                 {item.label}
@@ -222,7 +222,6 @@ export function SiteHeader() {
       )}
     </header>
 
-    <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
     </>
   )
 }

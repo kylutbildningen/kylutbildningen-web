@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 
 export function SiteFooter() {
@@ -13,8 +15,9 @@ export function SiteFooter() {
             Kyl<span style={{ color: '#00C4FF' }}>utbildningen</span> i Göteborg AB
           </div>
           <div className="flex items-center gap-6">
-            <Link href="/kontakt" className="text-xs hover:text-white transition-colors"
-              style={{ color: 'rgba(255,255,255,0.3)' }}>Kontakt</Link>
+            <button onClick={() => window.dispatchEvent(new Event('open-chat-widget'))}
+              className="text-xs hover:text-white transition-colors"
+              style={{ color: 'rgba(255,255,255,0.3)' }}>Kontakt</button>
             <Link href="/villkor" className="text-xs hover:text-white transition-colors"
               style={{ color: 'rgba(255,255,255,0.3)' }}>Villkor</Link>
             <Link href="/cookies" className="text-xs hover:text-white transition-colors"
