@@ -12,6 +12,17 @@ export interface UserContext {
   orgNumber?: string
 }
 
+function useIsMobile() {
+  const [mobile, setMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+  return mobile
+}
+
 export function ChatWidget() {
   const [open, setOpen] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -24,6 +35,7 @@ export function ChatWidget() {
   const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0 })
   const [userContext, setUserContext] = useState<UserContext | null>(null)
   const pathname = usePathname()
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     const supabase = createSupabaseBrowser()
@@ -56,7 +68,16 @@ export function ChatWidget() {
     return () => window.removeEventListener('open-chat-widget', handler)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Lock body scroll on mobile when chat is open
+  useEffect(() => {
+    if (isMobile && open && !minimized) {
+      document.body.style.overflow = 'hidden'
+      return () => { document.body.style.overflow = '' }
+    }
+  }, [isMobile, open, minimized])
+
   const onDragStart = (e: React.MouseEvent) => {
+    if (isMobile) return
     dragging.current = true
     dragStart.current = {
       x: e.clientX,
@@ -111,6 +132,95 @@ export function ChatWidget() {
     }
   }, [minimized])
 
+  // Mobile: fullscreen overlay
+  if (isMobile) {
+    return (
+      <>
+        {(open || closing) && !minimized && (
+          <div
+            className={`fixed inset-0 z-50 flex flex-col ${closing ? 'chat-window-exit' : 'chat-window-enter'}`}
+            style={{ background: 'white', transformOrigin: 'bottom right' }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+              style={{
+                background: 'linear-gradient(135deg, #0B1F3A 0%, #112847 100%)',
+                borderBottom: '1px solid rgba(0,196,255,0.1)',
+                paddingTop: 'max(12px, env(safe-area-inset-top))',
+              }}>
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(0,196,255,0.15)' }}>
+                  <span className="text-xs">🤖</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-white leading-tight">Kursassistent</span>
+                  <span className="text-[10px] leading-tight" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                    {userContext?.name ? `Hej ${userContext.name.split(' ')[0]}!` : 'Svarar direkt'}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={handleClose}
+                className="text-white/60 hover:text-white transition-colors p-2 -mr-1 rounded-lg hover:bg-white/10"
+                aria-label="Stäng"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Chat */}
+            <div className="flex-1 flex flex-col overflow-hidden"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+              <AiChat key={chatKey} compact userContext={userContext} onNewMessage={onNewMessage} />
+            </div>
+          </div>
+        )}
+
+        {/* Floating button */}
+        <div className="fixed z-50" style={{ bottom: '16px', right: '16px' }}>
+          <button
+            onClick={() => {
+              if (!open) handleOpen()
+              else if (minimized) handleUnminimize()
+              else handleClose()
+            }}
+            className="relative w-14 h-14 rounded-full shadow-xl flex items-center
+              justify-center transition-all duration-200 active:scale-95"
+            style={{ background: 'var(--navy)' }}
+            aria-label="Öppna kursassistent"
+          >
+            {!open && (
+              <span className="absolute inset-0 rounded-full chat-pulse-ring"
+                style={{ background: 'rgba(0,196,255,0.2)' }} />
+            )}
+            {open ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke="#00C4FF" strokeWidth="2" strokeLinecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="#00C4FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+              </svg>
+            )}
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"
+                style={{ animation: 'messagePop 0.3s ease-out' }}>
+                {unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </>
+    )
+  }
+
+  // Desktop / tablet
   return (
     <div
       className="fixed z-50"
@@ -123,14 +233,14 @@ export function ChatWidget() {
         <div
           className={`mb-4 rounded-2xl flex flex-col ${closing ? 'chat-window-exit' : 'chat-window-enter'}`}
           style={{
-            width: minimized ? '280px' : maximized ? 'min(600px, calc(100vw - 32px))' : 'min(380px, calc(100vw - 32px))',
+            width: minimized ? '280px' : maximized ? 'min(600px, calc(100vw - 48px))' : 'min(380px, calc(100vw - 48px))',
             height: minimized ? 'auto' : maximized ? 'calc(100dvh - 100px)' : undefined,
             background: 'white',
             resize: minimized || maximized ? 'none' : 'both',
             overflow: 'hidden',
-            minWidth: minimized ? '280px' : '280px',
+            minWidth: minimized ? '280px' : '300px',
             minHeight: minimized ? 'auto' : 'min(400px, calc(100dvh - 100px))',
-            maxWidth: 'min(600px, calc(100vw - 32px))',
+            maxWidth: 'min(600px, calc(100vw - 48px))',
             maxHeight: minimized ? 'none' : 'calc(100dvh - 100px)',
             boxShadow: '0 25px 50px -12px rgba(11,31,58,0.25), 0 0 0 1px rgba(11,31,58,0.06)',
             transformOrigin: 'bottom right',
@@ -148,7 +258,6 @@ export function ChatWidget() {
             onMouseDown={onDragStart}
           >
             <div className="flex items-center gap-3">
-              {/* Robot avatar */}
               <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{ background: 'rgba(0,196,255,0.15)' }}>
                 <span className="text-xs">🤖</span>
@@ -166,7 +275,7 @@ export function ChatWidget() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Drag-ikoner */}
+              {/* Drag icon */}
               <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="opacity-30">
                 {[0, 4, 8].map(y => (
                   <g key={y}>
@@ -176,7 +285,7 @@ export function ChatWidget() {
                 ))}
               </svg>
 
-              {/* Minimera */}
+              {/* Minimize */}
               <button
                 onClick={(e) => { e.stopPropagation(); setMinimized(m => !m); if (minimized) setUnreadCount(0) }}
                 className="text-white/40 hover:text-white transition-colors p-1 rounded hover:bg-white/10"
@@ -195,7 +304,7 @@ export function ChatWidget() {
                 )}
               </button>
 
-              {/* Maximera/Återställ */}
+              {/* Maximize */}
               {!minimized && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setMaximized(m => !m) }}
@@ -222,7 +331,7 @@ export function ChatWidget() {
                 </button>
               )}
 
-              {/* Stäng */}
+              {/* Close */}
               <button
                 onClick={(e) => { e.stopPropagation(); handleClose() }}
                 className="text-white/40 hover:text-white transition-colors p-1 rounded hover:bg-white/10"
@@ -261,13 +370,10 @@ export function ChatWidget() {
         style={{ background: 'var(--navy)' }}
         aria-label="Öppna kursassistent"
       >
-        {/* Pulse ring */}
         {!open && (
           <span className="absolute inset-0 rounded-full chat-pulse-ring"
             style={{ background: 'rgba(0,196,255,0.2)' }} />
         )}
-
-        {/* Icon: chat bubble or X */}
         {open ? (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
             stroke="#00C4FF" strokeWidth="2" strokeLinecap="round">
@@ -279,8 +385,6 @@ export function ChatWidget() {
             <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
           </svg>
         )}
-
-        {/* Unread badge */}
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center"
             style={{ animation: 'messagePop 0.3s ease-out' }}>
