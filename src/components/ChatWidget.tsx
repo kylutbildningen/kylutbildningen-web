@@ -123,15 +123,15 @@ export function ChatWidget() {
         <div
           className={`mb-4 rounded-2xl flex flex-col ${closing ? 'chat-window-exit' : 'chat-window-enter'}`}
           style={{
-            width: minimized ? '280px' : maximized ? '600px' : '380px',
-            height: minimized ? 'auto' : maximized ? '80vh' : undefined,
+            width: minimized ? '280px' : maximized ? 'min(600px, calc(100vw - 32px))' : 'min(380px, calc(100vw - 32px))',
+            height: minimized ? 'auto' : maximized ? 'calc(100dvh - 100px)' : undefined,
             background: 'white',
             resize: minimized || maximized ? 'none' : 'both',
             overflow: 'hidden',
-            minWidth: minimized ? '280px' : '300px',
-            minHeight: minimized ? 'auto' : '400px',
-            maxWidth: '600px',
-            maxHeight: minimized ? 'none' : '80vh',
+            minWidth: minimized ? '280px' : '280px',
+            minHeight: minimized ? 'auto' : 'min(400px, calc(100dvh - 100px))',
+            maxWidth: 'min(600px, calc(100vw - 32px))',
+            maxHeight: minimized ? 'none' : 'calc(100dvh - 100px)',
             boxShadow: '0 25px 50px -12px rgba(11,31,58,0.25), 0 0 0 1px rgba(11,31,58,0.06)',
             transformOrigin: 'bottom right',
             transition: 'width 0.25s ease, height 0.25s ease',
