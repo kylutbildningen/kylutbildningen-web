@@ -8,7 +8,17 @@ import { SiteFooter } from '@/components/layout/SiteFooter'
 export const revalidate = 3600
 
 export const metadata: Metadata = {
-  title: 'Om oss — Kylutbildningen',
+  title: 'Om Kylutbildningen i Göteborg AB — INCERT-godkänt examinationscenter',
+  description: 'Kylutbildningen i Göteborg AB är ett INCERT-godkänt examinationscenter för F-gascertifiering sedan 1997. Vi erbjuder certifiering i alla kategorier.',
+  alternates: { canonical: 'https://kylutbildningen.com/om-oss' },
+  openGraph: {
+    title: 'Om Kylutbildningen i Göteborg AB',
+    description: 'INCERT-godkänt examinationscenter sedan 1997.',
+    url: 'https://kylutbildningen.com/om-oss',
+    siteName: 'Kylutbildningen i Göteborg AB',
+    locale: 'sv_SE',
+    type: 'website',
+  },
 }
 
 const MAPS_URL = 'https://www.google.com/maps/search/?api=1&query=A+Odhners+gata+7,+421+30+V%C3%A4stra+Fr%C3%B6lunda'

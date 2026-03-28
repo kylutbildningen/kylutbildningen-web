@@ -1,5 +1,20 @@
+import type { Metadata } from 'next'
 import { ContactForm } from '@/components/kontakt/ContactForm'
 import { CallbackForm } from '@/components/kontakt/CallbackForm'
+
+export const metadata: Metadata = {
+  title: 'Kontakta Kylutbildningen — Frågor om kurser och certifiering',
+  description: 'Kontakta Kylutbildningen i Göteborg AB med frågor om F-gas certifiering, kursbokningar och examineringsprov.',
+  alternates: { canonical: 'https://kylutbildningen.com/kontakt' },
+  openGraph: {
+    title: 'Kontakta Kylutbildningen',
+    description: 'Frågor om F-gas certifiering och kursbokningar.',
+    url: 'https://kylutbildningen.com/kontakt',
+    siteName: 'Kylutbildningen i Göteborg AB',
+    locale: 'sv_SE',
+    type: 'website',
+  },
+}
 
 export default function KontaktPage() {
   return (

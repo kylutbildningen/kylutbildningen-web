@@ -21,9 +21,16 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "Kylutbildningen — Boka utbildning",
-  description:
-    "Boka certifierade kylutbildningar. F-gasförordningen, köldmediehantering, läckagekontroll och mer.",
+  metadataBase: new URL('https://kylutbildningen.com'),
+  title: {
+    default: 'Kylutbildningen i Göteborg AB — F-gas certifiering',
+    template: '%s | Kylutbildningen',
+  },
+  description: 'INCERT-godkänt examinationscenter för F-gascertifiering i Göteborg sedan 1997. Boka kurser online.',
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default async function RootLayout({

@@ -11,8 +11,17 @@ import { COURSE_TEMPLATE_SLUG_MAP_QUERY } from '@/sanity/lib/queries'
 import type { EventCard } from '@/types/eduadmin'
 
 export const metadata: Metadata = {
-  title: 'Kommande kurser — Kylutbildningen',
-  description: 'Se alla tillgängliga kylutbildningar. Certifieringar, F-gas, köldmediehantering och mer. Boka online.',
+  title: 'Kommande kylkurser i Göteborg — Boka F-gas certifiering online',
+  description: 'Se alla tillgängliga kylkurser i Göteborg. Nyexaminering och omexaminering Kategori I, II och V. Boka din plats direkt online.',
+  alternates: { canonical: 'https://kylutbildningen.com/kurser' },
+  openGraph: {
+    title: 'Kommande kylkurser i Göteborg',
+    description: 'Nyexaminering och omexaminering Kategori I, II och V. Boka online.',
+    url: 'https://kylutbildningen.com/kurser',
+    siteName: 'Kylutbildningen i Göteborg AB',
+    locale: 'sv_SE',
+    type: 'website',
+  },
 }
 
 export const revalidate = 60

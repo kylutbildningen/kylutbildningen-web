@@ -1,4 +1,19 @@
+import type { Metadata } from 'next'
 import { sanityFetch } from '@/sanity/lib/live'
+
+export const metadata: Metadata = {
+  title: 'Kylutbildningar Göteborg — F-gas certifiering Kategori I, II & V | Kylutbildningen',
+  description: 'INCERT-godkänt examinationscenter i Göteborg sedan 1997. Boka F-gas certifiering Kategori I, II och V online. Nästa kurs startar snart — platser begränsade.',
+  alternates: { canonical: 'https://kylutbildningen.com' },
+  openGraph: {
+    title: 'Kylutbildningar Göteborg — F-gas certifiering',
+    description: 'INCERT-godkänt examinationscenter i Göteborg. Boka F-gas certifiering online.',
+    url: 'https://kylutbildningen.com',
+    siteName: 'Kylutbildningen i Göteborg AB',
+    locale: 'sv_SE',
+    type: 'website',
+  },
+}
 import { HOME_PAGE_QUERY, SITE_SETTINGS_QUERY, COURSE_TEMPLATE_SLUG_MAP_QUERY } from '@/sanity/lib/queries'
 import { getUpcomingEvents } from '@/lib/eduadmin'
 import { SiteHeader } from '@/components/layout/SiteHeader'
@@ -61,8 +76,37 @@ export default async function HomePage() {
 
   const layout = homeData?.layout?.length ? homeData.layout : DEFAULT_HOME_LAYOUT
 
+  const orgJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'EducationalOrganization',
+    name: 'Kylutbildningen i Göteborg AB',
+    url: 'https://kylutbildningen.com',
+    description: 'INCERT-godkänt examinationscenter för F-gascertifiering i Göteborg sedan 1997.',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: 'A Odhners gata 7',
+      postalCode: '421 30',
+      addressLocality: 'Västra Frölunda',
+      addressCountry: 'SE',
+    },
+    contactPoint: {
+      '@type': 'ContactPoint',
+      telephone: '+46-31-472636',
+      email: 'info@kylutbildningen.se',
+      contactType: 'customer service',
+      availableLanguage: 'Swedish',
+    },
+    sameAs: [
+      'https://kylutbildningen.se',
+    ],
+  }
+
   return (
     <div className="min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+      />
       <SiteHeader />
       <HeroSection
         heading={homeData?.heroHeading}

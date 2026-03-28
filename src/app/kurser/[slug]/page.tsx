@@ -29,8 +29,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const course = await client.fetch(COURSE_PAGE_QUERY, { slug })
   if (!course) return {}
   return {
-    title: `${course.title} — Kylutbildningen`,
-    description: course.shortDescription ?? undefined,
+    title: `${course.title} — F-gas certifiering Göteborg`,
+    description: course.shortDescription || `Boka ${course.title} i Göteborg. INCERT-godkänd examinering.`,
+    alternates: { canonical: `https://kylutbildningen.com/kurser/${slug}` },
+    openGraph: {
+      title: course.title,
+      description: course.shortDescription || `Boka ${course.title} i Göteborg.`,
+      url: `https://kylutbildningen.com/kurser/${slug}`,
+      siteName: 'Kylutbildningen i Göteborg AB',
+      locale: 'sv_SE',
+      type: 'website',
+    },
   }
 }
 
@@ -64,8 +73,62 @@ export default async function CourseSlugPage({ params }: PageProps) {
 
   const layout = course.layout?.length ? course.layout : DEFAULT_LAYOUT
 
+  const courseJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Course',
+    name: course.title,
+    description: course.shortDescription || `${course.title} — INCERT-godkänd examinering i Göteborg.`,
+    provider: {
+      '@type': 'Organization',
+      name: 'Kylutbildningen i Göteborg AB',
+      url: 'https://kylutbildningen.com',
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: 'A Odhners gata 7',
+        postalCode: '421 30',
+        addressLocality: 'Västra Frölunda',
+        addressCountry: 'SE',
+      },
+    },
+    offers: events.map(e => ({
+      '@type': 'Offer',
+      price: e.lowestPrice,
+      priceCurrency: 'SEK',
+      availability: e.isFullyBooked
+        ? 'https://schema.org/SoldOut'
+        : 'https://schema.org/InStock',
+      validFrom: e.startDate,
+      url: `https://kylutbildningen.com/boka/${e.eventId}`,
+    })),
+    hasCourseInstance: events.map(e => ({
+      '@type': 'CourseInstance',
+      courseMode: 'onsite',
+      location: {
+        '@type': 'Place',
+        name: 'Kylutbildningen Göteborg',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: 'A Odhners gata 7',
+          postalCode: '421 30',
+          addressLocality: 'Västra Frölunda',
+          addressCountry: 'SE',
+        },
+      },
+      startDate: e.startDate,
+      endDate: e.endDate,
+      instructor: {
+        '@type': 'Organization',
+        name: 'Kylutbildningen i Göteborg AB',
+      },
+    })),
+  }
+
   return (
     <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(courseJsonLd) }}
+      />
       <SiteHeader />
 
       {/* Header */}
