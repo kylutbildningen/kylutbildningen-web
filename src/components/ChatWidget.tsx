@@ -234,7 +234,7 @@ export function ChatWidget() {
           className={`mb-4 rounded-2xl flex flex-col ${closing ? 'chat-window-exit' : 'chat-window-enter'}`}
           style={{
             width: minimized ? '280px' : maximized ? 'min(600px, calc(100vw - 48px))' : 'min(380px, calc(100vw - 48px))',
-            height: minimized ? 'auto' : maximized ? 'calc(100dvh - 100px)' : undefined,
+            height: minimized ? 'auto' : maximized ? 'calc(100dvh - 100px)' : 'min(520px, calc(100dvh - 100px))',
             background: 'white',
             resize: minimized || maximized ? 'none' : 'both',
             overflow: 'hidden',

@@ -273,7 +273,13 @@ export function AiChat({ compact = false, userContext, onNewMessage }: Props) {
       )}
 
       {/* Messages */}
-      <div ref={scrollRef} className={`bg-white overflow-y-auto chat-scroll ${compact ? 'flex-1' : ''}`} style={compact ? { minHeight: 0 } : { minHeight: '320px', maxHeight: '420px' }}>
+      <div ref={scrollRef}
+        className={`bg-white overflow-y-auto chat-scroll ${compact ? 'flex-1' : ''}`}
+        style={{
+          ...(compact
+            ? { minHeight: 0, overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }
+            : { minHeight: '320px', maxHeight: '420px' }),
+        }}>
         {!started ? (
           <div className="p-5">
             <p className="text-sm mb-5" style={{ color: 'var(--muted)' }}>
