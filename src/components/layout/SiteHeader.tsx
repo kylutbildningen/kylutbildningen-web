@@ -73,7 +73,7 @@ export function SiteHeader() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-full">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 flex items-center justify-between h-full">
       <Link href="/" className="font-condensed font-bold text-lg tracking-widest uppercase text-white">
         Kyl<span className="text-[#00C4FF]">utbildningen</span>
       </Link>
@@ -180,13 +180,13 @@ export function SiteHeader() {
               <button
                 key={item.href}
                 onClick={() => { setMenuOpen(false); openChatWidget() }}
-                className="block w-full text-left px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                className="block w-full text-left px-4 md:px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors"
               >
                 {item.label}
               </button>
             ) : (
               <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)}
-                className="block px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors">
+                className="block px-4 md:px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors">
                 {item.label}
               </Link>
             )
@@ -194,24 +194,24 @@ export function SiteHeader() {
 
           {user ? (
             <>
-              <div className="px-6 pt-3 pb-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="px-4 md:px-6 pt-3 pb-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <p className="text-[10px] tracking-wider uppercase mb-2" style={{ color: '#8BA3BE' }}>
                   {user.companyName || user.fullName}
                 </p>
               </div>
               <Link href="/dashboard" onClick={() => setMenuOpen(false)}
-                className="block px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors">
+                className="block px-4 md:px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors">
                 Dashboard
               </Link>
               <button
                 onClick={handleLogout}
-                className="block w-full text-left px-6 py-3 text-sm font-medium tracking-wider uppercase transition-colors"
+                className="block w-full text-left px-4 md:px-6 py-3 text-sm font-medium tracking-wider uppercase transition-colors"
                 style={{ color: '#8BA3BE' }}>
                 Logga ut
               </button>
             </>
           ) : (
-            <div className="px-6 pt-3 pb-1">
+            <div className="px-4 md:px-6 pt-3 pb-1">
               <Link href="/logga-in" onClick={() => setMenuOpen(false)}
                 className="block text-center py-3 bg-[#1A5EA8] text-white text-xs font-semibold tracking-wider uppercase rounded transition-colors hover:bg-[#2A7DD4]">
                 Logga in
