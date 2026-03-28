@@ -1,7 +1,12 @@
 import { CourseGroup } from './CourseGroup'
 import type { CategoryGroup } from '@/lib/groupEvents'
 
-export function CategorySection({ category }: { category: CategoryGroup }) {
+interface Props {
+  category: CategoryGroup
+  slugMap?: Record<number, string>
+}
+
+export function CategorySection({ category, slugMap = {} }: Props) {
   return (
     <section>
       <div className="flex items-center gap-4 mb-8">
@@ -12,7 +17,7 @@ export function CategorySection({ category }: { category: CategoryGroup }) {
       </div>
       <div className="space-y-10">
         {category.courses.map(course => (
-          <CourseGroup key={course.courseName} group={course} />
+          <CourseGroup key={course.courseName} group={course} slugMap={slugMap} />
         ))}
       </div>
     </section>

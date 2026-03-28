@@ -6,6 +6,8 @@ import { CategorySection } from '@/components/kurser/CategorySection'
 import { CourseFilter } from '@/components/kurser/CourseFilter'
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
+import { client } from '@/sanity/lib/client'
+import { COURSE_TEMPLATE_SLUG_MAP_QUERY } from '@/sanity/lib/queries'
 import type { EventCard } from '@/types/eduadmin'
 
 export const metadata: Metadata = {
@@ -47,7 +49,15 @@ interface PageProps {
 
 export default async function KurserPage({ searchParams }: PageProps) {
   const params = await searchParams
-  const events = await getUpcomingEvents().catch(() => [])
+  const [events, slugMapRaw] = await Promise.all([
+    getUpcomingEvents().catch(() => []),
+    client.fetch(COURSE_TEMPLATE_SLUG_MAP_QUERY, {}, { next: { revalidate: 3600 } }),
+  ])
+
+  const slugMap: Record<number, string> = {}
+  for (const item of slugMapRaw) {
+    slugMap[item.eduAdminCourseTemplateId] = item.slug
+  }
 
   const categories = [...new Set(events.map(e => e.categoryName).filter(Boolean))].sort()
   const cities = [...new Set(events.map(e => e.city).filter(Boolean))].sort()
@@ -90,7 +100,7 @@ export default async function KurserPage({ searchParams }: PageProps) {
             </p>
           ) : (
             grouped.map(category => (
-              <CategorySection key={category.categoryName} category={category} />
+              <CategorySection key={category.categoryName} category={category} slugMap={slugMap} />
             ))
           )}
         </div>
