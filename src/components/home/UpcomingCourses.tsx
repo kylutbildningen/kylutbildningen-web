@@ -46,9 +46,9 @@ export function UpcomingCourses({ heading, events, templateSlugMap = {} }: Props
                 <div className="mt-auto flex items-center justify-between pt-4"
                   style={{ borderTop: '1px solid #EEF1F5' }}>
                   <div>
-                    {event.lowestPriceIncVat && event.lowestPriceIncVat > 0 && (
+                    {event.lowestPrice && event.lowestPrice > 0 && (
                       <div className="text-sm font-semibold" style={{ color: 'var(--navy)' }}>
-                        fr. {formatPrice(event.lowestPriceIncVat)}
+                        fr. {formatPrice(event.lowestPrice)} <span className="text-[10px] font-normal" style={{ color: 'var(--muted)' }}>exkl. moms</span>
                       </div>
                     )}
                     {full
