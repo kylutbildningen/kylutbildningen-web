@@ -32,11 +32,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: `${course.title} — F-gas certifiering Göteborg`,
     description: course.shortDescription || `Boka ${course.title} i Göteborg. INCERT-godkänd examinering.`,
-    alternates: { canonical: `https://kylutbildningen.com/kurser/${slug}` },
+    alternates: { canonical: `https://kylutbildningen.se/kurser/${slug}` },
     openGraph: {
       title: course.title,
       description: course.shortDescription || `Boka ${course.title} i Göteborg.`,
-      url: `https://kylutbildningen.com/kurser/${slug}`,
+      url: `https://kylutbildningen.se/kurser/${slug}`,
       siteName: 'Kylutbildningen i Göteborg AB',
       locale: 'sv_SE',
       type: 'website',
@@ -82,7 +82,7 @@ export default async function CourseSlugPage({ params }: PageProps) {
     provider: {
       '@type': 'Organization',
       name: 'Kylutbildningen i Göteborg AB',
-      url: 'https://kylutbildningen.com',
+      url: 'https://kylutbildningen.se',
       address: {
         '@type': 'PostalAddress',
         streetAddress: 'A Odhners gata 7',
@@ -99,7 +99,7 @@ export default async function CourseSlugPage({ params }: PageProps) {
         ? 'https://schema.org/SoldOut'
         : 'https://schema.org/InStock',
       validFrom: e.startDate,
-      url: `https://kylutbildningen.com/boka/${e.eventId}`,
+      url: `https://kylutbildningen.se/boka/${e.eventId}`,
     })),
     hasCourseInstance: events.map(e => ({
       '@type': 'CourseInstance',

@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
           <td style="padding:10px 12px;border-bottom:1px solid #EEF1F5;color:#555">${d.spots} platser kvar</td>
           <td style="padding:10px 12px;border-bottom:1px solid #EEF1F5;color:#555">fr. ${d.price?.toLocaleString('sv-SE')} kr</td>
           <td style="padding:10px 12px;border-bottom:1px solid #EEF1F5">
-            <a href="https://kylutbildningen.com/boka/${d.eventId}"
+            <a href="https://kylutbildningen.se/boka/${d.eventId}"
               style="background:#1A5EA8;color:white;padding:6px 14px;border-radius:4px;
                 text-decoration:none;font-size:12px;font-weight:600;white-space:nowrap">
               Boka →
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
             <tbody>${datesHtml}</tbody>
           </table>
           <div style="margin-top:24px;text-align:center">
-            <a href="https://kylutbildningen.com/kurser"
+            <a href="https://kylutbildningen.se/kurser"
               style="background:#0B1F3A;color:white;padding:12px 28px;
                 border-radius:6px;text-decoration:none;font-size:13px;
                 font-weight:600;letter-spacing:0.05em">

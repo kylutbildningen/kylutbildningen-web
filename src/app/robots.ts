@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/boka/', '/api/', '/logga-in', '/onboarding', '/dashboard', '/studio'],
     },
-    sitemap: 'https://kylutbildningen.com/sitemap.xml',
+    sitemap: 'https://kylutbildningen.se/sitemap.xml',
   }
 }

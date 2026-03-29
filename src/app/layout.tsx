@@ -24,7 +24,7 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://kylutbildningen.com'),
+  metadataBase: new URL('https://kylutbildningen.se'),
   title: {
     default: 'Kylutbildningen i Göteborg AB — F-gas certifiering',
     template: '%s | Kylutbildningen',

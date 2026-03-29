@@ -13,11 +13,11 @@ import type { EventCard } from '@/types/eduadmin'
 export const metadata: Metadata = {
   title: 'Kommande kylkurser i Göteborg — Boka F-gas certifiering online',
   description: 'Se alla tillgängliga kylkurser i Göteborg. Nyexaminering och omexaminering Kategori I, II och V. Boka din plats direkt online.',
-  alternates: { canonical: 'https://kylutbildningen.com/kurser' },
+  alternates: { canonical: 'https://kylutbildningen.se/kurser' },
   openGraph: {
     title: 'Kommande kylkurser i Göteborg',
     description: 'Nyexaminering och omexaminering Kategori I, II och V. Boka online.',
-    url: 'https://kylutbildningen.com/kurser',
+    url: 'https://kylutbildningen.se/kurser',
     siteName: 'Kylutbildningen i Göteborg AB',
     locale: 'sv_SE',
     type: 'website',

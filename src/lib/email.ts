@@ -4,7 +4,7 @@
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? "";
 const FROM_EMAIL = process.env.FROM_EMAIL ?? "bokning@kylutbildningen.se";
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kylutbildningen.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kylutbildningen.se";
 
 interface BookingEmailData {
   bookingNumber: string;

@@ -4,11 +4,11 @@ import { sanityFetch } from '@/sanity/lib/live'
 export const metadata: Metadata = {
   title: 'Kylutbildningar Göteborg — F-gas certifiering Kategori I, II & V | Kylutbildningen',
   description: 'INCERT-godkänt examinationscenter i Göteborg sedan 1997. Boka F-gas certifiering Kategori I, II och V online. Nästa kurs startar snart — platser begränsade.',
-  alternates: { canonical: 'https://kylutbildningen.com' },
+  alternates: { canonical: 'https://kylutbildningen.se' },
   openGraph: {
     title: 'Kylutbildningar Göteborg — F-gas certifiering',
     description: 'INCERT-godkänt examinationscenter i Göteborg. Boka F-gas certifiering online.',
-    url: 'https://kylutbildningen.com',
+    url: 'https://kylutbildningen.se',
     siteName: 'Kylutbildningen i Göteborg AB',
     locale: 'sv_SE',
     type: 'website',
@@ -79,7 +79,7 @@ export default async function HomePage() {
     '@context': 'https://schema.org',
     '@type': 'EducationalOrganization',
     name: 'Kylutbildningen i Göteborg AB',
-    url: 'https://kylutbildningen.com',
+    url: 'https://kylutbildningen.se',
     description: 'INCERT-godkänt examinationscenter för F-gascertifiering i Göteborg sedan 1997.',
     address: {
       '@type': 'PostalAddress',

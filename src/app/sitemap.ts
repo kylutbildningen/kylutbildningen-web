@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next'
 
-const BASE = 'https://kylutbildningen.com'
+const BASE = 'https://kylutbildningen.se'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
