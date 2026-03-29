@@ -16,13 +16,13 @@ export async function GET(request: NextRequest) {
     const data = await eduAdminFetch<ODataResponse<Record<string, unknown>>>(
       "/v1/odata/Bookings",
       {
-        $filter: `CustomerId eq ${cid}`,
+        $filter: `Customer/CustomerId eq ${cid}`,
         $expand: [
           "Customer($select=CustomerId,CustomerName)",
           "ContactPerson($select=PersonId,FirstName,LastName,Email,Phone)",
           "Participants($select=ParticipantId,PersonId,FirstName,LastName,Email,CivicRegistrationNumber,Canceled,PriceNameId)",
         ].join(","),
-        $select: "BookingId,EventId,CustomerId,TotalPriceExVat,TotalPriceIncVat,NumberOfParticipants,Created,Paid,Preliminary,PaymentMethodId,Invoiced,Notes,Reference,Canceled",
+        $select: "BookingId,EventId,TotalPriceExVat,TotalPriceIncVat,NumberOfParticipants,Created,Paid,Preliminary,PaymentMethodId,Invoiced,Notes,Reference",
         $orderby: "Created desc",
         $top: "500",
       },

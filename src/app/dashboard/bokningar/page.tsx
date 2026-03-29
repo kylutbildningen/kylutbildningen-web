@@ -19,7 +19,6 @@ interface Booking {
   Paid: boolean;
   Preliminary: boolean;
   Invoiced: boolean;
-  Canceled: boolean;
   PaymentMethodId: number;
   Notes: string;
   CourseName: string;
@@ -42,7 +41,6 @@ interface Booking {
 type Tab = "aktuella" | "avslutade" | "avbokade";
 
 function classifyBooking(b: Booking): Tab {
-  if (b.Canceled) return "avbokade";
   const activeParticipants = b.Participants.filter(p => !p.Canceled);
   if (activeParticipants.length === 0) return "avbokade";
   const isPast = b.Event?.StartDate && new Date(b.Event.StartDate) < new Date();
