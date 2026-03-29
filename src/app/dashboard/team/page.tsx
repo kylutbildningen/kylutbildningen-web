@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { validatePersonnummer } from "@/lib/validation";
 import {
   PlusIcon,
   CheckIcon,
@@ -269,6 +270,10 @@ export default function TeamPage() {
     if (!customerId) return;
     if (!form.firstName || !form.lastName) {
       setError("Förnamn och efternamn krävs");
+      return;
+    }
+    if (form.civicRegistrationNumber && !validatePersonnummer(form.civicRegistrationNumber)) {
+      setError("Ogiltigt personnummer — ange i formatet YYYY-MM-DD-XXXX");
       return;
     }
     setSaving(true);
@@ -778,15 +783,15 @@ function InfoSection({
 }
 
 /* ─── Form field ─── */
-function FormField({ label, value, onChange, type = "text" }: {
-  label: string; value: string; onChange: (v: string) => void; type?: string;
+function FormField({ label, value, onChange, type = "text", placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string;
 }) {
   return (
     <div>
       <label className="block text-[11px] font-medium uppercase tracking-wider mb-1" style={{ color: "var(--slate-light)" }}>
         {label}
       </label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} className="form-input text-sm" />
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="form-input text-sm" />
     </div>
   );
 }
@@ -992,7 +997,7 @@ function PersonFormFields({ form, setForm }: {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <FormField label="Förnamn *" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} />
         <FormField label="Efternamn *" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} />
-        <FormField label="Personnummer" value={form.civicRegistrationNumber} onChange={v => setForm({ ...form, civicRegistrationNumber: v })} />
+        <FormField label="Personnummer" value={form.civicRegistrationNumber} onChange={v => setForm({ ...form, civicRegistrationNumber: v })} placeholder="YYYY-MM-DD-XXXX" />
         <FormField label="E-post" value={form.email} onChange={v => setForm({ ...form, email: v })} type="email" />
         <FormField label="Telefon" value={form.phone} onChange={v => setForm({ ...form, phone: v })} type="tel" />
         <FormField label="Mobil" value={form.mobile} onChange={v => setForm({ ...form, mobile: v })} type="tel" />

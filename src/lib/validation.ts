@@ -17,12 +17,61 @@ function validateOrgNumber(value: string): boolean {
   return sum % 10 === 0;
 }
 
+/**
+ * Validate a Swedish personnummer (YYYY-MM-DD-XXXX or YYYYMMDD-XXXX).
+ * Checks format, date validity, and Luhn check digit.
+ */
+export function validatePersonnummer(value: string): boolean {
+  const clean = value.replace(/\D/g, "");
+  if (clean.length !== 12) return false;
+
+  const year = parseInt(clean.substring(0, 4), 10);
+  const month = parseInt(clean.substring(4, 6), 10);
+  const day = parseInt(clean.substring(6, 8), 10);
+
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (year < 1900 || year > new Date().getFullYear()) return false;
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  if (day > daysInMonth) return false;
+
+  // Luhn check on the last 10 digits (YYMMDDXXXX)
+  const luhnDigits = clean.substring(2);
+  let sum = 0;
+  for (let i = 0; i < 10; i++) {
+    let digit = parseInt(luhnDigits[i], 10);
+    if (i % 2 === 0) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+  }
+  return sum % 10 === 0;
+}
+
+/**
+ * Format a personnummer string to YYYY-MM-DD-XXXX.
+ * Accepts various formats: YYYYMMDDXXXX, YYYYMMDD-XXXX, YYYY-MM-DD-XXXX, etc.
+ * Returns the cleaned input if it can't be formatted.
+ */
+export function formatPersonnummer(value: string): string {
+  const clean = value.replace(/\D/g, "");
+  if (clean.length === 12) {
+    return `${clean.substring(0, 4)}-${clean.substring(4, 6)}-${clean.substring(6, 8)}-${clean.substring(8)}`;
+  }
+  return value;
+}
+
 const participantSchema = z.object({
   firstName: z.string().min(1, "Förnamn krävs"),
   lastName: z.string().min(1, "Efternamn krävs"),
   email: z.string().email("Ogiltig e-postadress"),
   phone: z.string().min(1, "Telefon krävs"),
-  civicRegistrationNumber: z.string().min(1, "Personnummer krävs"),
+  civicRegistrationNumber: z.string().min(1, "Personnummer krävs").refine(
+    (val) => validatePersonnummer(val),
+    { message: "Ogiltigt personnummer (YYYY-MM-DD-XXXX)" }
+  ),
   isPrimaryContact: z.boolean(),
   priceNameId: z.number().optional(),
 });

@@ -51,7 +51,7 @@ export function ParticipantForm({
           <input type="tel" {...register(`participants.${index}.phone`)} placeholder="070-123 45 67" className="form-input" />
         </FieldGroup>
         <FieldGroup label="Personnummer" error={participantErrors?.civicRegistrationNumber?.message}>
-          <input {...register(`participants.${index}.civicRegistrationNumber`)} placeholder="YYYYMMDD-XXXX" className="form-input" />
+          <input {...register(`participants.${index}.civicRegistrationNumber`)} placeholder="YYYY-MM-DD-XXXX" className="form-input" />
         </FieldGroup>
 
         {priceOptions.length > 1 && (
