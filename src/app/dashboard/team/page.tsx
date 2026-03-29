@@ -449,24 +449,6 @@ export default function TeamPage() {
                 </div>
               )}
             </div>
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={handleSync}
-                className="flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all hover:bg-white/10"
-                style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)" }}
-                title="Hämta senaste från EduAdmin"
-              >
-                ↻ Synka
-              </button>
-              <button
-                onClick={startAdd}
-                className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
-                style={{ background: "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)" }}
-              >
-                <PlusIcon />
-                Lägg till person
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -612,12 +594,33 @@ export default function TeamPage() {
         )}
 
         {/* ─── Persons ─── */}
-        <SectionTitle>
-          <span>Personer</span>
-          <span className="ml-2 text-sm font-normal" style={{ color: "var(--slate-light)" }}>
-            ({persons.length})
-          </span>
-        </SectionTitle>
+        <div className="flex items-center gap-3 mb-4">
+          <h2 className="font-condensed font-bold uppercase text-lg" style={{ color: "var(--navy)" }}>
+            Personer
+            <span className="ml-2 text-sm font-normal" style={{ color: "var(--slate-light)" }}>
+              ({persons.length})
+            </span>
+          </h2>
+          <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={handleSync}
+              className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all hover:bg-gray-50"
+              style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}
+              title="Hämta senaste från EduAdmin"
+            >
+              ↻ Synka
+            </button>
+            <button
+              onClick={startAdd}
+              className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90"
+              style={{ background: "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)" }}
+            >
+              <PlusIcon />
+              Lägg till
+            </button>
+          </div>
+        </div>
 
         {/* Search */}
         <div className="relative mb-5">
