@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice } from "@/lib/format";
-import { validatePersonnummer } from "@/lib/validation";
+import { validatePersonnummer, formatPersonnummerInput } from "@/lib/validation";
 import {
   CalendarIcon, MapPinIcon, UsersIcon, LoaderIcon, UserIcon,
   TrashIcon, PlusIcon, CheckIcon, XIcon, ArrowRightIcon,
@@ -212,7 +212,7 @@ export default function BookingDetailPage() {
       return;
     }
     if (!validatePersonnummer(newParticipant.civicRegistrationNumber)) {
-      setError("Ogiltigt personnummer — ange i formatet YYYY-MM-DD-XXXX");
+      setError("Ogiltigt personnummer — ange i formatet YYYYMMDD-XXXX");
       return;
     }
     setActionLoading(true);
@@ -338,7 +338,7 @@ export default function BookingDetailPage() {
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <input type="text" value={newParticipant.firstName} onChange={e => setNewParticipant({ ...newParticipant, firstName: e.target.value })} placeholder="Förnamn *" className="form-input text-sm" autoFocus />
                 <input type="text" value={newParticipant.lastName} onChange={e => setNewParticipant({ ...newParticipant, lastName: e.target.value })} placeholder="Efternamn *" className="form-input text-sm" />
-                <input type="text" value={newParticipant.civicRegistrationNumber} onChange={e => setNewParticipant({ ...newParticipant, civicRegistrationNumber: e.target.value })} placeholder="YYYY-MM-DD-XXXX *" className="form-input text-sm" />
+                <input type="text" value={newParticipant.civicRegistrationNumber} onChange={e => setNewParticipant({ ...newParticipant, civicRegistrationNumber: formatPersonnummerInput(e.target.value) })} placeholder="YYYYMMDD-XXXX *" className="form-input text-sm" />
                 <input type="email" value={newParticipant.email} onChange={e => setNewParticipant({ ...newParticipant, email: e.target.value })} placeholder="E-post" className="form-input text-sm" />
                 <input type="tel" value={newParticipant.phone} onChange={e => setNewParticipant({ ...newParticipant, phone: e.target.value })} placeholder="Telefon" className="form-input text-sm" />
               </div>

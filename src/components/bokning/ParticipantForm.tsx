@@ -1,13 +1,15 @@
 "use client";
 
-import type { UseFormRegister, FieldErrors } from "react-hook-form";
+import type { UseFormRegister, FieldErrors, UseFormSetValue } from "react-hook-form";
 import { TrashIcon } from "@/components/icons";
 import type { BookingStep1Data } from "@/lib/validation";
+import { formatPersonnummerInput } from "@/lib/validation";
 import type { PriceOption } from "@/types/eduadmin";
 
 interface ParticipantFormProps {
   index: number;
   register: UseFormRegister<BookingStep1Data>;
+  setValue: UseFormSetValue<BookingStep1Data>;
   errors: FieldErrors<BookingStep1Data>;
   onRemove?: () => void;
   showPrimaryContact: boolean;
@@ -17,12 +19,14 @@ interface ParticipantFormProps {
 export function ParticipantForm({
   index,
   register,
+  setValue,
   errors,
   onRemove,
   showPrimaryContact,
   priceOptions = [],
 }: ParticipantFormProps) {
   const participantErrors = errors.participants?.[index];
+  const { onChange, ...pnrRest } = register(`participants.${index}.civicRegistrationNumber`);
 
   return (
     <div className="rounded-lg border p-5" style={{ borderColor: "var(--border)" }}>
@@ -51,7 +55,16 @@ export function ParticipantForm({
           <input type="tel" {...register(`participants.${index}.phone`)} placeholder="070-123 45 67" className="form-input" />
         </FieldGroup>
         <FieldGroup label="Personnummer" error={participantErrors?.civicRegistrationNumber?.message}>
-          <input {...register(`participants.${index}.civicRegistrationNumber`)} placeholder="YYYY-MM-DD-XXXX" className="form-input" />
+          <input
+            {...pnrRest}
+            onChange={(e) => {
+              const formatted = formatPersonnummerInput(e.target.value);
+              e.target.value = formatted;
+              setValue(`participants.${index}.civicRegistrationNumber`, formatted, { shouldValidate: false });
+            }}
+            placeholder="YYYYMMDD-XXXX"
+            className="form-input"
+          />
         </FieldGroup>
 
         {priceOptions.length > 1 && (

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
-import { validatePersonnummer } from "@/lib/validation";
+import { validatePersonnummer, formatPersonnummerInput } from "@/lib/validation";
 import {
   PlusIcon,
   CheckIcon,
@@ -273,7 +273,7 @@ export default function TeamPage() {
       return;
     }
     if (form.civicRegistrationNumber && !validatePersonnummer(form.civicRegistrationNumber)) {
-      setError("Ogiltigt personnummer — ange i formatet YYYY-MM-DD-XXXX");
+      setError("Ogiltigt personnummer — ange i formatet YYYYMMDD-XXXX");
       return;
     }
     setSaving(true);
@@ -997,7 +997,7 @@ function PersonFormFields({ form, setForm }: {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <FormField label="Förnamn *" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} />
         <FormField label="Efternamn *" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} />
-        <FormField label="Personnummer" value={form.civicRegistrationNumber} onChange={v => setForm({ ...form, civicRegistrationNumber: v })} placeholder="YYYY-MM-DD-XXXX" />
+        <FormField label="Personnummer" value={form.civicRegistrationNumber} onChange={v => setForm({ ...form, civicRegistrationNumber: formatPersonnummerInput(v) })} placeholder="YYYYMMDD-XXXX" />
         <FormField label="E-post" value={form.email} onChange={v => setForm({ ...form, email: v })} type="email" />
         <FormField label="Telefon" value={form.phone} onChange={v => setForm({ ...form, phone: v })} type="tel" />
         <FormField label="Mobil" value={form.mobile} onChange={v => setForm({ ...form, mobile: v })} type="tel" />

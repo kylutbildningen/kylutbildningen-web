@@ -639,6 +639,7 @@ export default function BookingPage() {
                   key={field.id}
                   index={index}
                   register={register}
+                  setValue={setValue}
                   errors={errors}
                   onRemove={fields.length > 1 ? () => remove(index) : undefined}
                   showPrimaryContact={isCompany && fields.length > 1}

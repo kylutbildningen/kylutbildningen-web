@@ -51,16 +51,15 @@ export function validatePersonnummer(value: string): boolean {
 }
 
 /**
- * Format a personnummer string to YYYY-MM-DD-XXXX.
- * Accepts various formats: YYYYMMDDXXXX, YYYYMMDD-XXXX, YYYY-MM-DD-XXXX, etc.
- * Returns the cleaned input if it can't be formatted.
+ * Auto-format personnummer input as the user types.
+ * Inserts dash after 8 digits → YYYYMMDD-XXXX. Max 13 chars.
  */
-export function formatPersonnummer(value: string): string {
-  const clean = value.replace(/\D/g, "");
-  if (clean.length === 12) {
-    return `${clean.substring(0, 4)}-${clean.substring(4, 6)}-${clean.substring(6, 8)}-${clean.substring(8)}`;
+export function formatPersonnummerInput(value: string): string {
+  const clean = value.replace(/\D/g, "").substring(0, 12);
+  if (clean.length > 8) {
+    return `${clean.substring(0, 8)}-${clean.substring(8)}`;
   }
-  return value;
+  return clean;
 }
 
 const participantSchema = z.object({
@@ -70,7 +69,7 @@ const participantSchema = z.object({
   phone: z.string().min(1, "Telefon krävs"),
   civicRegistrationNumber: z.string().min(1, "Personnummer krävs").refine(
     (val) => validatePersonnummer(val),
-    { message: "Ogiltigt personnummer (YYYY-MM-DD-XXXX)" }
+    { message: "Ogiltigt personnummer (YYYYMMDD-XXXX)" }
   ),
   isPrimaryContact: z.boolean(),
   priceNameId: z.number().optional(),
