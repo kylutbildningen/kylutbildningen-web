@@ -1,15 +1,12 @@
 export const ADS_ID = 'AW-803000076'
 
 export const CONVERSIONS = {
-  booking:  'AW-803000076/CONV_ID_1', // Kursbokning — hämta ID från Google Ads
-  contact:  'AW-803000076/CONV_ID_2', // Kontaktformulär
-  callback: 'AW-803000076/CONV_ID_3', // Återuppringning
-  chat:     'AW-803000076/CONV_ID_4', // Chattstarter
-  reminder: 'AW-803000076/CONV_ID_5', // Påminnelsemail
+  booking:  'AW-803000076/mXTWCJG3-ZEcElye8_4C',  // Kursbokning genomförd
+  contact:  'AW-803000076/ELJECObIgpIcEIye8_4C',  // Kontaktformulär skickat
+  callback: 'AW-803000076/-YwsConIgpIcEIye8_4C',  // Återuppringning begärd
+  chat:     'AW-803000076/A2TaCL7KgpIcEIye8_4C',  // Chattstarter
+  reminder: 'AW-803000076/Xjk-CMHKgpIcEIye8_4C',  // Påminnelsemail skickat
 }
-
-// OBS: Byt ut CONV_ID_X mot de riktiga ID:n från Google Ads
-// efter att konverteringarna skapats i Google Ads-dashboarden.
 
 export function trackConversion(
   type: keyof typeof CONVERSIONS,
