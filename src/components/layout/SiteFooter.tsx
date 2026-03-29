@@ -8,7 +8,7 @@ export function SiteFooter() {
       className="py-8"
       style={{ background: 'var(--navy)', borderTop: '1px solid rgba(255,255,255,0.06)' }}
     >
-      <div className="max-w-6xl mx-auto px-4 md:px-6">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-4">
           <div className="font-condensed font-bold text-sm tracking-widest uppercase"
             style={{ color: 'rgba(255,255,255,0.4)' }}>

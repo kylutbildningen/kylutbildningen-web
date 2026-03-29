@@ -10,6 +10,9 @@ function openChatWidget() {
 function openAuthModal() {
   window.dispatchEvent(new Event('open-auth-modal'))
 }
+function openDashboardModal() {
+  window.dispatchEvent(new Event('open-dashboard-modal'))
+}
 
 interface UserInfo {
   fullName: string
@@ -76,7 +79,7 @@ export function SiteHeader() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      <div className="max-w-6xl mx-auto px-4 md:px-6 flex items-center justify-between h-full">
+      <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-full">
       <Link href="/" className="font-condensed font-bold text-lg tracking-widest uppercase text-white">
         Kyl<span className="text-[#00C4FF]">utbildningen</span>
       </Link>
@@ -105,57 +108,13 @@ export function SiteHeader() {
         )}
 
         {user ? (
-          <div className="relative">
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="flex items-center gap-2 px-4 py-2 rounded text-xs font-semibold tracking-wider uppercase transition-colors"
-              style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)' }}
-            >
-              {user.fullName}
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M2 4l4 4 4-4" />
-              </svg>
-            </button>
-
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div
-                  className="absolute right-0 top-full z-20 mt-1 w-48 rounded overflow-hidden shadow-xl"
-                  style={{ background: '#112847', border: '1px solid rgba(255,255,255,0.1)' }}
-                >
-                  {user.companyName && (
-                    <div className="px-4 py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                      <p className="text-[10px] tracking-wider uppercase" style={{ color: '#8BA3BE' }}>
-                        {user.companyName}
-                      </p>
-                    </div>
-                  )}
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setMenuOpen(false)}
-                    className="block px-4 py-2.5 text-xs tracking-wider hover:bg-white/5 text-white/70 hover:text-white transition-colors"
-                  >
-                    Dashboard
-                  </Link>
-                  <Link
-                    href="/kurser"
-                    onClick={() => setMenuOpen(false)}
-                    className="block px-4 py-2.5 text-xs tracking-wider hover:bg-white/5 text-white/70 hover:text-white transition-colors"
-                  >
-                    Boka kurs
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2.5 text-xs tracking-wider hover:bg-white/5 transition-colors"
-                    style={{ borderTop: '1px solid rgba(255,255,255,0.06)', color: '#8BA3BE' }}
-                  >
-                    Logga ut
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          <button
+            onClick={openDashboardModal}
+            className="flex items-center gap-2 px-4 py-2 rounded text-xs font-semibold tracking-wider uppercase transition-colors hover:bg-white/10"
+            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)' }}
+          >
+            {user.fullName}
+          </button>
         ) : (
           <button
             onClick={openAuthModal}
@@ -183,13 +142,13 @@ export function SiteHeader() {
               <button
                 key={item.href}
                 onClick={() => { setMenuOpen(false); openChatWidget() }}
-                className="block w-full text-left px-4 md:px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                className="block w-full text-left px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors"
               >
                 {item.label}
               </button>
             ) : (
               <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)}
-                className="block px-4 md:px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors">
+                className="block px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors">
                 {item.label}
               </Link>
             )
@@ -197,24 +156,19 @@ export function SiteHeader() {
 
           {user ? (
             <>
-              <div className="px-4 md:px-6 pt-3 pb-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="px-6 pt-3 pb-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <p className="text-[10px] tracking-wider uppercase mb-2" style={{ color: '#8BA3BE' }}>
                   {user.companyName || user.fullName}
                 </p>
               </div>
-              <Link href="/dashboard" onClick={() => setMenuOpen(false)}
-                className="block px-4 md:px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors">
-                Dashboard
-              </Link>
               <button
-                onClick={handleLogout}
-                className="block w-full text-left px-4 md:px-6 py-3 text-sm font-medium tracking-wider uppercase transition-colors"
-                style={{ color: '#8BA3BE' }}>
-                Logga ut
+                onClick={() => { setMenuOpen(false); openDashboardModal(); }}
+                className="block w-full text-left px-6 py-3 text-sm font-medium tracking-wider uppercase text-white/70 hover:text-white hover:bg-white/5 transition-colors">
+                Dashboard
               </button>
             </>
           ) : (
-            <div className="px-4 md:px-6 pt-3 pb-1">
+            <div className="px-6 pt-3 pb-1">
               <button onClick={() => { setMenuOpen(false); openAuthModal() }}
                 className="block w-full text-center py-3 bg-[#1A5EA8] text-white text-xs font-semibold tracking-wider uppercase rounded transition-colors hover:bg-[#2A7DD4]">
                 Logga in
