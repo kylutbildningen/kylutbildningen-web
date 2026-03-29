@@ -8,6 +8,7 @@ import type { EventCard } from "@/types/eduadmin";
 import type { BookingStep1Data } from "@/lib/validation";
 import type { SupabasePerson } from "@/lib/supabase-persons";
 import { bookingStep1Schema } from "@/lib/validation";
+import { showToast } from "@/components/Toast";
 import { formatCompactDateRange, formatTime, formatPrice } from "@/lib/format";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -497,7 +498,12 @@ export default function BookingPage() {
 
         {/* ─── Step 1 ─── */}
         {step === 1 && !alreadyBooked && (
-          <form onSubmit={handleSubmit(onStep1Submit)} className="space-y-8">
+          <form onSubmit={handleSubmit(onStep1Submit, (errs) => {
+            const pnrErr = errs.participants?.find?.((p) => p?.civicRegistrationNumber);
+            if (pnrErr?.civicRegistrationNumber?.message) {
+              showToast(pnrErr.civicRegistrationNumber.message);
+            }
+          })} className="space-y-8">
             {/* Customer type tabs */}
             <div className="flex gap-2">
               <button type="button" onClick={() => setValue("customerType", "company")}

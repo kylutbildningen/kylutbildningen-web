@@ -12,25 +12,23 @@ export async function GET(request: NextRequest) {
   try {
     const cid = parseInt(customerId);
 
-    // Fetch bookings with $top=500 to get as many as possible
+    // Fetch bookings filtered by customer ID
     const data = await eduAdminFetch<ODataResponse<Record<string, unknown>>>(
       "/v1/odata/Bookings",
       {
+        $filter: `CustomerId eq ${cid}`,
         $expand: [
           "Customer($select=CustomerId,CustomerName)",
           "ContactPerson($select=PersonId,FirstName,LastName,Email,Phone)",
           "Participants($select=ParticipantId,PersonId,FirstName,LastName,Email,CivicRegistrationNumber,Canceled,PriceNameId)",
         ].join(","),
-        $select: "BookingId,EventId,TotalPriceExVat,TotalPriceIncVat,NumberOfParticipants,Created,Paid,Preliminary,PaymentMethodId,Invoiced,Notes,Reference,Canceled",
+        $select: "BookingId,EventId,CustomerId,TotalPriceExVat,TotalPriceIncVat,NumberOfParticipants,Created,Paid,Preliminary,PaymentMethodId,Invoiced,Notes,Reference,Canceled",
         $orderby: "Created desc",
         $top: "500",
       },
     );
 
-    // Filter to requested customer
-    const bookings = (data.value || []).filter(
-      (b) => (b.Customer as { CustomerId?: number })?.CustomerId === cid,
-    );
+    const bookings = data.value || [];
 
     // Enrich with event/course info (batch-style)
     const enriched = await Promise.all(

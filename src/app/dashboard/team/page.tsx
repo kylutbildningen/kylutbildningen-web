@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { validatePersonnummer, formatPersonnummerInput } from "@/lib/validation";
+import { showToast } from "@/components/Toast";
 import {
   PlusIcon,
   CheckIcon,
@@ -273,7 +274,7 @@ export default function TeamPage() {
       return;
     }
     if (form.civicRegistrationNumber && !validatePersonnummer(form.civicRegistrationNumber)) {
-      setError("Ogiltigt personnummer — ange i formatet YYYYMMDD-XXXX");
+      showToast("Ogiltigt personnummer — ange i formatet YYYYMMDD-XXXX");
       return;
     }
     setSaving(true);

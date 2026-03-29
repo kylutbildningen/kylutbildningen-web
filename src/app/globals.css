@@ -91,6 +91,12 @@ body::before {
 .animate-fade-in { animation: fadeIn 0.4s ease-out both; }
 .animate-slide-down { animation: slideDown 0.3s ease-out both; }
 
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(80px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in { animation: slideIn 0.3s ease-out both; }
+
 .stagger-1 { animation-delay: 0.1s; }
 .stagger-2 { animation-delay: 0.2s; }
 .stagger-3 { animation-delay: 0.3s; }

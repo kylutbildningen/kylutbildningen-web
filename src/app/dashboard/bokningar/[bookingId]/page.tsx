@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatPrice } from "@/lib/format";
 import { validatePersonnummer, formatPersonnummerInput } from "@/lib/validation";
+import { showToast } from "@/components/Toast";
 import {
   CalendarIcon, MapPinIcon, UsersIcon, LoaderIcon, UserIcon,
   TrashIcon, PlusIcon, CheckIcon, XIcon, ArrowRightIcon,
@@ -212,7 +213,7 @@ export default function BookingDetailPage() {
       return;
     }
     if (!validatePersonnummer(newParticipant.civicRegistrationNumber)) {
-      setError("Ogiltigt personnummer — ange i formatet YYYYMMDD-XXXX");
+      showToast("Ogiltigt personnummer — ange i formatet YYYYMMDD-XXXX");
       return;
     }
     setActionLoading(true);

@@ -8,6 +8,7 @@ import { CookieBanner } from "@/components/CookieBanner";
 import { ChatWidget } from "@/components/ChatWidget";
 import { AuthModal } from "@/components/AuthModal";
 import { DashboardModal } from "@/components/DashboardModal";
+import { Toast } from "@/components/Toast";
 import "./globals.css";
 
 const barlow = Barlow({
@@ -53,6 +54,7 @@ export default async function RootLayout({
         <ChatWidget />
         <AuthModal />
         <DashboardModal />
+        <Toast />
       </body>
     </html>
   );

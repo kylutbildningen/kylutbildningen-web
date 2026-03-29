@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { formatCompactDateRange } from "@/lib/format";
 import { validatePersonnummer, formatPersonnummerInput } from "@/lib/validation";
+import { showToast } from "@/components/Toast";
 import { CalendarIcon, MapPinIcon, LoaderIcon, ArrowRightIcon, XIcon } from "@/components/icons";
 
 interface MyBooking {
@@ -153,7 +154,7 @@ export default function MinaKurserPage() {
   async function handleSaveProfile() {
     if (!person) return;
     if (profileForm.civicRegistrationNumber && !validatePersonnummer(profileForm.civicRegistrationNumber)) {
-      setError("Ogiltigt personnummer — ange i formatet YYYYMMDD-XXXX");
+      showToast("Ogiltigt personnummer — ange i formatet YYYYMMDD-XXXX");
       return;
     }
     setSavingProfile(true);
