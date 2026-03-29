@@ -1,5 +1,6 @@
 "use client";
 
+import { trackConversion } from "@/lib/analytics";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -341,6 +342,7 @@ export default function BookingPage() {
         bookingNumber: result.bookingNumber,
       });
       setStep(3);
+      trackConversion('booking', event?.lowestPrice ?? undefined, result.bookingNumber);
       sessionStorage.removeItem(`booking_${eventId}`);
     } catch (err) {
       setError(

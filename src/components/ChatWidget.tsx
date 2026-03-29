@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { AiChat } from '@/components/kontakt/AiChat'
+import { trackConversion } from '@/lib/analytics'
 
 export interface UserContext {
   name?: string
@@ -130,10 +131,16 @@ export function ChatWidget() {
     }, 200)
   }
 
+  const chatTracked = useRef(false)
+
   const handleOpen = () => {
     setOpen(true)
     setMinimized(false)
     setUnreadCount(0)
+    if (!chatTracked.current) {
+      trackConversion('chat', 50)
+      chatTracked.current = true
+    }
   }
 
   const handleUnminimize = () => {

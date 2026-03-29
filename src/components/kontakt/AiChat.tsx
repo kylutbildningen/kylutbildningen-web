@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
+import { trackConversion } from '@/lib/analytics'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -138,6 +139,7 @@ export function AiChat({ compact = false, userContext, onNewMessage }: Props) {
       }),
     })
     setCallbackSent(true)
+    trackConversion('callback', 300)
   }
 
   const handleContactSubmit = async () => {
@@ -154,6 +156,7 @@ export function AiChat({ compact = false, userContext, onNewMessage }: Props) {
       }),
     })
     setContactSent(true)
+    trackConversion('contact', 500)
   }
 
   const send = async (text: string) => {
@@ -629,6 +632,7 @@ export function AiChat({ compact = false, userContext, onNewMessage }: Props) {
                       })
                       setReminderSent(true)
                       setShowReminder(false)
+                      trackConversion('reminder', 100)
                     }}
                     disabled={!reminderEmail.includes('@')}
                     className="flex-1 py-2 text-xs text-white rounded-lg disabled:opacity-40 transition-colors"

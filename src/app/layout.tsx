@@ -10,6 +10,7 @@ import { AuthModal } from "@/components/AuthModal";
 import { DashboardModal } from "@/components/DashboardModal";
 import { Toast } from "@/components/Toast";
 import { Analytics } from "@vercel/analytics/next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 
 const barlow = Barlow({
@@ -57,6 +58,7 @@ export default async function RootLayout({
         <DashboardModal />
         <Toast />
         <Analytics />
+        <GoogleAnalytics gaId="AW-803000076" />
       </body>
     </html>
   );

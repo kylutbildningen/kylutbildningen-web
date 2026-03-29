@@ -2,6 +2,7 @@ import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 import { getStripe } from '@/lib/stripe'
 import Link from 'next/link'
+import { BookingConversionTracker } from './ConversionTracker'
 
 export default async function BekraftelseSida({
   searchParams,
@@ -42,6 +43,7 @@ export default async function BekraftelseSida({
           </svg>
         </div>
 
+        <BookingConversionTracker />
         <h2 className="font-condensed font-bold uppercase text-2xl mb-4"
           style={{ color: 'var(--navy)' }}>
           Tack för din bokning!
