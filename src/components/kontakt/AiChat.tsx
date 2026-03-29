@@ -10,9 +10,9 @@ interface Message {
 
 const SUGGESTED = [
   { icon: '🔧', text: 'Vad behöver jag för att montera värmepumpar?' },
-  { icon: '🪪', text: 'Skillnad på nyexaminering och omexaminering?' },
-  { icon: '👥', text: 'Kan vi boka för flera anställda?' },
-  { icon: '💰', text: 'Vad kostar kursen?' },
+  { icon: '❄️', text: 'Vad behöver jag för att jobba med luftkonditionering i bilar?' },
+  { icon: '🔄', text: 'Jag behöver omexaminera mig Kategori I & II' },
+  { icon: '🚗', text: 'Jag behöver omexaminera mig Kategori V' },
 ]
 
 const QUICK_ACTIONS = [
@@ -53,6 +53,12 @@ interface Props {
 /** Check if an assistant message mentions courses (has /kurser/ links) */
 function mentionsCourses(content: string): boolean {
   return /\[.+?\]\(\/kurser\//.test(content)
+}
+
+/** Extract first course name from markdown links like [Kursnamn](/kurser/slug) */
+function extractCourseName(content: string): string {
+  const match = content.match(/\[([^\]]+)\]\(\/kurser\//)
+  return match ? match[1] : ''
 }
 
 function formatTime(date: Date) {
@@ -360,16 +366,28 @@ export function AiChat({ compact = false, userContext, onNewMessage }: Props) {
                             <ReactMarkdown
                               components={{
                                 a: ({ href, children }) => {
+                                  const isLogin = href === '/logga-in' || href === '/onboarding'
+                                  if (isLogin) {
+                                    return (
+                                      <button
+                                        onClick={() => window.dispatchEvent(new Event('open-auth-modal'))}
+                                        className="underline font-medium cursor-pointer"
+                                        style={{ color: '#1A5EA8', background: 'none', border: 'none', padding: 0, font: 'inherit' }}
+                                      >
+                                        {children}
+                                      </button>
+                                    )
+                                  }
                                   const isBooking = href?.startsWith('/boka/')
                                   if (isBooking && !userContext) {
                                     return (
-                                      <a
-                                        href={`/logga-in?redirect=${encodeURIComponent(href!)}`}
-                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold no-underline transition-colors hover:opacity-80"
-                                        style={{ background: 'var(--navy)', color: '#00C4FF' }}
+                                      <button
+                                        onClick={() => window.dispatchEvent(new Event('open-auth-modal'))}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold no-underline transition-colors hover:opacity-80 cursor-pointer"
+                                        style={{ background: 'var(--navy)', color: '#00C4FF', border: 'none' }}
                                       >
                                         🔒 Logga in
-                                      </a>
+                                      </button>
                                     )
                                   }
                                   if (isBooking && userContext) {
@@ -449,7 +467,7 @@ export function AiChat({ compact = false, userContext, onNewMessage }: Props) {
                       <button
                         onClick={() => {
                           if (userContext?.email) setReminderEmail(userContext.email)
-                          setReminderCourse('')
+                          setReminderCourse(extractCourseName(msg.content))
                           setShowReminder(true)
                         }}
                         className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium

@@ -7,7 +7,6 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import {
   PlusIcon,
-  TrashIcon,
   CheckIcon,
   XIcon,
   SearchIcon,
@@ -15,7 +14,6 @@ import {
   UserIcon,
   BuildingIcon,
   MapPinIcon,
-  CreditCardIcon,
   FileTextIcon,
 } from "@/components/icons";
 import type { SupabasePerson as Person } from "@/lib/supabase-persons";
@@ -92,7 +90,6 @@ export default function CompanyManagementPage() {
   const [persons, setPersons] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<"info" | "persons">("info");
 
   // Person Add/Edit state
   const [showAdd, setShowAdd] = useState(false);
@@ -114,11 +111,10 @@ export default function CompanyManagementPage() {
   useEffect(() => {
     async function load() {
       const supabase = createSupabaseBrowser();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.replace("/logga-in");
+        window.dispatchEvent(new Event("open-auth-modal"));
+        router.replace("/");
         return;
       }
 
@@ -131,15 +127,11 @@ export default function CompanyManagementPage() {
         .limit(1)
         .single();
 
-      if (!mem) {
-        router.replace("/dashboard");
-        return;
-      }
+      if (!mem) { router.replace("/dashboard"); return; }
 
       const cid = stored ? parseInt(stored) : mem.edu_customer_id;
       setMembership({ ...mem, edu_customer_id: cid });
 
-      // Fetch portal roles (memberships mapped to person IDs)
       const { data: memberships } = await supabase
         .from("company_memberships")
         .select("edu_contact_id, role")
@@ -153,7 +145,6 @@ export default function CompanyManagementPage() {
         );
       }
 
-      // Fetch customer details and persons in parallel
       await Promise.all([fetchCustomer(cid), fetchPersons(cid)]);
     }
     load();
@@ -163,9 +154,7 @@ export default function CompanyManagementPage() {
     try {
       const res = await fetch(`/api/edu/customers/${customerId}`);
       if (res.ok) setCustomerData(await res.json());
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }
 
   const fetchPersons = useCallback(async (customerId: number) => {
@@ -240,7 +229,6 @@ export default function CompanyManagementPage() {
     setEditingId(null);
     setForm(emptyPerson);
     setError(null);
-    setActiveTab("persons");
   }
 
   function cancelEdit() {
@@ -264,10 +252,7 @@ export default function CompanyManagementPage() {
         const res = await fetch("/api/edu/persons", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customerId: membership.edu_customer_id,
-            ...form,
-          }),
+          body: JSON.stringify({ customerId: membership.edu_customer_id, ...form }),
         });
         if (!res.ok) throw new Error((await res.json()).error);
       } else if (editingId !== null) {
@@ -285,11 +270,6 @@ export default function CompanyManagementPage() {
     } finally {
       setSaving(false);
     }
-  }
-
-  async function handleDelete(personId: number, name: string) {
-    if (!membership) return;
-    if (!confirm(`${name} kan bara tas bort direkt i EduAdmin — borttagning via API stöds inte.`)) return;
   }
 
   const filtered = persons.filter((p) => {
@@ -321,221 +301,255 @@ export default function CompanyManagementPage() {
     <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
       <SiteHeader />
 
-      <div className="mx-auto max-w-4xl px-6 py-10 flex-grow">
-        {/* Header */}
-        <a
-          href="/dashboard"
-          className="mb-4 inline-block text-sm font-medium"
-          style={{ color: "var(--frost)" }}
-        >
-          ← Dashboard
-        </a>
-        <div className="mb-6 flex items-start justify-between">
-          <div>
-            <h1
-              className="flex items-center gap-3 text-2xl"
-              style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}
-            >
-              <BuildingIcon />
-              {membership.company_name}
-            </h1>
-            {customerData && (
-              <div className="mt-1 flex flex-wrap gap-3 text-sm" style={{ color: "var(--slate-light)" }}>
-                {customerData.CustomerNumber && (
-                  <span>Kundnr: <strong style={{ color: "var(--slate-deep)" }}>{customerData.CustomerNumber}</strong></span>
-                )}
-                <span>Org.nr: {customerData.OrganisationNumber}</span>
-                <span>{persons.length} person{persons.length !== 1 ? "er" : ""}</span>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={startAdd}
-            className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)" }}
-          >
-            <PlusIcon />
-            Lägg till person
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-6 flex gap-1 rounded-lg border p-1" style={{ borderColor: "var(--border)", backgroundColor: "#fff" }}>
-          {[
-            { key: "info" as const, label: "Företagsuppgifter" },
-            { key: "persons" as const, label: `Personer (${persons.length})` },
-          ].map((tab) => (
+      {/* Page header */}
+      <div style={{ background: "var(--navy)" }}>
+        <div className="max-w-6xl mx-auto px-6 pt-10 pb-8">
+          <a href="/dashboard" className="inline-flex items-center gap-1.5 text-xs font-medium mb-4 transition-colors hover:text-white"
+            style={{ color: "rgba(255,255,255,0.45)" }}>
+            ← Dashboard
+          </a>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="font-condensed font-bold uppercase text-white leading-none"
+                style={{ fontSize: "clamp(28px, 4vw, 42px)" }}>
+                {membership.company_name}
+              </h1>
+              {customerData && (
+                <div className="mt-2 flex flex-wrap gap-4 text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  {customerData.CustomerNumber && (
+                    <span>Kundnr: <strong className="text-white/80">{customerData.CustomerNumber}</strong></span>
+                  )}
+                  <span>Org.nr: {customerData.OrganisationNumber}</span>
+                  <span>{persons.length} person{persons.length !== 1 ? "er" : ""}</span>
+                </div>
+              )}
+            </div>
             <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className="flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all"
-              style={{
-                backgroundColor: activeTab === tab.key ? "var(--frost-light)" : "transparent",
-                color: activeTab === tab.key ? "var(--frost-dark)" : "var(--slate-light)",
-              }}
+              onClick={startAdd}
+              className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 shrink-0"
+              style={{ background: "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)" }}
             >
-              {tab.label}
+              <PlusIcon />
+              Lägg till person
             </button>
-          ))}
+          </div>
         </div>
+      </div>
 
+      <div className="max-w-6xl mx-auto px-6 py-8 flex-grow w-full">
         {error && (
-          <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--danger)", backgroundColor: "#fef2f2", color: "var(--danger)" }}>
+          <div className="mb-6 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--danger)", backgroundColor: "#fef2f2", color: "var(--danger)" }}>
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--success)", backgroundColor: "#ecfdf5", color: "var(--success)" }}>
+          <div className="mb-6 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--success)", backgroundColor: "#ecfdf5", color: "var(--success)" }}>
             {success}
           </div>
         )}
 
-        {/* ─── Tab: Företagsuppgifter ─── */}
-        {activeTab === "info" && customerData && (
-          <div className="space-y-6">
-            {/* Company info */}
-            {editingCompany === "info" ? (
-              <EditCard title="Företagsinformation" icon={<BuildingIcon />} onSave={saveCompany} onCancel={() => setEditingCompany(null)} saving={savingCompany}>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Företagsnamn</span><input className="form-input text-sm" value={companyForm.customerName} onChange={e => setCompanyForm({ ...companyForm, customerName: e.target.value })} /></label>
-                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>E-post</span><input type="email" className="form-input text-sm" value={companyForm.email} onChange={e => setCompanyForm({ ...companyForm, email: e.target.value })} /></label>
-                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Telefon</span><input type="tel" className="form-input text-sm" value={companyForm.phone} onChange={e => setCompanyForm({ ...companyForm, phone: e.target.value })} /></label>
-                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Mobil</span><input type="tel" className="form-input text-sm" value={companyForm.mobile} onChange={e => setCompanyForm({ ...companyForm, mobile: e.target.value })} /></label>
-                  <label className="space-y-1 sm:col-span-2"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Webbplats</span><input className="form-input text-sm" value={companyForm.web} onChange={e => setCompanyForm({ ...companyForm, web: e.target.value })} /></label>
-                </div>
-              </EditCard>
-            ) : (
-              <InfoCard
-                title="Företagsinformation"
-                icon={<BuildingIcon />}
-                onEdit={() => startEditCompany("info")}
-                rows={[
-                  { label: "Företagsnamn", value: customerData.CustomerName },
-                  { label: "Kundnummer", value: customerData.CustomerNumber || "—" },
-                  { label: "Organisationsnummer", value: customerData.OrganisationNumber },
-                  { label: "E-post", value: customerData.Email || "—" },
-                  { label: "Telefon", value: customerData.Phone || "—" },
-                  { label: "Mobil", value: customerData.Mobile || "—" },
-                  { label: "Webb", value: customerData.Web || "—" },
-                ]}
-              />
-            )}
-
-            {/* Address */}
-            {editingCompany === "address" ? (
-              <EditCard title="Adress" icon={<MapPinIcon />} onSave={saveCompany} onCancel={() => setEditingCompany(null)} saving={savingCompany}>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="space-y-1 sm:col-span-2"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Gatuadress</span><input className="form-input text-sm" value={companyForm.address} onChange={e => setCompanyForm({ ...companyForm, address: e.target.value })} /></label>
-                  <label className="space-y-1 sm:col-span-2"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Adress 2</span><input className="form-input text-sm" value={companyForm.address2} onChange={e => setCompanyForm({ ...companyForm, address2: e.target.value })} /></label>
-                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Postnummer</span><input className="form-input text-sm" value={companyForm.zip} onChange={e => setCompanyForm({ ...companyForm, zip: e.target.value })} /></label>
-                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Stad</span><input className="form-input text-sm" value={companyForm.city} onChange={e => setCompanyForm({ ...companyForm, city: e.target.value })} /></label>
-                  <label className="space-y-1"><span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>Land</span><input className="form-input text-sm" value={companyForm.country} onChange={e => setCompanyForm({ ...companyForm, country: e.target.value })} /></label>
-                </div>
-              </EditCard>
-            ) : (
-              <InfoCard
-                title="Adress"
-                icon={<MapPinIcon />}
-                onEdit={() => startEditCompany("address")}
-                rows={[
-                  { label: "Gatuadress", value: [customerData.Address, customerData.Address2].filter(Boolean).join(", ") || "—" },
-                  { label: "Postnummer", value: customerData.Zip || "—" },
-                  { label: "Stad", value: customerData.City || "—" },
-                  { label: "Land", value: customerData.Country || "—" },
-                ]}
-              />
-            )}
-
-            {/* Billing info */}
-            {customerData.BillingInfo && (
-              <InfoCard
-                title="Fakturauppgifter"
-                icon={<FileTextIcon />}
-                rows={[
-                  { label: "Fakturamottagare", value: customerData.BillingInfo.CustomerName || "—" },
-                  { label: "Org.nr (faktura)", value: customerData.BillingInfo.OrganisationNumber || "—" },
-                  { label: "Fakturaadress", value: [customerData.BillingInfo.Address, customerData.BillingInfo.Address2].filter(Boolean).join(", ") || "—" },
-                  { label: "Postnummer", value: customerData.BillingInfo.Zip || "—" },
-                  { label: "Stad", value: customerData.BillingInfo.City || "—" },
-                  { label: "Faktura-e-post", value: customerData.BillingInfo.Email || "—" },
-                ]}
-              />
-            )}
-          </div>
-        )}
-
-        {activeTab === "info" && !customerData && !loading && (
-          <div className="py-12 text-center" style={{ color: "var(--slate-light)" }}>
-            Kunde inte hämta företagsuppgifter
-          </div>
-        )}
-
-        {/* ─── Tab: Personer ─── */}
-        {activeTab === "persons" && (
+        {/* ─── Company info cards ─── */}
+        {customerData && (
           <>
-            <div className="relative mb-4">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--slate-light)" }}>
-                <SearchIcon />
-              </span>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Sök namn, e-post eller personnummer..."
-                className="form-input pl-10"
-              />
-            </div>
+            <SectionTitle>Företagsuppgifter</SectionTitle>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-10">
+              {/* Company info */}
+              {editingCompany === "info" ? (
+                <div className="lg:col-span-1 rounded-xl border bg-white p-6" style={{ borderColor: "var(--frost)" }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span style={{ color: "var(--frost)" }}><BuildingIcon /></span>
+                    <h3 className="text-sm font-bold" style={{ color: "var(--slate-deep)" }}>Företagsinformation</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <FormField label="Företagsnamn" value={companyForm.customerName} onChange={v => setCompanyForm({ ...companyForm, customerName: v })} />
+                    <FormField label="E-post" value={companyForm.email} onChange={v => setCompanyForm({ ...companyForm, email: v })} type="email" />
+                    <FormField label="Telefon" value={companyForm.phone} onChange={v => setCompanyForm({ ...companyForm, phone: v })} type="tel" />
+                    <FormField label="Mobil" value={companyForm.mobile} onChange={v => setCompanyForm({ ...companyForm, mobile: v })} type="tel" />
+                    <FormField label="Webbplats" value={companyForm.web} onChange={v => setCompanyForm({ ...companyForm, web: v })} />
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+                    <button onClick={() => setEditingCompany(null)} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+                      <XIcon /> Avbryt
+                    </button>
+                    <button onClick={saveCompany} disabled={savingCompany} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+                      <CheckIcon /> {savingCompany ? "Sparar..." : "Spara"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <InfoCard
+                  icon={<BuildingIcon />}
+                  title="Företagsinformation"
+                  onEdit={() => startEditCompany("info")}
+                  items={[
+                    { label: "Namn", value: customerData.CustomerName },
+                    { label: "E-post", value: customerData.Email },
+                    { label: "Telefon", value: customerData.Phone },
+                    { label: "Mobil", value: customerData.Mobile },
+                    { label: "Webb", value: customerData.Web },
+                  ]}
+                />
+              )}
 
-            {showAdd && (
-              <PersonForm
-                title="Lägg till ny person"
-                form={form}
-                setForm={setForm}
-                onSave={handleSave}
-                onCancel={cancelEdit}
-                saving={saving}
-              />
+              {/* Address */}
+              {editingCompany === "address" ? (
+                <div className="lg:col-span-1 rounded-xl border bg-white p-6" style={{ borderColor: "var(--frost)" }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span style={{ color: "var(--frost)" }}><MapPinIcon /></span>
+                    <h3 className="text-sm font-bold" style={{ color: "var(--slate-deep)" }}>Adress</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <FormField label="Gatuadress" value={companyForm.address} onChange={v => setCompanyForm({ ...companyForm, address: v })} />
+                    <FormField label="Adress 2" value={companyForm.address2} onChange={v => setCompanyForm({ ...companyForm, address2: v })} />
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField label="Postnummer" value={companyForm.zip} onChange={v => setCompanyForm({ ...companyForm, zip: v })} />
+                      <FormField label="Ort" value={companyForm.city} onChange={v => setCompanyForm({ ...companyForm, city: v })} />
+                    </div>
+                    <FormField label="Land" value={companyForm.country} onChange={v => setCompanyForm({ ...companyForm, country: v })} />
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+                    <button onClick={() => setEditingCompany(null)} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+                      <XIcon /> Avbryt
+                    </button>
+                    <button onClick={saveCompany} disabled={savingCompany} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+                      <CheckIcon /> {savingCompany ? "Sparar..." : "Spara"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <InfoCard
+                  icon={<MapPinIcon />}
+                  title="Adress"
+                  onEdit={() => startEditCompany("address")}
+                  items={[
+                    { label: "Gatuadress", value: [customerData.Address, customerData.Address2].filter(Boolean).join(", ") },
+                    { label: "Postnummer", value: customerData.Zip },
+                    { label: "Ort", value: customerData.City },
+                    { label: "Land", value: customerData.Country },
+                  ]}
+                />
+              )}
+
+              {/* Billing */}
+              {customerData.BillingInfo && (
+                <InfoCard
+                  icon={<FileTextIcon />}
+                  title="Fakturauppgifter"
+                  items={[
+                    { label: "Mottagare", value: customerData.BillingInfo.CustomerName },
+                    { label: "Org.nr", value: customerData.BillingInfo.OrganisationNumber },
+                    { label: "Adress", value: [customerData.BillingInfo.Address, customerData.BillingInfo.Zip, customerData.BillingInfo.City].filter(Boolean).join(", ") },
+                    { label: "E-post", value: customerData.BillingInfo.Email },
+                    { label: "Referens", value: customerData.BillingInfo.BuyerReference },
+                  ]}
+                />
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ─── Persons ─── */}
+        <SectionTitle>
+          <span>Personer</span>
+          <span className="ml-2 text-sm font-normal" style={{ color: "var(--slate-light)" }}>
+            ({persons.length})
+          </span>
+        </SectionTitle>
+
+        {/* Search */}
+        <div className="relative mb-5">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--slate-light)" }}>
+            <SearchIcon />
+          </span>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Sök namn, e-post eller personnummer..."
+            className="form-input pl-11 text-sm"
+            style={{ maxWidth: 420 }}
+          />
+        </div>
+
+        {/* Add person form */}
+        {showAdd && (
+          <div className="mb-6 rounded-xl border bg-white p-6" style={{ borderColor: "var(--frost)" }}>
+            <h3 className="text-sm font-bold mb-4" style={{ color: "var(--slate-deep)" }}>Lägg till ny person</h3>
+            <PersonFormFields form={form} setForm={setForm} />
+            <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+              <button onClick={cancelEdit} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+                <XIcon /> Avbryt
+              </button>
+              <button onClick={handleSave} disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+                <CheckIcon /> {saving ? "Sparar..." : "Spara"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <LoaderIcon className="animate-spin" />
+          </div>
+        ) : (
+          <>
+            {/* Contact persons */}
+            {contactPersons.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2"
+                  style={{ color: "var(--frost-dark)" }}>
+                  <UserIcon /> Kontaktpersoner ({contactPersons.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {contactPersons.map((person) => (
+                    <PersonCard
+                      key={person.edu_person_id}
+                      person={person}
+                      isEditing={editingId === person.edu_person_id}
+                      form={form}
+                      setForm={setForm}
+                      onEdit={() => startEdit(person)}
+                      onSave={handleSave}
+                      onCancel={cancelEdit}
+                      saving={saving}
+                      highlight
+                      portalRole={portalRoles.find(r => r.personId === person.edu_person_id)}
+                    />
+                  ))}
+                </div>
+              </div>
             )}
 
-            {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <LoaderIcon className="animate-spin" />
+            {/* Participants */}
+            {participants.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2"
+                  style={{ color: "var(--slate-light)" }}>
+                  <UserIcon /> Deltagare ({participants.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {participants.map((person) => (
+                    <PersonCard
+                      key={person.edu_person_id}
+                      person={person}
+                      isEditing={editingId === person.edu_person_id}
+                      form={form}
+                      setForm={setForm}
+                      onEdit={() => startEdit(person)}
+                      onSave={handleSave}
+                      onCancel={cancelEdit}
+                      saving={saving}
+                      portalRole={portalRoles.find(r => r.personId === person.edu_person_id)}
+                    />
+                  ))}
+                </div>
               </div>
-            ) : (
-              <>
-                <PersonSection
-                  title="Kontaktpersoner"
-                  persons={contactPersons}
-                  editingId={editingId}
-                  form={form}
-                  setForm={setForm}
-                  onEdit={startEdit}
-                  onDelete={handleDelete}
-                  onSave={handleSave}
-                  onCancel={cancelEdit}
-                  saving={saving}
-                  highlight
-                  portalRoles={portalRoles}
-                />
-                <PersonSection
-                  title="Övriga personer / Deltagare"
-                  persons={participants}
-                  editingId={editingId}
-                  form={form}
-                  setForm={setForm}
-                  onEdit={startEdit}
-                  onDelete={handleDelete}
-                  onSave={handleSave}
-                  onCancel={cancelEdit}
-                  saving={saving}
-                  portalRoles={portalRoles}
-                />
-                {filtered.length === 0 && !showAdd && (
-                  <div className="py-12 text-center" style={{ color: "var(--slate-light)" }}>
-                    {search ? "Inga personer matchar din sökning" : "Inga personer registrerade ännu"}
-                  </div>
-                )}
-              </>
+            )}
+
+            {filtered.length === 0 && !showAdd && (
+              <div className="py-16 text-center rounded-xl border" style={{ color: "var(--slate-light)", borderColor: "var(--border)", background: "#fff" }}>
+                {search ? "Inga personer matchar din sökning" : "Inga personer registrerade ännu"}
+              </div>
             )}
           </>
         )}
@@ -546,39 +560,48 @@ export default function CompanyManagementPage() {
   );
 }
 
-/* ─── InfoCard ─── */
+/* ─── Section title ─── */
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <h2 className="font-condensed font-bold uppercase text-lg" style={{ color: "var(--navy)" }}>
+        {children}
+      </h2>
+      <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+    </div>
+  );
+}
+
+/* ─── Info card ─── */
 function InfoCard({
-  title,
-  icon,
-  rows,
-  onEdit,
+  icon, title, items, onEdit,
 }: {
-  title: string;
   icon: React.ReactNode;
-  rows: Array<{ label: string; value: string }>;
+  title: string;
+  items: Array<{ label: string; value: string }>;
   onEdit?: () => void;
 }) {
   return (
-    <div className="rounded-lg border bg-white" style={{ borderColor: "var(--border)" }}>
-      <div className="flex items-center gap-2 border-b px-5 py-3" style={{ borderColor: "var(--border)" }}>
-        <span style={{ color: "var(--frost)" }}>{icon}</span>
-        <h2 className="text-sm font-semibold flex-1" style={{ color: "var(--slate-deep)" }}>
-          {title}
-        </h2>
+    <div className="rounded-xl border bg-white p-6" style={{ borderColor: "var(--border)" }}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span style={{ color: "var(--frost)" }}>{icon}</span>
+          <h3 className="text-sm font-bold" style={{ color: "var(--slate-deep)" }}>{title}</h3>
+        </div>
         {onEdit && (
-          <button onClick={onEdit} className="text-xs font-medium px-2 py-1 rounded transition-colors" style={{ color: "var(--frost)" }}>
+          <button onClick={onEdit} className="text-xs font-semibold px-2.5 py-1 rounded-md transition-colors hover:bg-gray-50" style={{ color: "var(--frost)" }}>
             Ändra
           </button>
         )}
       </div>
-      <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-        {rows.map((row) => (
-          <div key={row.label} className="flex items-center justify-between px-5 py-2.5">
-            <span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>
-              {row.label}
+      <div className="space-y-2.5">
+        {items.map((item) => (
+          <div key={item.label}>
+            <span className="block text-[11px] font-medium uppercase tracking-wider mb-0.5" style={{ color: "var(--slate-light)" }}>
+              {item.label}
             </span>
-            <span className="text-sm text-right" style={{ color: "var(--slate-deep)" }}>
-              {row.value}
+            <span className="block text-sm" style={{ color: item.value ? "var(--slate-deep)" : "var(--slate-light)" }}>
+              {item.value || "—"}
             </span>
           </div>
         ))}
@@ -587,231 +610,164 @@ function InfoCard({
   );
 }
 
-/* ─── EditCard ─── */
-function EditCard({
-  title,
-  icon,
-  onSave,
-  onCancel,
-  saving,
-  children,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  onSave: () => void;
-  onCancel: () => void;
-  saving: boolean;
-  children: React.ReactNode;
+/* ─── Form field ─── */
+function FormField({ label, value, onChange, type = "text" }: {
+  label: string; value: string; onChange: (v: string) => void; type?: string;
 }) {
   return (
-    <div className="rounded-lg border bg-white" style={{ borderColor: "var(--frost)" }}>
-      <div className="flex items-center gap-2 border-b px-5 py-3" style={{ borderColor: "var(--border)" }}>
-        <span style={{ color: "var(--frost)" }}>{icon}</span>
-        <h2 className="text-sm font-semibold flex-1" style={{ color: "var(--slate-deep)" }}>{title}</h2>
-      </div>
-      <div className="px-5 py-4 space-y-4">
-        {children}
-        <div className="flex justify-end gap-2 pt-2">
-          <button onClick={onCancel} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
-            <XIcon /> Avbryt
-          </button>
-          <button onClick={onSave} disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
-            <CheckIcon /> {saving ? "Sparar..." : "Spara"}
-          </button>
-        </div>
-      </div>
+    <div>
+      <label className="block text-[11px] font-medium uppercase tracking-wider mb-1" style={{ color: "var(--slate-light)" }}>
+        {label}
+      </label>
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} className="form-input text-sm" />
     </div>
   );
 }
 
-/* ─── PersonSection ─── */
-function PersonSection({
-  title,
-  persons,
-  editingId,
-  form,
-  setForm,
-  onEdit,
-  onDelete,
-  onSave,
-  onCancel,
-  saving,
-  highlight,
-  portalRoles,
+/* ─── Person card ─── */
+function PersonCard({
+  person, isEditing, form, setForm, onEdit, onSave, onCancel, saving, highlight, portalRole,
 }: {
-  title: string;
-  persons: Person[];
-  editingId: number | null;
+  person: Person;
+  isEditing: boolean;
   form: typeof emptyPerson;
   setForm: (f: typeof emptyPerson) => void;
-  onEdit: (p: Person) => void;
-  onDelete: (id: number, name: string) => void;
+  onEdit: () => void;
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
   highlight?: boolean;
-  portalRoles?: PortalRole[];
+  portalRole?: PortalRole;
 }) {
-  if (persons.length === 0) return null;
+  if (isEditing) {
+    return (
+      <div className="rounded-xl border bg-white p-5 md:col-span-2 lg:col-span-3" style={{ borderColor: "var(--frost)" }}>
+        <h3 className="text-sm font-bold mb-4" style={{ color: "var(--slate-deep)" }}>
+          Redigera — {person.first_name} {person.last_name}
+        </h3>
+        <PersonFormFields form={form} setForm={setForm} />
+        <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+          <button onClick={onCancel} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+            <XIcon /> Avbryt
+          </button>
+          <button onClick={onSave} disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+            <CheckIcon /> {saving ? "Sparar..." : "Spara"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const initials = `${person.first_name?.charAt(0) || ""}${person.last_name?.charAt(0) || ""}`.toUpperCase();
 
   return (
-    <div className="mb-6">
-      <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>
-        <UserIcon />
-        {title} ({persons.length})
-      </h2>
-      <div className="overflow-hidden rounded-lg border bg-white" style={{ borderColor: "var(--border)" }}>
-        {persons.map((person, i) => (
-          <div key={person.edu_person_id}>
-            {i > 0 && <div className="h-px" style={{ backgroundColor: "var(--border)" }} />}
-            {editingId === person.edu_person_id ? (
-              <PersonForm
-                form={form}
-                setForm={setForm}
-                onSave={onSave}
-                onCancel={onCancel}
-                saving={saving}
-                inline
-              />
-            ) : (
-              <div className="flex items-center gap-4 px-5 py-3.5 event-row">
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                  style={{
-                    backgroundColor: highlight ? "var(--frost-light)" : "#f0f0f0",
-                    color: highlight ? "var(--frost-dark)" : "var(--slate-light)",
-                  }}
-                >
-                  <UserIcon />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
-                      {person.first_name?.trim()} {person.last_name?.trim()}
-                    </span>
-                    {(() => {
-                      const portalRole = portalRoles?.find((r) => r.personId === person.edu_person_id);
-                      if (portalRole) {
-                        const isAdmin = portalRole.role === "company_admin";
-                        return (
-                          <span
-                            className="badge text-[10px]"
-                            style={{
-                              backgroundColor: isAdmin ? "var(--frost)" : "var(--frost-light)",
-                              color: isAdmin ? "#fff" : "var(--frost-dark)",
-                            }}
-                          >
-                            {ROLE_LABELS[portalRole.role] ?? portalRole.role}
-                          </span>
-                        );
-                      }
-                      if (person.is_contact_person) {
-                        return <span className="badge badge-available text-[10px]">Kontaktperson</span>;
-                      }
-                      return null;
-                    })()}
-                  </div>
-                  <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--slate-light)" }}>
-                    {person.email && <span>{person.email}</span>}
-                    {(person.phone || person.mobile) && <span>{person.phone || person.mobile}</span>}
-                    {person.civic_registration_number && (
-                      <span>Personnr: {person.civic_registration_number}</span>
-                    )}
-                    {person.job_title && <span>{person.job_title}</span>}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    onClick={() => onEdit(person)}
-                    className="rounded px-2 py-1 text-xs font-medium transition-colors"
-                    style={{ color: "var(--frost)" }}
-                  >
-                    Ändra
-                  </button>
-                  <button
-                    onClick={() => onDelete(person.edu_person_id, `${person.first_name} ${person.last_name}`)}
-                    className="rounded p-1 transition-colors"
-                    style={{ color: "var(--danger)" }}
-                  >
-                    <TrashIcon />
-                  </button>
-                </div>
-              </div>
+    <div
+      className="rounded-xl border bg-white p-5 transition-all hover:shadow-sm"
+      style={{ borderColor: "var(--border)" }}
+    >
+      <div className="flex items-start gap-3 mb-3">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+          style={{
+            backgroundColor: highlight ? "var(--frost-light)" : "#f0f3f7",
+            color: highlight ? "var(--frost-dark)" : "var(--slate-light)",
+          }}
+        >
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
+              {person.first_name?.trim()} {person.last_name?.trim()}
+            </span>
+            {portalRole && (
+              <span
+                className="badge text-[10px]"
+                style={{
+                  backgroundColor: portalRole.role === "company_admin" ? "var(--frost)" : "var(--frost-light)",
+                  color: portalRole.role === "company_admin" ? "#fff" : "var(--frost-dark)",
+                }}
+              >
+                {ROLE_LABELS[portalRole.role] ?? portalRole.role}
+              </span>
+            )}
+            {!portalRole && person.is_contact_person && (
+              <span className="badge badge-available text-[10px]">Kontaktperson</span>
             )}
           </div>
-        ))}
+          {person.job_title && (
+            <span className="text-xs" style={{ color: "var(--slate-light)" }}>{person.job_title}</span>
+          )}
+        </div>
+        <button
+          onClick={onEdit}
+          className="text-xs font-semibold px-2 py-1 rounded-md transition-colors hover:bg-gray-50 shrink-0"
+          style={{ color: "var(--frost)" }}
+        >
+          Ändra
+        </button>
+      </div>
+
+      <div className="space-y-1.5 text-xs" style={{ color: "var(--slate-light)" }}>
+        {person.email && (
+          <div className="flex items-center gap-2">
+            <span className="w-14 shrink-0 font-medium uppercase tracking-wider text-[10px]">E-post</span>
+            <span style={{ color: "var(--slate-deep)" }}>{person.email}</span>
+          </div>
+        )}
+        {(person.phone || person.mobile) && (
+          <div className="flex items-center gap-2">
+            <span className="w-14 shrink-0 font-medium uppercase tracking-wider text-[10px]">Telefon</span>
+            <span style={{ color: "var(--slate-deep)" }}>{person.phone || person.mobile}</span>
+          </div>
+        )}
+        {person.civic_registration_number && (
+          <div className="flex items-center gap-2">
+            <span className="w-14 shrink-0 font-medium uppercase tracking-wider text-[10px]">Persnr</span>
+            <span style={{ color: "var(--slate-deep)" }}>{person.civic_registration_number}</span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ─── PersonForm ─── */
-function PersonForm({
-  title,
-  form,
-  setForm,
-  onSave,
-  onCancel,
-  saving,
-  inline,
-}: {
-  title?: string;
+/* ─── Person form fields ─── */
+function PersonFormFields({ form, setForm }: {
   form: typeof emptyPerson;
   setForm: (f: typeof emptyPerson) => void;
-  onSave: () => void;
-  onCancel: () => void;
-  saving: boolean;
-  inline?: boolean;
 }) {
   return (
-    <div
-      className={inline ? "px-5 py-4" : "mb-6 rounded-lg border bg-white p-5"}
-      style={!inline ? { borderColor: "var(--border)" } : undefined}
-    >
-      {title && (
-        <h3 className="mb-4 text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
-          {title}
-        </h3>
-      )}
+    <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <input type="text" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} placeholder="Förnamn *" className="form-input text-sm" autoFocus />
-        <input type="text" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} placeholder="Efternamn *" className="form-input text-sm" />
-        <input type="text" value={form.civicRegistrationNumber} onChange={(e) => setForm({ ...form, civicRegistrationNumber: e.target.value })} placeholder="Personnummer (YYYYMMDD-XXXX)" className="form-input text-sm" />
-        <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="E-post" className="form-input text-sm" />
-        <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Telefon" className="form-input text-sm" />
-        <input type="tel" value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} placeholder="Mobil" className="form-input text-sm" />
-        <input type="text" value={form.jobTitle} onChange={(e) => setForm({ ...form, jobTitle: e.target.value })} placeholder="Befattning" className="form-input text-sm" />
+        <FormField label="Förnamn *" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} />
+        <FormField label="Efternamn *" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} />
+        <FormField label="Personnummer" value={form.civicRegistrationNumber} onChange={v => setForm({ ...form, civicRegistrationNumber: v })} />
+        <FormField label="E-post" value={form.email} onChange={v => setForm({ ...form, email: v })} type="email" />
+        <FormField label="Telefon" value={form.phone} onChange={v => setForm({ ...form, phone: v })} type="tel" />
+        <FormField label="Mobil" value={form.mobile} onChange={v => setForm({ ...form, mobile: v })} type="tel" />
+        <FormField label="Befattning" value={form.jobTitle} onChange={v => setForm({ ...form, jobTitle: v })} />
       </div>
-      <div className="mt-3 flex items-center gap-4">
-        <div className="flex gap-2">
-          {([
-            { label: "Deltagare", value: false },
-            { label: "Kontaktperson", value: true },
-          ] as const).map(opt => (
-            <button
-              key={String(opt.value)}
-              type="button"
-              onClick={() => setForm({ ...form, isContactPerson: opt.value })}
-              className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-all"
-              style={{
-                borderColor: form.isContactPerson === opt.value ? "var(--frost)" : "var(--border)",
-                backgroundColor: form.isContactPerson === opt.value ? "var(--frost-light)" : "#fff",
-                color: form.isContactPerson === opt.value ? "var(--frost-dark)" : "var(--slate-light)",
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        <div className="ml-auto flex gap-2">
-          <button onClick={onCancel} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
-            <XIcon /> Avbryt
+      <div className="flex gap-2 mt-3">
+        {([
+          { label: "Deltagare", value: false },
+          { label: "Kontaktperson", value: true },
+        ] as const).map(opt => (
+          <button
+            key={String(opt.value)}
+            type="button"
+            onClick={() => setForm({ ...form, isContactPerson: opt.value })}
+            className="rounded-lg border px-4 py-2 text-xs font-medium transition-all"
+            style={{
+              borderColor: form.isContactPerson === opt.value ? "var(--frost)" : "var(--border)",
+              backgroundColor: form.isContactPerson === opt.value ? "var(--frost-light)" : "#fff",
+              color: form.isContactPerson === opt.value ? "var(--frost-dark)" : "var(--slate-light)",
+            }}
+          >
+            {opt.label}
           </button>
-          <button onClick={onSave} disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
-            <CheckIcon /> {saving ? "Sparar..." : "Spara"}
-          </button>
-        </div>
+        ))}
       </div>
-    </div>
+    </>
   );
 }
