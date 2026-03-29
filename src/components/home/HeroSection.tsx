@@ -20,7 +20,7 @@ interface Props {
 
 export function HeroSection({ heading, subheading, ctaText, heroImage, events }: Props) {
   return (
-    <section className="min-h-screen grid grid-cols-1 lg:grid-cols-2 relative overflow-hidden"
+    <section id="hero" className="min-h-screen grid grid-cols-1 lg:grid-cols-2 relative overflow-hidden"
       style={{ background: 'var(--navy)' }}>
 
       {/* Bakgrundsbild från Sanity */}

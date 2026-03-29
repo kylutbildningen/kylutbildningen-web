@@ -61,12 +61,20 @@ export function ChatWidget() {
     loadUser()
   }, [])
 
-  // Listen for open-chat events from header/footer
+  // Listen for open-chat events from header/footer — toggle on repeat click
   useEffect(() => {
-    const handler = () => { handleOpen() }
+    const handler = () => {
+      if (open && !minimized) {
+        setMinimized(true)
+      } else if (open && minimized) {
+        setMinimized(false)
+      } else {
+        handleOpen()
+      }
+    }
     window.addEventListener('open-chat-widget', handler)
     return () => window.removeEventListener('open-chat-widget', handler)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }) // re-subscribe on every render to capture current open/minimized state
 
   // Lock body scroll on mobile when chat is open
   useEffect(() => {

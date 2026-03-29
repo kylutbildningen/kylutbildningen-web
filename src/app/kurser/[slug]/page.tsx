@@ -11,6 +11,7 @@ import { DaySchedule } from '@/components/kurser/DaySchedule'
 import { InfoTabs } from '@/components/kurser/InfoTabs'
 import { PortableText } from '@portabletext/react'
 import Link from 'next/link'
+import { CourseSectionNav } from '@/components/kurser/CourseSectionNav'
 import type { EventCard as EventCardType } from '@/types/eduadmin'
 
 export const revalidate = 60
@@ -150,6 +151,8 @@ export default async function CourseSlugPage({ params }: PageProps) {
         </div>
       </div>
 
+      <CourseSectionNav sectionTypes={layout.filter((s: { visible: boolean }) => s.visible !== false).map((s: { sectionType: string }) => s.sectionType)} />
+
       <div className="max-w-6xl mx-auto px-6 py-12 space-y-12 flex-grow">
         {(() => {
           const twoColTypes = new Set(['upplagg', 'innehall'])
@@ -235,7 +238,7 @@ export default async function CourseSlugPage({ params }: PageProps) {
 function SnabbfaktaSection({ course }: { course: any }) {
   if (!course.antalDagar && !course.targetGroup && !course.prerequisites) return null
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-px rounded-lg overflow-hidden" style={{ background: '#DDE4ED', border: '1px solid #DDE4ED' }}>
+    <div id="section-snabbfakta" className="grid grid-cols-2 md:grid-cols-4 gap-px rounded-lg overflow-hidden" style={{ background: '#DDE4ED', border: '1px solid #DDE4ED' }}>
       {course.antalDagar && (
         <div className="bg-white p-6">
           <div className="text-[11px] font-bold tracking-[0.1em] uppercase mb-1" style={{ color: 'var(--muted)' }}>Antal dagar</div>
@@ -269,7 +272,7 @@ function SnabbfaktaSection({ course }: { course: any }) {
 function BeskrivningSection({ course }: { course: any }) {
   if (!course.description) return null
   return (
-    <div>
+    <div id="section-beskrivning">
       <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Beskrivning</h2>
       <div className="text-[15px] leading-relaxed prose prose-sm" style={{ color: 'var(--muted)' }}>
         <PortableText value={course.description} />
@@ -281,7 +284,7 @@ function BeskrivningSection({ course }: { course: any }) {
 function OmUtbildningenSection({ course }: { course: any }) {
   if (!course.omUtbildningen?.length) return null
   return (
-    <div>
+    <div id="section-omUtbildningen">
       <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Om utbildningen</h2>
       <div className="text-[15px] leading-relaxed prose prose-sm" style={{ color: 'var(--muted)' }}>
         <PortableText value={course.omUtbildningen} />
@@ -293,7 +296,7 @@ function OmUtbildningenSection({ course }: { course: any }) {
 function InnehallSection({ course }: { course: any }) {
   if (!course.innehall?.length) return null
   return (
-    <div>
+    <div id="section-innehall">
       <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Innehåll — vad vi går igenom</h2>
       <ul className="space-y-2">
         {course.innehall.map((item: string, i: number) => (
@@ -310,7 +313,7 @@ function InnehallSection({ course }: { course: any }) {
 function UpplaggSection({ course }: { course: any }) {
   if (!course.upplagg?.length && !course.upplaggText) return null
   return (
-    <div>
+    <div id="section-upplagg">
       <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Upplägg — dag för dag</h2>
       {course.upplagg?.length > 0 && (
         <div className="space-y-3 mb-4">
@@ -334,7 +337,7 @@ function UpplaggSection({ course }: { course: any }) {
 function CertifieringSection({ course }: { course: any }) {
   if (!course.certifiering?.text && !course.certifiering?.highlightText) return null
   return (
-    <div>
+    <div id="section-certifiering">
       <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>
         Certifiering
       </h2>
@@ -362,7 +365,7 @@ function CertifieringSection({ course }: { course: any }) {
 function LodprovSection({ course }: { course: any }) {
   if (!course.lodprov) return null
   return (
-    <div>
+    <div id="section-lodprov">
       <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Lödprov</h2>
       <p className="text-[15px] leading-relaxed" style={{ color: 'var(--muted)' }}>{course.lodprov}</p>
     </div>
@@ -372,7 +375,7 @@ function LodprovSection({ course }: { course: any }) {
 function DagSchemaSection({ course }: { course: any }) {
   if (!course.dagSchema?.length) return null
   return (
-    <div>
+    <div id="section-dagSchema">
       <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Schema</h2>
       <DaySchedule dagar={course.dagSchema} />
     </div>
@@ -382,7 +385,7 @@ function DagSchemaSection({ course }: { course: any }) {
 function InfoFlikarSection({ course }: { course: any }) {
   if (!course.infoFlikar?.length) return null
   return (
-    <div>
+    <div id="section-infoFlikar">
       <h2 className="font-condensed font-bold uppercase text-2xl mb-4" style={{ color: 'var(--navy)' }}>Information</h2>
       <InfoTabs flikar={course.infoFlikar} />
     </div>
@@ -391,7 +394,7 @@ function InfoFlikarSection({ course }: { course: any }) {
 
 function KommandeTillfallenSection({ events }: { events: EventCardType[] }) {
   return (
-    <div>
+    <div id="section-kommandeTillfallen">
       <div className="flex items-center gap-4 mb-6">
         <h2 className="font-condensed font-bold uppercase text-2xl" style={{ color: 'var(--navy)' }}>Kommande tillfällen</h2>
         <div className="flex-1 h-px" style={{ background: '#DDE4ED' }} />

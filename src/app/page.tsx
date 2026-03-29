@@ -28,7 +28,6 @@ const DEFAULT_HOME_LAYOUT = [
   { sectionType: 'usp', visible: true },
   { sectionType: 'kommandeKurser', visible: true },
   { sectionType: 'utbildningsomraden', visible: true },
-  { sectionType: 'kontakt', visible: true },
 ]
 
 export default async function HomePage() {
