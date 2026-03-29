@@ -241,9 +241,9 @@ export default function BookingDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+      <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
         <SiteHeader />
-        <div className="flex items-center justify-center py-32">
+        <div className="flex items-center justify-center py-32 flex-grow">
           <LoaderIcon className="animate-spin" />
           <span className="ml-3 text-sm" style={{ color: "var(--slate-light)" }}>Hämtar bokning...</span>
         </div>
@@ -253,9 +253,9 @@ export default function BookingDetailPage() {
 
   if (!booking) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+      <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
         <SiteHeader />
-        <div className="mx-auto max-w-2xl px-6 py-20 text-center">
+        <div className="mx-auto max-w-2xl px-6 py-20 text-center flex-grow">
           <p style={{ color: "var(--slate-light)" }}>{error || "Bokningen hittades inte"}</p>
           <a href="/dashboard/bokningar" className="mt-4 inline-block text-sm font-medium underline" style={{ color: "var(--frost)" }}>Alla bokningar</a>
         </div>
@@ -272,9 +272,9 @@ export default function BookingDetailPage() {
   const canceledParticipants = booking.Participants.filter(p => p.Canceled);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+    <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
       <SiteHeader />
-      <div className="mx-auto max-w-3xl px-6 py-10">
+      <div className="mx-auto max-w-3xl px-6 py-10 flex-grow">
         <a href="/dashboard/bokningar" className="mb-4 inline-block text-sm font-medium" style={{ color: "var(--frost)" }}>← Alla bokningar</a>
 
         {/* Header */}

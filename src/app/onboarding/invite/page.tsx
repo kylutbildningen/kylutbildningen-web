@@ -104,9 +104,9 @@ function InviteContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+      <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
         <SiteHeader />
-        <div className="flex items-center justify-center py-32">
+        <div className="flex items-center justify-center py-32 flex-grow">
           <span className="text-sm" style={{ color: "var(--slate-light)" }}>
             Laddar inbjudan...
           </span>
@@ -117,12 +117,12 @@ function InviteContent() {
 
   return (
     <div
-      className="min-h-screen"
+      className="min-h-screen flex-grow flex flex-col"
       style={{ backgroundColor: "var(--warm-white)" }}
     >
       <SiteHeader />
 
-      <div className="mx-auto max-w-md px-6 py-16 text-center">
+      <div className="mx-auto max-w-md px-6 py-16 text-center flex-grow">
         {error ? (
           <>
             <h1

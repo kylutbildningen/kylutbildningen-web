@@ -266,9 +266,9 @@ export default function TeamPage() {
   const otherPersons = persons.filter(p => !p.is_contact_person);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+    <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
       <SiteHeader />
-      <div className="mx-auto max-w-3xl px-6 py-10">
+      <div className="mx-auto max-w-3xl px-6 py-10 flex-grow">
         <a href="/dashboard" className="mb-4 inline-block text-sm font-medium" style={{ color: "var(--frost)" }}>
           ← Dashboard
         </a>

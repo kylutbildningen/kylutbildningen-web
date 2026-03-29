@@ -75,7 +75,7 @@ export default async function KurserPage({ searchParams }: PageProps) {
   const grouped = groupEventsByCategoryAndCourse(filtered)
 
   return (
-    <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
+    <div className="min-h-screen flex-grow flex flex-col" style={{ background: '#FAFBFC' }}>
       <SiteHeader />
 
       {/* Page header */}
@@ -95,7 +95,7 @@ export default async function KurserPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-10">
+      <div className="max-w-6xl mx-auto px-6 py-8 space-y-10 flex-grow">
         {/* Filterrad */}
         <Suspense fallback={null}>
           <CourseFilter categories={categories} cities={cities} />

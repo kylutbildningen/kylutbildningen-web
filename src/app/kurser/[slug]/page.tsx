@@ -124,7 +124,7 @@ export default async function CourseSlugPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
+    <div className="min-h-screen flex-grow flex flex-col" style={{ background: '#FAFBFC' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(courseJsonLd) }}
@@ -150,7 +150,7 @@ export default async function CourseSlugPage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-12 space-y-12">
+      <div className="max-w-6xl mx-auto px-6 py-12 space-y-12 flex-grow">
         {(() => {
           const twoColTypes = new Set(['upplagg', 'innehall'])
           const visibleSections = layout.filter(

@@ -277,9 +277,9 @@ export default function MinaKurserPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+      <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
         <SiteHeader />
-        <div className="flex items-center justify-center py-32">
+        <div className="flex items-center justify-center py-32 flex-grow">
           <LoaderIcon className="animate-spin" />
           <span className="ml-3 text-sm" style={{ color: "var(--slate-light)" }}>Hämtar dina kurser...</span>
         </div>
@@ -288,9 +288,9 @@ export default function MinaKurserPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+    <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
       <SiteHeader />
-      <div className="mx-auto max-w-3xl px-6 py-10">
+      <div className="mx-auto max-w-3xl px-6 py-10 flex-grow">
         <a href="/dashboard" className="mb-4 inline-block text-sm font-medium" style={{ color: "var(--frost)" }}>
           ← Dashboard
         </a>

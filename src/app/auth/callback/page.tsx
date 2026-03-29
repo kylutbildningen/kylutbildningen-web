@@ -37,6 +37,7 @@ function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     async function handleCallback() {
@@ -70,18 +71,72 @@ function AuthCallbackContent() {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         const { data: retry } = await supabase.auth.getUser();
         if (!retry.user) {
+          // No session — this was likely an email verification, not a login.
+          // Auto-send a new magic link if we have a saved email.
+          const pendingEmail = localStorage.getItem("pending_auth_email");
+          const pendingNext = localStorage.getItem("pending_auth_next");
+          if (pendingEmail) {
+            setResending(true);
+            const callbackNext = pendingNext || next || "/dashboard";
+            const { error: resendError } = await supabase.auth.signInWithOtp({
+              email: pendingEmail,
+              options: {
+                emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext)}`,
+              },
+            });
+            if (!resendError) {
+              return; // Stay in "resending" state — shows the confirmation UI
+            }
+          }
           setError("Inloggningen misslyckades. Försök skicka en ny länk.");
           return;
         }
+        localStorage.removeItem("pending_auth_email");
+        localStorage.removeItem("pending_auth_next");
         await routeUser(supabase, retry.user, next, invite, router);
         return;
       }
 
+      localStorage.removeItem("pending_auth_email");
+      localStorage.removeItem("pending_auth_next");
       await routeUser(supabase, user, next, invite, router);
     }
 
     handleCallback();
   }, [router, searchParams]);
+
+  if (resending) {
+    const pendingEmail = typeof window !== "undefined" ? localStorage.getItem("pending_auth_email") : null;
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{ backgroundColor: "var(--warm-white)" }}
+      >
+        <div className="mx-auto max-w-md px-6 text-center">
+          <div
+            className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full text-2xl"
+            style={{ backgroundColor: "var(--frost-light)" }}
+          >
+            ✅
+          </div>
+          <h2
+            className="mb-3 text-xl"
+            style={{
+              fontFamily: "var(--font-serif)",
+              color: "var(--slate-deep)",
+            }}
+          >
+            E-post verifierad!
+          </h2>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
+            Vi har skickat en ny inloggningslänk till{" "}
+            {pendingEmail && <strong style={{ color: "var(--slate-deep)" }}>{pendingEmail}</strong>}
+            . Kolla din inkorg och klicka på länken för att logga in.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (

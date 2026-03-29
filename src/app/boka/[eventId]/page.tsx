@@ -353,9 +353,9 @@ export default function BookingPage() {
   // Loading / auth check
   if (loading || !authChecked) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+      <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
         <SiteHeader />
-        <div className="flex items-center justify-center py-32">
+        <div className="flex items-center justify-center py-32 flex-grow">
           <LoaderIcon className="animate-spin" />
           <span className="ml-3 text-sm" style={{ color: "var(--slate-light)" }}>
             {!authChecked ? "Kontrollerar inloggning..." : "Laddar kursdata..."}
@@ -367,9 +367,9 @@ export default function BookingPage() {
 
   if (error && !event) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+      <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
         <SiteHeader />
-        <div className="mx-auto max-w-2xl px-6 py-20 text-center">
+        <div className="mx-auto max-w-2xl px-6 py-20 text-center flex-grow">
           <h2 className="mb-4 text-2xl" style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}>
             Något gick fel
           </h2>
@@ -406,7 +406,7 @@ export default function BookingPage() {
   });
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+    <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
       <SiteHeader />
 
       {/* Event summary bar */}
@@ -458,7 +458,7 @@ export default function BookingPage() {
       </div>
 
       {/* Content */}
-      <div className="mx-auto max-w-3xl px-6 py-10">
+      <div className="mx-auto max-w-3xl px-6 py-10 flex-grow">
         <h2
           id="step-heading"
           className="mb-6 text-xl font-medium outline-none"

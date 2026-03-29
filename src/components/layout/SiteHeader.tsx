@@ -7,6 +7,9 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 function openChatWidget() {
   window.dispatchEvent(new Event('open-chat-widget'))
 }
+function openAuthModal() {
+  window.dispatchEvent(new Event('open-auth-modal'))
+}
 
 interface UserInfo {
   fullName: string
@@ -154,12 +157,12 @@ export function SiteHeader() {
             )}
           </div>
         ) : (
-          <Link
-            href="/logga-in"
+          <button
+            onClick={openAuthModal}
             className="px-5 py-2 bg-[#1A5EA8] hover:bg-[#2A7DD4] text-white text-xs font-semibold tracking-wider uppercase rounded transition-colors"
           >
             Logga in
-          </Link>
+          </button>
         )}
       </nav>
 
@@ -212,10 +215,10 @@ export function SiteHeader() {
             </>
           ) : (
             <div className="px-4 md:px-6 pt-3 pb-1">
-              <Link href="/logga-in" onClick={() => setMenuOpen(false)}
-                className="block text-center py-3 bg-[#1A5EA8] text-white text-xs font-semibold tracking-wider uppercase rounded transition-colors hover:bg-[#2A7DD4]">
+              <button onClick={() => { setMenuOpen(false); openAuthModal() }}
+                className="block w-full text-center py-3 bg-[#1A5EA8] text-white text-xs font-semibold tracking-wider uppercase rounded transition-colors hover:bg-[#2A7DD4]">
                 Logga in
-              </Link>
+              </button>
             </div>
           )}
         </div>

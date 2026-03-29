@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function CookiesPage() {
   return (
-    <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
+    <div className="min-h-screen flex-grow flex flex-col" style={{ background: '#FAFBFC' }}>
       <SiteHeader />
 
       <div style={{ background: 'var(--navy)' }}>
@@ -20,7 +20,7 @@ export default function CookiesPage() {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-16 space-y-8">
+      <div className="max-w-3xl mx-auto px-6 py-16 space-y-8 flex-grow">
         <section>
           <h2 className="font-condensed font-bold uppercase text-xl mb-3"
             style={{ color: 'var(--navy)' }}>

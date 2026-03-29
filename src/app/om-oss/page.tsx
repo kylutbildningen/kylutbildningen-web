@@ -66,7 +66,7 @@ export default async function OmOssPage() {
   const pageData = await client.fetch(PAGE_QUERY, { slug: 'om-oss' }, { next: { revalidate: 3600 } })
 
   return (
-    <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
+    <div className="min-h-screen flex-grow flex flex-col" style={{ background: '#FAFBFC' }}>
       <SiteHeader />
 
       {/* Hero */}
@@ -114,7 +114,7 @@ export default async function OmOssPage() {
       </div>
 
       {/* Innehåll */}
-      <div className="max-w-6xl mx-auto px-6 py-16">
+      <div className="max-w-6xl mx-auto px-6 py-16 flex-grow">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-start">
 
           {/* Vänster — PortableText (2/3) */}

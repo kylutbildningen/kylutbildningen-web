@@ -6,6 +6,7 @@ import { SanityLive } from "@/sanity/lib/live";
 import { SectionNav } from "@/components/home/SectionNav";
 import { CookieBanner } from "@/components/CookieBanner";
 import { ChatWidget } from "@/components/ChatWidget";
+import { AuthModal } from "@/components/AuthModal";
 import "./globals.css";
 
 const barlow = Barlow({
@@ -42,13 +43,14 @@ export default async function RootLayout({
 
   return (
     <html lang="sv" className={`${barlow.variable} ${barlowCondensed.variable}`}>
-      <body className="antialiased">
+      <body className="antialiased min-h-screen flex flex-col">
         {children}
         <SectionNav />
         <SanityLive />
         {draft.isEnabled && <VisualEditing />}
         <CookieBanner />
         <ChatWidget />
+        <AuthModal />
       </body>
     </html>
   );

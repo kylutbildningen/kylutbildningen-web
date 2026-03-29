@@ -21,7 +21,7 @@ export default async function BekraftelseSida({
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
+    <div className="min-h-screen flex-grow flex flex-col" style={{ background: '#FAFBFC' }}>
       <SiteHeader />
 
       <div style={{ background: 'var(--navy)' }}>
@@ -33,7 +33,7 @@ export default async function BekraftelseSida({
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-16 text-center">
+      <div className="max-w-3xl mx-auto px-6 py-16 text-center flex-grow">
         <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center"
           style={{ background: '#F0F5FF' }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none"

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function VillkorPage() {
   return (
-    <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
+    <div className="min-h-screen flex-grow flex flex-col" style={{ background: '#FAFBFC' }}>
       <SiteHeader />
 
       {/* Hero */}
@@ -31,7 +31,7 @@ export default function VillkorPage() {
       </div>
 
       {/* Innehåll */}
-      <div className="max-w-3xl mx-auto px-6 py-16 space-y-12">
+      <div className="max-w-3xl mx-auto px-6 py-16 space-y-12 flex-grow">
 
         {/* Anmälan */}
         <section>

@@ -308,9 +308,9 @@ export default function CompanyManagementPage() {
 
   if (!membership) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+      <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
         <SiteHeader />
-        <div className="flex items-center justify-center py-32">
+        <div className="flex items-center justify-center py-32 flex-grow">
           <LoaderIcon className="animate-spin" />
         </div>
       </div>
@@ -318,10 +318,10 @@ export default function CompanyManagementPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--warm-white)" }}>
+    <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
       <SiteHeader />
 
-      <div className="mx-auto max-w-4xl px-6 py-10">
+      <div className="mx-auto max-w-4xl px-6 py-10 flex-grow">
         {/* Header */}
         <a
           href="/dashboard"

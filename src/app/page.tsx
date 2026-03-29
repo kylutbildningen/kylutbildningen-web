@@ -102,7 +102,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex-grow flex flex-col">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
