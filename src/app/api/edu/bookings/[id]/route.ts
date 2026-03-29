@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logBookingEvent } from "@/lib/booking-events";
+import { createSupabaseAdmin } from "@/lib/supabase-admin";
 
 const API_URL = process.env.EDUADMIN_API_BASE ?? "https://api.eduadmin.se";
 const API_USER = process.env.EDUADMIN_USERNAME ?? "";
@@ -67,6 +68,13 @@ export async function DELETE(
       const text = await res.text();
       return NextResponse.json({ error: text || res.statusText }, { status: res.status });
     }
+    // Mark as cancelled in Supabase
+    const supabase = createSupabaseAdmin();
+    await supabase
+      .from("bookings")
+      .update({ status: "cancelled" })
+      .eq("booking_number", id);
+
     // Fire-and-forget logging
     if (body.customerId) {
       logBookingEvent({
@@ -136,6 +144,12 @@ export async function POST(
               method: "DELETE",
               headers: { Authorization: `bearer ${token}` },
             });
+            // Mark as cancelled in Supabase
+            const supabase = createSupabaseAdmin();
+            await supabase
+              .from("bookings")
+              .update({ status: "cancelled" })
+              .eq("booking_number", id);
             bookingDeleted = true;
           }
         }

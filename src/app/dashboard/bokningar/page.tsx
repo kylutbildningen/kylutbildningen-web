@@ -38,6 +38,16 @@ interface Booking {
   }>;
 }
 
+interface CancelledBooking {
+  booking_number: string;
+  course_name: string;
+  event_date: string | null;
+  event_city: string | null;
+  participants: Array<{ firstName: string; lastName: string }>;
+  total_price_ex_vat: number | null;
+  created_at: string;
+}
+
 type Tab = "aktuella" | "avslutade" | "avbokade";
 
 function classifyBooking(b: Booking): Tab {
@@ -59,9 +69,11 @@ function BookingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
+  const initialTab = searchParams.get("tab") as Tab | null;
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [cancelledBookings, setCancelledBookings] = useState<CancelledBooking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("aktuella");
+  const [tab, setTab] = useState<Tab>(initialTab && ["aktuella", "avslutade", "avbokade"].includes(initialTab) ? initialTab : "aktuella");
 
   useEffect(() => {
     async function load() {
@@ -81,8 +93,19 @@ function BookingsPage() {
       const cid = stored ? parseInt(stored) : membership?.edu_customer_id;
       if (!cid) { router.replace("/dashboard"); return; }
 
-      const res = await fetch(`/api/edu/bookings?customerId=${cid}`);
-      if (res.ok) setBookings(await res.json());
+      // Fetch active bookings from EduAdmin and cancelled from Supabase in parallel
+      const [eduRes, sbRes] = await Promise.all([
+        fetch(`/api/edu/bookings?customerId=${cid}`),
+        supabase
+          .from("bookings")
+          .select("booking_number, course_name, event_date, event_city, participants, total_price_ex_vat, created_at")
+          .eq("edu_customer_id", cid)
+          .eq("status", "cancelled")
+          .order("created_at", { ascending: false }),
+      ]);
+
+      if (eduRes.ok) setBookings(await eduRes.json());
+      if (sbRes.data) setCancelledBookings(sbRes.data);
       setLoading(false);
     }
     load();
@@ -97,7 +120,7 @@ function BookingsPage() {
   const counts = {
     aktuella: bookings.filter(b => classifyBooking(b) === "aktuella").length,
     avslutade: bookings.filter(b => classifyBooking(b) === "avslutade").length,
-    avbokade: bookings.filter(b => classifyBooking(b) === "avbokade").length,
+    avbokade: bookings.filter(b => classifyBooking(b) === "avbokade").length + cancelledBookings.length,
   };
 
   const visible = bookings.filter(b => classifyBooking(b) === tab);
@@ -120,7 +143,7 @@ function BookingsPage() {
                 Bokningar
               </h1>
               <p className="mt-2 text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
-                {bookings.length} bokning{bookings.length !== 1 ? "ar" : ""} totalt
+                {bookings.length + cancelledBookings.length} bokning{bookings.length + cancelledBookings.length !== 1 ? "ar" : ""} totalt
               </p>
             </div>
             <Link
@@ -186,10 +209,63 @@ function BookingsPage() {
             <LoaderIcon className="animate-spin" />
             <span className="ml-3 text-sm" style={{ color: "var(--slate-light)" }}>Hämtar bokningar från EduAdmin...</span>
           </div>
+        ) : tab === "avbokade" ? (
+          cancelledBookings.length === 0 ? (
+            <div className="py-16 text-center rounded-xl border" style={{ color: "var(--slate-light)", borderColor: "var(--border)", background: "#fff" }}>
+              <p>Inga avbokade bokningar.</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border bg-white overflow-hidden" style={{ borderColor: "var(--border)" }}>
+              <div className="hidden md:grid grid-cols-[2.5fr_1fr_1fr_1fr_1fr] gap-2 px-5 py-2.5 text-[10px] font-medium uppercase tracking-wider"
+                style={{ color: "var(--slate-light)", borderBottom: "1px solid var(--border)", background: "#fafbfc" }}>
+                <span>Kurs</span>
+                <span>Datum</span>
+                <span>Plats</span>
+                <span>Deltagare</span>
+                <span className="text-right">Status</span>
+              </div>
+              {cancelledBookings.map((cb, i) => (
+                <div
+                  key={cb.booking_number}
+                  className="grid grid-cols-1 md:grid-cols-[2.5fr_1fr_1fr_1fr_1fr] gap-1 md:gap-2 items-center px-5 py-4"
+                  style={{
+                    borderBottom: i < cancelledBookings.length - 1 ? "1px solid var(--border)" : undefined,
+                    opacity: 0.7,
+                  }}
+                >
+                  <div className="min-w-0">
+                    <span className="text-sm font-semibold block truncate" style={{ color: "var(--slate-deep)" }}>
+                      {cb.course_name}
+                    </span>
+                    {cb.total_price_ex_vat && cb.total_price_ex_vat > 0 && (
+                      <span className="text-xs" style={{ color: "var(--slate-light)" }}>
+                        {formatPrice(cb.total_price_ex_vat)}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-sm" style={{ color: "var(--slate-deep)" }}>
+                    <span className="md:hidden text-[10px] font-medium uppercase tracking-wider mr-2" style={{ color: "var(--slate-light)" }}>Datum</span>
+                    <span className="flex items-center gap-1.5"><CalendarIcon />{cb.event_date || "—"}</span>
+                  </span>
+                  <span className="text-sm" style={{ color: cb.event_city ? "var(--slate-deep)" : "var(--slate-light)" }}>
+                    <span className="md:hidden text-[10px] font-medium uppercase tracking-wider mr-2" style={{ color: "var(--slate-light)" }}>Plats</span>
+                    {cb.event_city?.trim() || "—"}
+                  </span>
+                  <span className="text-sm" style={{ color: "var(--slate-deep)" }}>
+                    <span className="md:hidden text-[10px] font-medium uppercase tracking-wider mr-2" style={{ color: "var(--slate-light)" }}>Deltagare</span>
+                    <span className="flex items-center gap-1.5"><UsersIcon />{cb.participants?.length || 0}</span>
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 md:justify-end">
+                    <span className="badge" style={{ backgroundColor: "#fef2f2", color: "var(--danger)" }}>Avbokad</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         ) : visible.length === 0 ? (
           <div className="py-16 text-center rounded-xl border" style={{ color: "var(--slate-light)", borderColor: "var(--border)", background: "#fff" }}>
             <p>
-              {tab === "aktuella" ? "Inga aktiva bokningar." : tab === "avbokade" ? "Inga avbokade bokningar." : "Inga avslutade kurser."}
+              {tab === "aktuella" ? "Inga aktiva bokningar." : "Inga avslutade kurser."}
             </p>
             {tab === "aktuella" && (
               <Link href="/kurser" className="mt-4 inline-block text-sm font-medium underline" style={{ color: "var(--frost)" }}>

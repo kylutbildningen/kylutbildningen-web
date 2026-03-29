@@ -126,7 +126,7 @@ export default function BookingDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       if (data.bookingDeleted) {
-        router.replace("/dashboard/bokningar");
+        router.replace("/dashboard/bokningar?tab=avbokade");
         return;
       }
       setSuccess(`${name} har avbokats`);
@@ -198,9 +198,19 @@ export default function BookingDetailPage() {
     if (!confirm("Vill du avboka hela bokningen? Detta kan inte ångras.")) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/edu/bookings/${bookingId}`, { method: "DELETE" });
+      const supabase = createSupabaseBrowser();
+      const { data: { user } } = await supabase.auth.getUser();
+      const res = await fetch(`/api/edu/bookings/${bookingId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: booking?.Customer?.CustomerId,
+          actorEmail: user?.email,
+          actorUserId: user?.id,
+        }),
+      });
       if (!res.ok) throw new Error((await res.json()).error);
-      router.replace("/dashboard/bokningar");
+      router.replace("/dashboard/bokningar?tab=avbokade");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kunde inte avboka");
       setActionLoading(false);
