@@ -9,6 +9,7 @@ import { ChatWidget } from "@/components/ChatWidget";
 import { AuthModal } from "@/components/AuthModal";
 import { DashboardModal } from "@/components/DashboardModal";
 import { Toast } from "@/components/Toast";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const barlow = Barlow({
@@ -55,6 +56,7 @@ export default async function RootLayout({
         <AuthModal />
         <DashboardModal />
         <Toast />
+        <Analytics />
       </body>
     </html>
   );
