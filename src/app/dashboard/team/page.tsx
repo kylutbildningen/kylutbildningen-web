@@ -105,10 +105,15 @@ export default function TeamPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   // Company edit state
-  const [editingCompany, setEditingCompany] = useState<"info" | "address" | null>(null);
+  const [editingCompany, setEditingCompany] = useState<"info" | "address" | "billing" | null>(null);
   const [companyForm, setCompanyForm] = useState({
-    customerName: "", email: "", phone: "", mobile: "", web: "",
+    customerName: "", organisationNumber: "", email: "", phone: "", mobile: "", web: "",
     address: "", address2: "", zip: "", city: "", country: "",
+  });
+  const [billingForm, setBillingForm] = useState({
+    billingCustomerName: "", billingOrganisationNumber: "",
+    billingAddress: "", billingAddress2: "", billingZip: "", billingCity: "", billingCountry: "",
+    billingEmail: "", billingBuyerReference: "", billingSellerReference: "",
   });
   const [savingCompany, setSavingCompany] = useState(false);
 
@@ -173,20 +178,36 @@ export default function TeamPage() {
   }
 
   // ─── Company edit ───
-  function startEditCompany(section: "info" | "address") {
+  function startEditCompany(section: "info" | "address" | "billing") {
     if (!customerData) return;
-    setCompanyForm({
-      customerName: customerData.CustomerName || "",
-      email: customerData.Email || "",
-      phone: customerData.Phone || "",
-      mobile: customerData.Mobile || "",
-      web: customerData.Web || "",
-      address: customerData.Address || "",
-      address2: customerData.Address2 || "",
-      zip: customerData.Zip || "",
-      city: customerData.City || "",
-      country: customerData.Country || "",
-    });
+    if (section === "billing" && customerData.BillingInfo) {
+      setBillingForm({
+        billingCustomerName: customerData.BillingInfo.CustomerName || "",
+        billingOrganisationNumber: customerData.BillingInfo.OrganisationNumber || "",
+        billingAddress: customerData.BillingInfo.Address || "",
+        billingAddress2: customerData.BillingInfo.Address2 || "",
+        billingZip: customerData.BillingInfo.Zip || "",
+        billingCity: customerData.BillingInfo.City || "",
+        billingCountry: customerData.BillingInfo.Country || "",
+        billingEmail: customerData.BillingInfo.Email || "",
+        billingBuyerReference: customerData.BillingInfo.BuyerReference || "",
+        billingSellerReference: customerData.BillingInfo.SellerReference || "",
+      });
+    } else {
+      setCompanyForm({
+        customerName: customerData.CustomerName || "",
+        organisationNumber: customerData.OrganisationNumber || "",
+        email: customerData.Email || "",
+        phone: customerData.Phone || "",
+        mobile: customerData.Mobile || "",
+        web: customerData.Web || "",
+        address: customerData.Address || "",
+        address2: customerData.Address2 || "",
+        zip: customerData.Zip || "",
+        city: customerData.City || "",
+        country: customerData.Country || "",
+      });
+    }
     setEditingCompany(section);
     setError(null);
   }
@@ -196,14 +217,15 @@ export default function TeamPage() {
     setSavingCompany(true);
     setError(null);
     try {
+      const payload = editingCompany === "billing" ? billingForm : companyForm;
       const res = await fetch(`/api/edu/customers/${customerId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(companyForm),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       setEditingCompany(null);
-      setSuccess("Företagsuppgifter uppdaterade");
+      setSuccess(editingCompany === "billing" ? "Fakturauppgifter uppdaterade" : "Företagsuppgifter uppdaterade");
       await fetchCustomer(customerId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kunde inte spara");
@@ -423,7 +445,6 @@ export default function TeamPage() {
                   {customerData.CustomerNumber && (
                     <span>Kundnr: <strong className="text-white/80">{customerData.CustomerNumber}</strong></span>
                   )}
-                  <span>Org.nr: {customerData.OrganisationNumber}</span>
                   <span>{persons.length} person{persons.length !== 1 ? "er" : ""}</span>
                 </div>
               )}
@@ -475,6 +496,7 @@ export default function TeamPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <FormField label="Företagsnamn" value={companyForm.customerName} onChange={v => setCompanyForm({ ...companyForm, customerName: v })} />
+                    <FormField label="Org.nr" value={companyForm.organisationNumber} onChange={v => setCompanyForm({ ...companyForm, organisationNumber: v })} />
                     <FormField label="E-post" value={companyForm.email} onChange={v => setCompanyForm({ ...companyForm, email: v })} type="email" />
                     <FormField label="Telefon" value={companyForm.phone} onChange={v => setCompanyForm({ ...companyForm, phone: v })} type="tel" />
                     <FormField label="Mobil" value={companyForm.mobile} onChange={v => setCompanyForm({ ...companyForm, mobile: v })} type="tel" />
@@ -496,6 +518,7 @@ export default function TeamPage() {
                   onEdit={() => startEditCompany("info")}
                   items={[
                     { label: "Namn", value: customerData.CustomerName },
+                    { label: "Org.nr", value: customerData.OrganisationNumber },
                     { label: "E-post", value: customerData.Email },
                     { label: "Telefon", value: customerData.Phone },
                     { label: "Mobil", value: customerData.Mobile },
@@ -541,18 +564,48 @@ export default function TeamPage() {
               )}
 
               {customerData.BillingInfo && (
-                <InfoSection
-                  icon={<FileTextIcon />}
-                  title="Fakturauppgifter"
-                  items={[
-                    { label: "Mottagare", value: customerData.BillingInfo.CustomerName },
-                    { label: "Org.nr", value: customerData.BillingInfo.OrganisationNumber },
-                    { label: "Adress", value: [customerData.BillingInfo.Address, customerData.BillingInfo.Zip, customerData.BillingInfo.City].filter(Boolean).join(", ") },
-                    { label: "E-post", value: customerData.BillingInfo.Email },
-                    { label: "Referens", value: customerData.BillingInfo.BuyerReference },
-                  ]}
-                  last
-                />
+                editingCompany === "billing" ? (
+                  <div className="p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span style={{ color: "var(--frost)" }}><FileTextIcon /></span>
+                      <h3 className="text-sm font-bold" style={{ color: "var(--slate-deep)" }}>Fakturauppgifter</h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <FormField label="Mottagare" value={billingForm.billingCustomerName} onChange={v => setBillingForm({ ...billingForm, billingCustomerName: v })} />
+                      <FormField label="Org.nr" value={billingForm.billingOrganisationNumber} onChange={v => setBillingForm({ ...billingForm, billingOrganisationNumber: v })} />
+                      <FormField label="E-post" value={billingForm.billingEmail} onChange={v => setBillingForm({ ...billingForm, billingEmail: v })} type="email" />
+                      <FormField label="Adress" value={billingForm.billingAddress} onChange={v => setBillingForm({ ...billingForm, billingAddress: v })} />
+                      <FormField label="Adress 2" value={billingForm.billingAddress2} onChange={v => setBillingForm({ ...billingForm, billingAddress2: v })} />
+                      <FormField label="Postnummer" value={billingForm.billingZip} onChange={v => setBillingForm({ ...billingForm, billingZip: v })} />
+                      <FormField label="Ort" value={billingForm.billingCity} onChange={v => setBillingForm({ ...billingForm, billingCity: v })} />
+                      <FormField label="Land" value={billingForm.billingCountry} onChange={v => setBillingForm({ ...billingForm, billingCountry: v })} />
+                      <FormField label="Er referens" value={billingForm.billingBuyerReference} onChange={v => setBillingForm({ ...billingForm, billingBuyerReference: v })} />
+                      <FormField label="Vår referens" value={billingForm.billingSellerReference} onChange={v => setBillingForm({ ...billingForm, billingSellerReference: v })} />
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+                      <button onClick={() => setEditingCompany(null)} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+                        <XIcon /> Avbryt
+                      </button>
+                      <button onClick={saveCompany} disabled={savingCompany} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+                        <CheckIcon /> {savingCompany ? "Sparar..." : "Spara"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <InfoSection
+                    icon={<FileTextIcon />}
+                    title="Fakturauppgifter"
+                    onEdit={() => startEditCompany("billing")}
+                    items={[
+                      { label: "Mottagare", value: customerData.BillingInfo.CustomerName },
+                      { label: "Org.nr", value: customerData.BillingInfo.OrganisationNumber },
+                      { label: "Adress", value: [customerData.BillingInfo.Address, customerData.BillingInfo.Zip, customerData.BillingInfo.City].filter(Boolean).join(", ") },
+                      { label: "E-post", value: customerData.BillingInfo.Email },
+                      { label: "Er referens", value: customerData.BillingInfo.BuyerReference },
+                    ]}
+                    last
+                  />
+                )
               )}
             </div>
           </>

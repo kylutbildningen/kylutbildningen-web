@@ -55,6 +55,7 @@ export async function updateCustomer(
   customerId: number,
   updates: Partial<{
     customerName: string;
+    organisationNumber: string;
     email: string;
     phone: string;
     mobile: string;
@@ -64,10 +65,21 @@ export async function updateCustomer(
     zip: string;
     city: string;
     country: string;
+    billingCustomerName: string;
+    billingOrganisationNumber: string;
+    billingAddress: string;
+    billingAddress2: string;
+    billingZip: string;
+    billingCity: string;
+    billingCountry: string;
+    billingEmail: string;
+    billingBuyerReference: string;
+    billingSellerReference: string;
   }>,
 ): Promise<void> {
   const body: Record<string, unknown> = {};
   if (updates.customerName !== undefined) body.CustomerName = updates.customerName;
+  if (updates.organisationNumber !== undefined) body.OrganisationNumber = updates.organisationNumber;
   if (updates.email !== undefined) body.Email = updates.email;
   if (updates.phone !== undefined) body.Phone = updates.phone;
   if (updates.mobile !== undefined) body.Mobile = updates.mobile;
@@ -77,6 +89,20 @@ export async function updateCustomer(
   if (updates.zip !== undefined) body.Zip = updates.zip;
   if (updates.city !== undefined) body.City = updates.city;
   if (updates.country !== undefined) body.Country = updates.country;
+
+  // BillingInfo is a nested object in EduAdmin
+  const billing: Record<string, unknown> = {};
+  if (updates.billingCustomerName !== undefined) billing.CustomerName = updates.billingCustomerName;
+  if (updates.billingOrganisationNumber !== undefined) billing.OrganisationNumber = updates.billingOrganisationNumber;
+  if (updates.billingAddress !== undefined) billing.Address = updates.billingAddress;
+  if (updates.billingAddress2 !== undefined) billing.Address2 = updates.billingAddress2;
+  if (updates.billingZip !== undefined) billing.Zip = updates.billingZip;
+  if (updates.billingCity !== undefined) billing.City = updates.billingCity;
+  if (updates.billingCountry !== undefined) billing.Country = updates.billingCountry;
+  if (updates.billingEmail !== undefined) billing.Email = updates.billingEmail;
+  if (updates.billingBuyerReference !== undefined) billing.BuyerReference = updates.billingBuyerReference;
+  if (updates.billingSellerReference !== undefined) billing.SellerReference = updates.billingSellerReference;
+  if (Object.keys(billing).length > 0) body.BillingInfo = billing;
 
   await eduAdminFetch(`/v1/Customer/${customerId}`, {
     __method: "PATCH",
