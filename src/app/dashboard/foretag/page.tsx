@@ -348,19 +348,19 @@ export default function CompanyManagementPage() {
           </div>
         )}
 
-        {/* ─── Company info cards ─── */}
+        {/* ─── Company info ─── */}
         {customerData && (
           <>
             <SectionTitle>Företagsuppgifter</SectionTitle>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-10">
-              {/* Company info */}
+            <div className="rounded-xl border bg-white overflow-hidden mb-10" style={{ borderColor: "var(--border)" }}>
+              {/* Company info section */}
               {editingCompany === "info" ? (
-                <div className="lg:col-span-1 rounded-xl border bg-white p-6" style={{ borderColor: "var(--frost)" }}>
+                <div className="p-6" style={{ borderBottom: "1px solid var(--border)" }}>
                   <div className="flex items-center gap-2 mb-4">
                     <span style={{ color: "var(--frost)" }}><BuildingIcon /></span>
                     <h3 className="text-sm font-bold" style={{ color: "var(--slate-deep)" }}>Företagsinformation</h3>
                   </div>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <FormField label="Företagsnamn" value={companyForm.customerName} onChange={v => setCompanyForm({ ...companyForm, customerName: v })} />
                     <FormField label="E-post" value={companyForm.email} onChange={v => setCompanyForm({ ...companyForm, email: v })} type="email" />
                     <FormField label="Telefon" value={companyForm.phone} onChange={v => setCompanyForm({ ...companyForm, phone: v })} type="tel" />
@@ -377,7 +377,7 @@ export default function CompanyManagementPage() {
                   </div>
                 </div>
               ) : (
-                <InfoCard
+                <InfoSection
                   icon={<BuildingIcon />}
                   title="Företagsinformation"
                   onEdit={() => startEditCompany("info")}
@@ -391,20 +391,18 @@ export default function CompanyManagementPage() {
                 />
               )}
 
-              {/* Address */}
+              {/* Address section */}
               {editingCompany === "address" ? (
-                <div className="lg:col-span-1 rounded-xl border bg-white p-6" style={{ borderColor: "var(--frost)" }}>
+                <div className="p-6" style={{ borderBottom: "1px solid var(--border)" }}>
                   <div className="flex items-center gap-2 mb-4">
                     <span style={{ color: "var(--frost)" }}><MapPinIcon /></span>
                     <h3 className="text-sm font-bold" style={{ color: "var(--slate-deep)" }}>Adress</h3>
                   </div>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <FormField label="Gatuadress" value={companyForm.address} onChange={v => setCompanyForm({ ...companyForm, address: v })} />
                     <FormField label="Adress 2" value={companyForm.address2} onChange={v => setCompanyForm({ ...companyForm, address2: v })} />
-                    <div className="grid grid-cols-2 gap-3">
-                      <FormField label="Postnummer" value={companyForm.zip} onChange={v => setCompanyForm({ ...companyForm, zip: v })} />
-                      <FormField label="Ort" value={companyForm.city} onChange={v => setCompanyForm({ ...companyForm, city: v })} />
-                    </div>
+                    <FormField label="Postnummer" value={companyForm.zip} onChange={v => setCompanyForm({ ...companyForm, zip: v })} />
+                    <FormField label="Ort" value={companyForm.city} onChange={v => setCompanyForm({ ...companyForm, city: v })} />
                     <FormField label="Land" value={companyForm.country} onChange={v => setCompanyForm({ ...companyForm, country: v })} />
                   </div>
                   <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
@@ -417,7 +415,7 @@ export default function CompanyManagementPage() {
                   </div>
                 </div>
               ) : (
-                <InfoCard
+                <InfoSection
                   icon={<MapPinIcon />}
                   title="Adress"
                   onEdit={() => startEditCompany("address")}
@@ -430,9 +428,9 @@ export default function CompanyManagementPage() {
                 />
               )}
 
-              {/* Billing */}
+              {/* Billing section */}
               {customerData.BillingInfo && (
-                <InfoCard
+                <InfoSection
                   icon={<FileTextIcon />}
                   title="Fakturauppgifter"
                   items={[
@@ -442,6 +440,7 @@ export default function CompanyManagementPage() {
                     { label: "E-post", value: customerData.BillingInfo.Email },
                     { label: "Referens", value: customerData.BillingInfo.BuyerReference },
                   ]}
+                  last
                 />
               )}
             </div>
@@ -495,54 +494,44 @@ export default function CompanyManagementPage() {
           <>
             {/* Contact persons */}
             {contactPersons.length > 0 && (
-              <div className="mb-6">
+              <div className="mb-8">
                 <h3 className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2"
                   style={{ color: "var(--frost-dark)" }}>
                   <UserIcon /> Kontaktpersoner ({contactPersons.length})
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {contactPersons.map((person) => (
-                    <PersonCard
-                      key={person.edu_person_id}
-                      person={person}
-                      isEditing={editingId === person.edu_person_id}
-                      form={form}
-                      setForm={setForm}
-                      onEdit={() => startEdit(person)}
-                      onSave={handleSave}
-                      onCancel={cancelEdit}
-                      saving={saving}
-                      highlight
-                      portalRole={portalRoles.find(r => r.personId === person.edu_person_id)}
-                    />
-                  ))}
-                </div>
+                <PersonTable
+                  persons={contactPersons}
+                  editingId={editingId}
+                  form={form}
+                  setForm={setForm}
+                  onEdit={startEdit}
+                  onSave={handleSave}
+                  onCancel={cancelEdit}
+                  saving={saving}
+                  portalRoles={portalRoles}
+                  highlight
+                />
               </div>
             )}
 
             {/* Participants */}
             {participants.length > 0 && (
-              <div className="mb-6">
+              <div className="mb-8">
                 <h3 className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2"
                   style={{ color: "var(--slate-light)" }}>
                   <UserIcon /> Deltagare ({participants.length})
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {participants.map((person) => (
-                    <PersonCard
-                      key={person.edu_person_id}
-                      person={person}
-                      isEditing={editingId === person.edu_person_id}
-                      form={form}
-                      setForm={setForm}
-                      onEdit={() => startEdit(person)}
-                      onSave={handleSave}
-                      onCancel={cancelEdit}
-                      saving={saving}
-                      portalRole={portalRoles.find(r => r.personId === person.edu_person_id)}
-                    />
-                  ))}
-                </div>
+                <PersonTable
+                  persons={participants}
+                  editingId={editingId}
+                  form={form}
+                  setForm={setForm}
+                  onEdit={startEdit}
+                  onSave={handleSave}
+                  onCancel={cancelEdit}
+                  saving={saving}
+                  portalRoles={portalRoles}
+                />
               </div>
             )}
 
@@ -572,18 +561,19 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ─── Info card ─── */
-function InfoCard({
-  icon, title, items, onEdit,
+/* ─── Info section (row-based within parent card) ─── */
+function InfoSection({
+  icon, title, items, onEdit, last,
 }: {
   icon: React.ReactNode;
   title: string;
   items: Array<{ label: string; value: string }>;
   onEdit?: () => void;
+  last?: boolean;
 }) {
   return (
-    <div className="rounded-xl border bg-white p-6" style={{ borderColor: "var(--border)" }}>
-      <div className="flex items-center justify-between mb-4">
+    <div className="px-6 py-5" style={!last ? { borderBottom: "1px solid var(--border)" } : undefined}>
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span style={{ color: "var(--frost)" }}>{icon}</span>
           <h3 className="text-sm font-bold" style={{ color: "var(--slate-deep)" }}>{title}</h3>
@@ -594,13 +584,13 @@ function InfoCard({
           </button>
         )}
       </div>
-      <div className="space-y-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-2">
         {items.map((item) => (
-          <div key={item.label}>
-            <span className="block text-[11px] font-medium uppercase tracking-wider mb-0.5" style={{ color: "var(--slate-light)" }}>
+          <div key={item.label} className="min-w-0">
+            <span className="block text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--slate-light)" }}>
               {item.label}
             </span>
-            <span className="block text-sm" style={{ color: item.value ? "var(--slate-deep)" : "var(--slate-light)" }}>
+            <span className="block text-sm truncate" style={{ color: item.value ? "var(--slate-deep)" : "var(--slate-light)" }}>
               {item.value || "—"}
             </span>
           </div>
@@ -624,110 +614,125 @@ function FormField({ label, value, onChange, type = "text" }: {
   );
 }
 
-/* ─── Person card ─── */
-function PersonCard({
-  person, isEditing, form, setForm, onEdit, onSave, onCancel, saving, highlight, portalRole,
+/* ─── Person table (row-based) ─── */
+function PersonTable({
+  persons, editingId, form, setForm, onEdit, onSave, onCancel, saving, portalRoles, highlight,
 }: {
-  person: Person;
-  isEditing: boolean;
+  persons: Person[];
+  editingId: number | null;
   form: typeof emptyPerson;
   setForm: (f: typeof emptyPerson) => void;
-  onEdit: () => void;
+  onEdit: (p: Person) => void;
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
+  portalRoles: PortalRole[];
   highlight?: boolean;
-  portalRole?: PortalRole;
 }) {
-  if (isEditing) {
-    return (
-      <div className="rounded-xl border bg-white p-5 md:col-span-2 lg:col-span-3" style={{ borderColor: "var(--frost)" }}>
-        <h3 className="text-sm font-bold mb-4" style={{ color: "var(--slate-deep)" }}>
-          Redigera — {person.first_name} {person.last_name}
-        </h3>
-        <PersonFormFields form={form} setForm={setForm} />
-        <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
-          <button onClick={onCancel} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
-            <XIcon /> Avbryt
-          </button>
-          <button onClick={onSave} disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
-            <CheckIcon /> {saving ? "Sparar..." : "Spara"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const initials = `${person.first_name?.charAt(0) || ""}${person.last_name?.charAt(0) || ""}`.toUpperCase();
-
   return (
-    <div
-      className="rounded-xl border bg-white p-5 transition-all hover:shadow-sm"
-      style={{ borderColor: "var(--border)" }}
-    >
-      <div className="flex items-start gap-3 mb-3">
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-          style={{
-            backgroundColor: highlight ? "var(--frost-light)" : "#f0f3f7",
-            color: highlight ? "var(--frost-dark)" : "var(--slate-light)",
-          }}
-        >
-          {initials}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>
-              {person.first_name?.trim()} {person.last_name?.trim()}
-            </span>
-            {portalRole && (
-              <span
-                className="badge text-[10px]"
+    <div className="rounded-xl border bg-white overflow-hidden" style={{ borderColor: "var(--border)" }}>
+      {/* Table header */}
+      <div className="hidden sm:grid grid-cols-[2fr_2fr_1.5fr_1.5fr_auto] gap-2 px-5 py-2.5 text-[10px] font-medium uppercase tracking-wider"
+        style={{ color: "var(--slate-light)", borderBottom: "1px solid var(--border)", background: "#fafbfc" }}>
+        <span>Namn</span>
+        <span>E-post</span>
+        <span>Telefon</span>
+        <span>Personnummer</span>
+        <span className="w-14" />
+      </div>
+
+      {persons.map((person, i) => {
+        if (editingId === person.edu_person_id) {
+          return (
+            <div key={person.edu_person_id} className="p-5" style={{ borderBottom: i < persons.length - 1 ? "1px solid var(--border)" : undefined, backgroundColor: "var(--frost-light)" }}>
+              <h3 className="text-sm font-bold mb-4" style={{ color: "var(--slate-deep)" }}>
+                Redigera — {person.first_name} {person.last_name}
+              </h3>
+              <PersonFormFields form={form} setForm={setForm} />
+              <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+                <button onClick={onCancel} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+                  <XIcon /> Avbryt
+                </button>
+                <button onClick={onSave} disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+                  <CheckIcon /> {saving ? "Sparar..." : "Spara"}
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        const portalRole = portalRoles.find(r => r.personId === person.edu_person_id);
+        const initials = `${person.first_name?.charAt(0) || ""}${person.last_name?.charAt(0) || ""}`.toUpperCase();
+
+        return (
+          <div
+            key={person.edu_person_id}
+            className="grid grid-cols-1 sm:grid-cols-[2fr_2fr_1.5fr_1.5fr_auto] gap-1 sm:gap-2 items-center px-5 py-3 transition-colors hover:bg-gray-50/50"
+            style={i < persons.length - 1 ? { borderBottom: "1px solid var(--border)" } : undefined}
+          >
+            {/* Name + role */}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
                 style={{
-                  backgroundColor: portalRole.role === "company_admin" ? "var(--frost)" : "var(--frost-light)",
-                  color: portalRole.role === "company_admin" ? "#fff" : "var(--frost-dark)",
+                  backgroundColor: highlight ? "var(--frost-light)" : "#f0f3f7",
+                  color: highlight ? "var(--frost-dark)" : "var(--slate-light)",
                 }}
               >
-                {ROLE_LABELS[portalRole.role] ?? portalRole.role}
-              </span>
-            )}
-            {!portalRole && person.is_contact_person && (
-              <span className="badge badge-available text-[10px]">Kontaktperson</span>
-            )}
-          </div>
-          {person.job_title && (
-            <span className="text-xs" style={{ color: "var(--slate-light)" }}>{person.job_title}</span>
-          )}
-        </div>
-        <button
-          onClick={onEdit}
-          className="text-xs font-semibold px-2 py-1 rounded-md transition-colors hover:bg-gray-50 shrink-0"
-          style={{ color: "var(--frost)" }}
-        >
-          Ändra
-        </button>
-      </div>
+                {initials}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-sm font-semibold truncate" style={{ color: "var(--slate-deep)" }}>
+                    {person.first_name?.trim()} {person.last_name?.trim()}
+                  </span>
+                  {portalRole && (
+                    <span
+                      className="badge text-[9px] px-1.5 py-0.5"
+                      style={{
+                        backgroundColor: portalRole.role === "company_admin" ? "var(--frost)" : "var(--frost-light)",
+                        color: portalRole.role === "company_admin" ? "#fff" : "var(--frost-dark)",
+                      }}
+                    >
+                      {ROLE_LABELS[portalRole.role] ?? portalRole.role}
+                    </span>
+                  )}
+                </div>
+                {person.job_title && (
+                  <span className="text-[11px] block truncate" style={{ color: "var(--slate-light)" }}>{person.job_title}</span>
+                )}
+              </div>
+            </div>
 
-      <div className="space-y-1.5 text-xs" style={{ color: "var(--slate-light)" }}>
-        {person.email && (
-          <div className="flex items-center gap-2">
-            <span className="w-14 shrink-0 font-medium uppercase tracking-wider text-[10px]">E-post</span>
-            <span style={{ color: "var(--slate-deep)" }}>{person.email}</span>
+            {/* Email */}
+            <span className="text-sm truncate sm:block" style={{ color: person.email ? "var(--slate-deep)" : "var(--slate-light)" }}>
+              <span className="sm:hidden text-[10px] font-medium uppercase tracking-wider mr-2" style={{ color: "var(--slate-light)" }}>E-post</span>
+              {person.email || "—"}
+            </span>
+
+            {/* Phone */}
+            <span className="text-sm truncate sm:block" style={{ color: (person.phone || person.mobile) ? "var(--slate-deep)" : "var(--slate-light)" }}>
+              <span className="sm:hidden text-[10px] font-medium uppercase tracking-wider mr-2" style={{ color: "var(--slate-light)" }}>Tel</span>
+              {person.phone || person.mobile || "—"}
+            </span>
+
+            {/* Civic reg number */}
+            <span className="text-sm truncate sm:block" style={{ color: person.civic_registration_number ? "var(--slate-deep)" : "var(--slate-light)" }}>
+              <span className="sm:hidden text-[10px] font-medium uppercase tracking-wider mr-2" style={{ color: "var(--slate-light)" }}>Persnr</span>
+              {person.civic_registration_number || "—"}
+            </span>
+
+            {/* Edit button */}
+            <button
+              onClick={() => onEdit(person)}
+              className="text-xs font-semibold px-2.5 py-1 rounded-md transition-colors hover:bg-gray-100 w-14 text-center shrink-0 justify-self-end sm:justify-self-auto"
+              style={{ color: "var(--frost)" }}
+            >
+              Ändra
+            </button>
           </div>
-        )}
-        {(person.phone || person.mobile) && (
-          <div className="flex items-center gap-2">
-            <span className="w-14 shrink-0 font-medium uppercase tracking-wider text-[10px]">Telefon</span>
-            <span style={{ color: "var(--slate-deep)" }}>{person.phone || person.mobile}</span>
-          </div>
-        )}
-        {person.civic_registration_number && (
-          <div className="flex items-center gap-2">
-            <span className="w-14 shrink-0 font-medium uppercase tracking-wider text-[10px]">Persnr</span>
-            <span style={{ color: "var(--slate-deep)" }}>{person.civic_registration_number}</span>
-          </div>
-        )}
-      </div>
+        );
+      })}
     </div>
   );
 }

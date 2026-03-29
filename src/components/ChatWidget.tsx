@@ -98,9 +98,16 @@ export function ChatWidget() {
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!dragging.current) return
+      const rawX = dragStart.current.px + (e.clientX - dragStart.current.x)
+      const rawY = dragStart.current.py + (e.clientY - dragStart.current.y)
+      // Clamp so the widget stays within viewport (header=64px, margin=24px)
+      const maxRight = window.innerWidth - 80   // don't go off left edge
+      const maxDown = window.innerHeight - 80    // don't go above header
+      const minRight = -(window.innerWidth - 80) // don't go off right edge
+      const minDown = -(window.innerHeight - 80) // don't go below bottom
       setPosition({
-        x: dragStart.current.px + (e.clientX - dragStart.current.x),
-        y: dragStart.current.py + (e.clientY - dragStart.current.y),
+        x: Math.max(minRight, Math.min(maxRight, rawX)),
+        y: Math.max(minDown, Math.min(maxDown, rawY)),
       })
     }
     const onUp = () => { dragging.current = false }
