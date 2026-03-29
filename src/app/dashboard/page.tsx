@@ -8,7 +8,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { CompanySelector } from "@/components/dashboard/CompanySelector";
 import { RoleBadge } from "@/components/dashboard/RoleBadge";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
-import { canBook, canManageMembers, canViewCompany, isParticipant } from "@/lib/auth/permissions";
+import { canViewCompany, isParticipant } from "@/lib/auth/permissions";
 
 interface Membership {
   id: string;
@@ -182,24 +182,6 @@ export default function DashboardPage() {
 
           {canViewCompany(role) && (
             <Link
-              href="/dashboard/foretag"
-              className="rounded-xl border bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-md"
-              style={{ borderColor: "var(--border)" }}
-            >
-              <h3
-                className="mb-2 text-lg font-medium"
-                style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}
-              >
-                Företagsöversikt
-              </h3>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
-                Kontaktpersoner, deltagare och företagsuppgifter.
-              </p>
-            </Link>
-          )}
-
-          {canManageMembers(role) && (
-            <Link
               href="/dashboard/team"
               className="rounded-xl border bg-white p-6 transition-all hover:-translate-y-0.5 hover:shadow-md"
               style={{ borderColor: "var(--border)" }}
@@ -208,10 +190,10 @@ export default function DashboardPage() {
                 className="mb-2 text-lg font-medium"
                 style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}
               >
-                Hantera team
+                Företag & team
               </h3>
               <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
-                Bjud in kollegor och hantera behörigheter.
+                Företagsuppgifter, personer, inbjudningar och behörigheter.
               </p>
             </Link>
           )}

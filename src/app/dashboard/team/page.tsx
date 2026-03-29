@@ -4,12 +4,57 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
-import { RoleBadge } from "@/components/dashboard/RoleBadge";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
-import type { SupabasePerson } from "@/lib/supabase-persons";
 import {
-  PlusIcon, TrashIcon, LoaderIcon, UserIcon, CheckIcon, XIcon,
+  PlusIcon,
+  CheckIcon,
+  XIcon,
+  SearchIcon,
+  LoaderIcon,
+  UserIcon,
+  BuildingIcon,
+  MapPinIcon,
+  FileTextIcon,
+  TrashIcon,
 } from "@/components/icons";
+import type { SupabasePerson as Person } from "@/lib/supabase-persons";
+
+interface CustomerData {
+  CustomerId: number;
+  CustomerNumber: string | null;
+  CustomerName: string;
+  OrganisationNumber: string;
+  Address: string;
+  Address2: string;
+  Zip: string;
+  City: string;
+  Country: string;
+  Email: string;
+  Phone: string;
+  Mobile: string;
+  Web: string;
+  Notes: string;
+  CustomerGroupName: string;
+  Created: string;
+  Modified: string;
+  BillingInfo: {
+    CustomerName: string;
+    Address: string;
+    Address2: string;
+    Zip: string;
+    City: string;
+    Country: string;
+    OrganisationNumber: string;
+    VatNumber: string;
+    Email: string;
+    BuyerReference: string;
+    SellerReference: string;
+    GLN: string;
+    NoVat: boolean;
+    DiscountPercent: number;
+    PaymentTermName: string;
+  };
+}
 
 interface Member {
   id: string;
@@ -22,59 +67,100 @@ interface Member {
   created_at: string;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  company_admin: "Admin",
+  contact_person: "Kontaktperson",
+  participant: "Deltagare",
+};
+
+const emptyPerson = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  mobile: "",
+  jobTitle: "",
+  civicRegistrationNumber: "",
+  isContactPerson: false,
+};
+
 export default function TeamPage() {
   const router = useRouter();
-  const [persons, setPersons] = useState<SupabasePerson[]>([]);
+  const [customerId, setCustomerId] = useState(0);
+  const [companyName, setCompanyName] = useState("");
+  const [customerData, setCustomerData] = useState<CustomerData | null>(null);
+  const [persons, setPersons] = useState<Person[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [customerId, setCustomerId] = useState<number>(0);
-  const [companyName, setCompanyName] = useState("");
+  const [search, setSearch] = useState("");
   const [userId, setUserId] = useState("");
   const [userEmail, setUserEmail] = useState("");
 
+  // Person Add/Edit state
   const [showAdd, setShowAdd] = useState(false);
-  const [editingPerson, setEditingPerson] = useState<SupabasePerson | null>(null);
-  const [personForm, setPersonForm] = useState({ firstName: "", lastName: "", email: "", phone: "", mobile: "", jobTitle: "", civicRegistrationNumber: "", isContactPerson: false });
-  const [newPerson, setNewPerson] = useState({ firstName: "", lastName: "", email: "", phone: "", mobile: "", civicRegistrationNumber: "", jobTitle: "", isContactPerson: false });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState(emptyPerson);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Company edit state
+  const [editingCompany, setEditingCompany] = useState<"info" | "address" | null>(null);
+  const [companyForm, setCompanyForm] = useState({
+    customerName: "", email: "", phone: "", mobile: "", web: "",
+    address: "", address2: "", zip: "", city: "", country: "",
+  });
+  const [savingCompany, setSavingCompany] = useState(false);
 
   useEffect(() => {
     async function load() {
       const supabase = createSupabaseBrowser();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/logga-in"); return; }
+      if (!user) {
+        window.dispatchEvent(new Event("open-auth-modal"));
+        router.replace("/");
+        return;
+      }
       setUserId(user.id);
       setUserEmail(user.email || "");
 
       const stored = sessionStorage.getItem("selected_company");
-      const { data: membership } = await supabase
+      const { data: mem } = await supabase
         .from("company_memberships")
-        .select("edu_customer_id, company_name, role")
+        .select("edu_customer_id, company_name, org_number")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
 
-      if (!membership) { router.replace("/dashboard"); return; }
+      if (!mem) { router.replace("/dashboard"); return; }
 
-      const cid = stored ? parseInt(stored) : membership.edu_customer_id;
+      const cid = stored ? parseInt(stored) : mem.edu_customer_id;
       setCustomerId(cid);
-      setCompanyName(membership.company_name);
+      setCompanyName(mem.company_name);
 
-      await Promise.all([fetchPersons(cid), fetchMembers(cid)]);
+      await Promise.all([fetchCustomer(cid), fetchPersons(cid), fetchMembers(cid)]);
     }
     load();
   }, [router]);
+
+  async function fetchCustomer(cid: number) {
+    try {
+      const res = await fetch(`/api/edu/customers/${cid}`);
+      if (res.ok) setCustomerData(await res.json());
+    } catch { /* ignore */ }
+  }
 
   const fetchPersons = useCallback(async (cid: number) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/edu/persons?customerId=${cid}`);
       if (res.ok) setPersons(await res.json());
-    } catch { /* ignore */ }
-    setLoading(false);
+    } catch {
+      setError("Kunde inte hämta personer");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   async function fetchMembers(cid: number) {
@@ -86,6 +172,113 @@ export default function TeamPage() {
     setMembers(data || []);
   }
 
+  // ─── Company edit ───
+  function startEditCompany(section: "info" | "address") {
+    if (!customerData) return;
+    setCompanyForm({
+      customerName: customerData.CustomerName || "",
+      email: customerData.Email || "",
+      phone: customerData.Phone || "",
+      mobile: customerData.Mobile || "",
+      web: customerData.Web || "",
+      address: customerData.Address || "",
+      address2: customerData.Address2 || "",
+      zip: customerData.Zip || "",
+      city: customerData.City || "",
+      country: customerData.Country || "",
+    });
+    setEditingCompany(section);
+    setError(null);
+  }
+
+  async function saveCompany() {
+    if (!customerId || !customerData) return;
+    setSavingCompany(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/edu/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(companyForm),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setEditingCompany(null);
+      setSuccess("Företagsuppgifter uppdaterade");
+      await fetchCustomer(customerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kunde inte spara");
+    } finally {
+      setSavingCompany(false);
+    }
+  }
+
+  // ─── Person CRUD ───
+  function startEdit(person: Person) {
+    setEditingId(person.edu_person_id);
+    setForm({
+      firstName: person.first_name?.trim() || "",
+      lastName: person.last_name?.trim() || "",
+      email: person.email || "",
+      phone: person.phone || "",
+      mobile: person.mobile || "",
+      jobTitle: person.job_title || "",
+      civicRegistrationNumber: person.civic_registration_number || "",
+      isContactPerson: person.is_contact_person,
+    });
+    setShowAdd(false);
+    setError(null);
+  }
+
+  function startAdd() {
+    setShowAdd(true);
+    setEditingId(null);
+    setForm(emptyPerson);
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setShowAdd(false);
+    setForm(emptyPerson);
+    setError(null);
+  }
+
+  async function handleSave() {
+    if (!customerId) return;
+    if (!form.firstName || !form.lastName) {
+      setError("Förnamn och efternamn krävs");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      if (showAdd) {
+        const res = await fetch("/api/edu/persons", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customerId, ...form }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+        setSuccess(`${form.firstName} ${form.lastName} har lagts till`);
+      } else if (editingId !== null) {
+        const res = await fetch(`/api/edu/persons/${editingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...form, customerId }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+        setSuccess(`${form.firstName} ${form.lastName} uppdaterad`);
+      }
+      cancelEdit();
+      await fetchPersons(customerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Något gick fel");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ─── Sync from EduAdmin ───
   async function handleSync() {
     setLoading(true);
     setError(null);
@@ -105,113 +298,8 @@ export default function TeamPage() {
     }
   }
 
-  function startEdit(person: SupabasePerson) {
-    setEditingPerson(person);
-    setPersonForm({
-      firstName: person.first_name,
-      lastName: person.last_name,
-      email: person.email || "",
-      phone: person.phone || "",
-      mobile: person.mobile || "",
-      jobTitle: person.job_title || "",
-      civicRegistrationNumber: person.civic_registration_number || "",
-      isContactPerson: person.is_contact_person,
-    });
-    setShowAdd(false);
-    setError(null);
-  }
-
-  async function handleSaveEdit() {
-    if (!editingPerson) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/edu/persons/${editingPerson.edu_person_id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...personForm, customerId }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      setSuccess(`${personForm.firstName} ${personForm.lastName} uppdaterad`);
-      setEditingPerson(null);
-      await fetchPersons(customerId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Kunde inte spara");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function getMemberForPerson(person: SupabasePerson): Member | undefined {
-    return members.find(m => m.edu_contact_id === person.edu_person_id);
-  }
-
-  async function handleAddPerson(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newPerson.firstName || !newPerson.lastName) {
-      setError("Förnamn och efternamn krävs");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/edu/persons", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId, ...newPerson }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      setSuccess(`${newPerson.firstName} ${newPerson.lastName} har lagts till`);
-      setNewPerson({ firstName: "", lastName: "", email: "", phone: "", mobile: "", civicRegistrationNumber: "", jobTitle: "", isContactPerson: false });
-      setShowAdd(false);
-      await fetchPersons(customerId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Kunde inte lägga till");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDeletePerson(person: SupabasePerson) {
-    const name = `${person.first_name} ${person.last_name}`;
-    const member = getMemberForPerson(person);
-    const msg = member
-      ? `Ta bort ${name}s åtkomst till portalen? Personen finns kvar i EduAdmin.`
-      : `${name} har inget portalkonto — personen kan bara tas bort direkt i EduAdmin.`;
-    if (!confirm(msg)) return;
-    if (!member) return;
-
-    setError(null);
-    try {
-      const supabase = createSupabaseBrowser();
-      const { error: dbErr } = await supabase.from("company_memberships").delete().eq("id", member.id);
-      if (dbErr) throw dbErr;
-      setSuccess(`${name}s åtkomst till portalen har tagits bort`);
-      await fetchMembers(customerId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Kunde inte ta bort");
-    }
-  }
-
-  async function handleToggleContactPerson(person: SupabasePerson) {
-    setError(null);
-    try {
-      const res = await fetch(`/api/edu/persons/${person.edu_person_id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          isContactPerson: !person.is_contact_person,
-          customerId,
-        }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      await fetchPersons(customerId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Kunde inte uppdatera");
-    }
-  }
-
-  async function handleSendInvite(person: SupabasePerson) {
+  // ─── Send invite (OTP magic link) ───
+  async function handleSendInvite(person: Person) {
     if (!person.email) {
       setError("Personen saknar e-postadress — lägg till en först.");
       return;
@@ -220,7 +308,6 @@ export default function TeamPage() {
     setSaving(true);
     try {
       const supabase = createSupabaseBrowser();
-      // Don't pass ?next= so auth callback can determine the correct role
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: person.email,
         options: {
@@ -237,6 +324,7 @@ export default function TeamPage() {
     }
   }
 
+  // ─── Change portal role ───
   async function handleChangeRole(member: Member, newRole: string) {
     setError(null);
     try {
@@ -262,340 +350,618 @@ export default function TeamPage() {
     }
   }
 
-  const contactPersons = persons.filter(p => p.is_contact_person);
-  const otherPersons = persons.filter(p => !p.is_contact_person);
+  // ─── Remove portal access ───
+  async function handleRemoveAccess(person: Person) {
+    const member = getMemberForPerson(person);
+    const name = `${person.first_name} ${person.last_name}`;
+    if (!member) {
+      setError(`${name} har inget portalkonto.`);
+      return;
+    }
+    if (!confirm(`Ta bort ${name}s åtkomst till portalen? Personen finns kvar i EduAdmin.`)) return;
+    setError(null);
+    try {
+      const supabase = createSupabaseBrowser();
+      const { error: dbErr } = await supabase.from("company_memberships").delete().eq("id", member.id);
+      if (dbErr) throw dbErr;
+      setSuccess(`${name}s portalåtkomst har tagits bort`);
+      await fetchMembers(customerId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kunde inte ta bort");
+    }
+  }
+
+  function getMemberForPerson(person: Person): Member | undefined {
+    return members.find(m => m.edu_contact_id === person.edu_person_id);
+  }
+
+  // ─── Filter & split ───
+  const filtered = persons.filter((p) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      p.first_name?.toLowerCase().includes(q) ||
+      p.last_name?.toLowerCase().includes(q) ||
+      p.email?.toLowerCase().includes(q) ||
+      p.civic_registration_number?.includes(q)
+    );
+  });
+
+  const contactPersons = filtered.filter((p) => p.is_contact_person);
+  const participants = filtered.filter((p) => !p.is_contact_person);
+
+  if (!customerId) {
+    return (
+      <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
+        <SiteHeader />
+        <div className="flex items-center justify-center py-32 flex-grow">
+          <LoaderIcon className="animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex-grow flex flex-col" style={{ backgroundColor: "var(--warm-white)" }}>
       <SiteHeader />
-      <div className="mx-auto max-w-3xl px-6 py-10 flex-grow">
-        <a href="/dashboard" className="mb-4 inline-block text-sm font-medium" style={{ color: "var(--frost)" }}>
-          ← Dashboard
-        </a>
 
-        <div className="mb-8 flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl" style={{ fontFamily: "var(--font-serif)", color: "var(--slate-deep)" }}>
-              Hantera team
-            </h1>
-            <p className="mt-1 text-sm" style={{ color: "var(--slate-light)" }}>
-              {companyName} — {persons.length} person{persons.length !== 1 ? "er" : ""}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleSync}
-              className="flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all hover:bg-gray-50"
-              style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}
-              title="Hämta senaste från EduAdmin"
-            >
-              ↻ Synka
-            </button>
-            <button
-              onClick={() => setShowAdd(!showAdd)}
-              className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
-              style={{ background: "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)" }}
-            >
-              <PlusIcon /> Lägg till person
-            </button>
+      {/* Page header */}
+      <div style={{ background: "var(--navy)" }}>
+        <div className="max-w-6xl mx-auto px-6 pt-10 pb-8">
+          <a href="/dashboard" className="inline-flex items-center gap-1.5 text-xs font-medium mb-4 transition-colors hover:text-white"
+            style={{ color: "rgba(255,255,255,0.45)" }}>
+            ← Dashboard
+          </a>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="font-condensed font-bold uppercase text-white leading-none"
+                style={{ fontSize: "clamp(28px, 4vw, 42px)" }}>
+                {companyName}
+              </h1>
+              {customerData && (
+                <div className="mt-2 flex flex-wrap gap-4 text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  {customerData.CustomerNumber && (
+                    <span>Kundnr: <strong className="text-white/80">{customerData.CustomerNumber}</strong></span>
+                  )}
+                  <span>Org.nr: {customerData.OrganisationNumber}</span>
+                  <span>{persons.length} person{persons.length !== 1 ? "er" : ""}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={handleSync}
+                className="flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all hover:bg-white/10"
+                style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)" }}
+                title="Hämta senaste från EduAdmin"
+              >
+                ↻ Synka
+              </button>
+              <button
+                onClick={startAdd}
+                className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
+                style={{ background: "linear-gradient(135deg, var(--frost) 0%, var(--frost-dark) 100%)" }}
+              >
+                <PlusIcon />
+                Lägg till person
+              </button>
+            </div>
           </div>
         </div>
+      </div>
 
+      <div className="max-w-6xl mx-auto px-6 py-8 flex-grow w-full">
         {error && (
-          <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--danger)", backgroundColor: "#fef2f2", color: "var(--danger)" }}>
+          <div className="mb-6 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--danger)", backgroundColor: "#fef2f2", color: "var(--danger)" }}>
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--success)", backgroundColor: "#ecfdf5", color: "var(--success)" }}>
+          <div className="mb-6 rounded-lg border p-3 text-sm" style={{ borderColor: "var(--success)", backgroundColor: "#ecfdf5", color: "var(--success)" }}>
             {success}
           </div>
         )}
 
+        {/* ─── Company info ─── */}
+        {customerData && (
+          <>
+            <SectionTitle>Företagsuppgifter</SectionTitle>
+            <div className="rounded-xl border bg-white overflow-hidden mb-10" style={{ borderColor: "var(--border)" }}>
+              {editingCompany === "info" ? (
+                <div className="p-6" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span style={{ color: "var(--frost)" }}><BuildingIcon /></span>
+                    <h3 className="text-sm font-bold" style={{ color: "var(--slate-deep)" }}>Företagsinformation</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <FormField label="Företagsnamn" value={companyForm.customerName} onChange={v => setCompanyForm({ ...companyForm, customerName: v })} />
+                    <FormField label="E-post" value={companyForm.email} onChange={v => setCompanyForm({ ...companyForm, email: v })} type="email" />
+                    <FormField label="Telefon" value={companyForm.phone} onChange={v => setCompanyForm({ ...companyForm, phone: v })} type="tel" />
+                    <FormField label="Mobil" value={companyForm.mobile} onChange={v => setCompanyForm({ ...companyForm, mobile: v })} type="tel" />
+                    <FormField label="Webbplats" value={companyForm.web} onChange={v => setCompanyForm({ ...companyForm, web: v })} />
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+                    <button onClick={() => setEditingCompany(null)} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+                      <XIcon /> Avbryt
+                    </button>
+                    <button onClick={saveCompany} disabled={savingCompany} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+                      <CheckIcon /> {savingCompany ? "Sparar..." : "Spara"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <InfoSection
+                  icon={<BuildingIcon />}
+                  title="Företagsinformation"
+                  onEdit={() => startEditCompany("info")}
+                  items={[
+                    { label: "Namn", value: customerData.CustomerName },
+                    { label: "E-post", value: customerData.Email },
+                    { label: "Telefon", value: customerData.Phone },
+                    { label: "Mobil", value: customerData.Mobile },
+                    { label: "Webb", value: customerData.Web },
+                  ]}
+                />
+              )}
+
+              {editingCompany === "address" ? (
+                <div className="p-6" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span style={{ color: "var(--frost)" }}><MapPinIcon /></span>
+                    <h3 className="text-sm font-bold" style={{ color: "var(--slate-deep)" }}>Adress</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <FormField label="Gatuadress" value={companyForm.address} onChange={v => setCompanyForm({ ...companyForm, address: v })} />
+                    <FormField label="Adress 2" value={companyForm.address2} onChange={v => setCompanyForm({ ...companyForm, address2: v })} />
+                    <FormField label="Postnummer" value={companyForm.zip} onChange={v => setCompanyForm({ ...companyForm, zip: v })} />
+                    <FormField label="Ort" value={companyForm.city} onChange={v => setCompanyForm({ ...companyForm, city: v })} />
+                    <FormField label="Land" value={companyForm.country} onChange={v => setCompanyForm({ ...companyForm, country: v })} />
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+                    <button onClick={() => setEditingCompany(null)} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+                      <XIcon /> Avbryt
+                    </button>
+                    <button onClick={saveCompany} disabled={savingCompany} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+                      <CheckIcon /> {savingCompany ? "Sparar..." : "Spara"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <InfoSection
+                  icon={<MapPinIcon />}
+                  title="Adress"
+                  onEdit={() => startEditCompany("address")}
+                  items={[
+                    { label: "Gatuadress", value: [customerData.Address, customerData.Address2].filter(Boolean).join(", ") },
+                    { label: "Postnummer", value: customerData.Zip },
+                    { label: "Ort", value: customerData.City },
+                    { label: "Land", value: customerData.Country },
+                  ]}
+                />
+              )}
+
+              {customerData.BillingInfo && (
+                <InfoSection
+                  icon={<FileTextIcon />}
+                  title="Fakturauppgifter"
+                  items={[
+                    { label: "Mottagare", value: customerData.BillingInfo.CustomerName },
+                    { label: "Org.nr", value: customerData.BillingInfo.OrganisationNumber },
+                    { label: "Adress", value: [customerData.BillingInfo.Address, customerData.BillingInfo.Zip, customerData.BillingInfo.City].filter(Boolean).join(", ") },
+                    { label: "E-post", value: customerData.BillingInfo.Email },
+                    { label: "Referens", value: customerData.BillingInfo.BuyerReference },
+                  ]}
+                  last
+                />
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ─── Persons ─── */}
+        <SectionTitle>
+          <span>Personer</span>
+          <span className="ml-2 text-sm font-normal" style={{ color: "var(--slate-light)" }}>
+            ({persons.length})
+          </span>
+        </SectionTitle>
+
+        {/* Search */}
+        <div className="relative mb-5">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--slate-light)" }}>
+            <SearchIcon />
+          </span>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Sök namn, e-post eller personnummer..."
+            className="form-input pl-11 text-sm"
+            style={{ maxWidth: 420 }}
+          />
+        </div>
+
+        {/* Add person form */}
         {showAdd && (
-          <form onSubmit={handleAddPerson} className="mb-6 rounded-lg border bg-white p-5" style={{ borderColor: "var(--border)" }}>
-            <h3 className="mb-4 text-sm font-semibold" style={{ color: "var(--slate-deep)" }}>Lägg till ny person</h3>
-
-            {/* Person type */}
-            <div className="mb-4 flex gap-2">
-              {([
-                { label: "Deltagare", value: false },
-                { label: "Kontaktperson", value: true },
-              ] as const).map(opt => (
-                <button
-                  key={String(opt.value)}
-                  type="button"
-                  onClick={() => setNewPerson({ ...newPerson, isContactPerson: opt.value })}
-                  className="flex-1 rounded-lg border py-2 text-sm font-medium transition-all"
-                  style={{
-                    borderColor: newPerson.isContactPerson === opt.value ? "var(--frost)" : "var(--border)",
-                    backgroundColor: newPerson.isContactPerson === opt.value ? "var(--frost-light)" : "#fff",
-                    color: newPerson.isContactPerson === opt.value ? "var(--frost-dark)" : "var(--slate-light)",
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <input type="text" value={newPerson.firstName} onChange={e => setNewPerson({ ...newPerson, firstName: e.target.value })} placeholder="Förnamn *" className="form-input text-sm" autoFocus />
-              <input type="text" value={newPerson.lastName} onChange={e => setNewPerson({ ...newPerson, lastName: e.target.value })} placeholder="Efternamn *" className="form-input text-sm" />
-              <input type="text" value={newPerson.civicRegistrationNumber} onChange={e => setNewPerson({ ...newPerson, civicRegistrationNumber: e.target.value })} placeholder="Personnummer (YYYYMMDD-XXXX)" className="form-input text-sm" />
-              <input type="email" value={newPerson.email} onChange={e => setNewPerson({ ...newPerson, email: e.target.value })} placeholder="E-post" className="form-input text-sm" />
-              <input type="tel" value={newPerson.phone} onChange={e => setNewPerson({ ...newPerson, phone: e.target.value })} placeholder="Telefon" className="form-input text-sm" />
-              <input type="tel" value={newPerson.mobile} onChange={e => setNewPerson({ ...newPerson, mobile: e.target.value })} placeholder="Mobil" className="form-input text-sm" />
-              <input type="text" value={newPerson.jobTitle} onChange={e => setNewPerson({ ...newPerson, jobTitle: e.target.value })} placeholder="Befattning" className="form-input text-sm sm:col-span-2 lg:col-span-3" />
-            </div>
-            <div className="mt-3 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowAdd(false)} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+          <div className="mb-6 rounded-xl border bg-white p-6" style={{ borderColor: "var(--frost)" }}>
+            <h3 className="text-sm font-bold mb-4" style={{ color: "var(--slate-deep)" }}>Lägg till ny person</h3>
+            <PersonFormFields form={form} setForm={setForm} />
+            <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+              <button onClick={cancelEdit} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
                 <XIcon /> Avbryt
               </button>
-              <button type="submit" disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
-                <CheckIcon /> {saving ? "Sparar..." : "Lägg till"}
+              <button onClick={handleSave} disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+                <CheckIcon /> {saving ? "Sparar..." : "Spara"}
               </button>
             </div>
-          </form>
+          </div>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-16"><LoaderIcon className="animate-spin" /></div>
+          <div className="flex items-center justify-center py-16">
+            <LoaderIcon className="animate-spin" />
+          </div>
         ) : (
           <>
-            <PersonSection
-              title="Kontaktpersoner"
-              persons={contactPersons}
-              members={members}
-              userEmail={userEmail}
-              editingPerson={editingPerson}
-              personForm={personForm}
-              setPersonForm={setPersonForm}
-              onEdit={startEdit}
-              onCancelEdit={() => setEditingPerson(null)}
-              onSaveEdit={handleSaveEdit}
-              onDelete={handleDeletePerson}
-              onToggleContact={handleToggleContactPerson}
-              onSendInvite={handleSendInvite}
-              onChangeRole={handleChangeRole}
-              getMemberForPerson={getMemberForPerson}
-              saving={saving}
-              highlight
-            />
-            <PersonSection
-              title="Övriga personer"
-              persons={otherPersons}
-              members={members}
-              userEmail={userEmail}
-              editingPerson={editingPerson}
-              personForm={personForm}
-              setPersonForm={setPersonForm}
-              onEdit={startEdit}
-              onCancelEdit={() => setEditingPerson(null)}
-              onSaveEdit={handleSaveEdit}
-              onDelete={handleDeletePerson}
-              onToggleContact={handleToggleContactPerson}
-              onSendInvite={handleSendInvite}
-              onChangeRole={handleChangeRole}
-              getMemberForPerson={getMemberForPerson}
-              saving={saving}
-            />
-            {persons.length === 0 && (
-              <div className="py-12 text-center" style={{ color: "var(--slate-light)" }}>
-                Inga personer synkade ännu. Klicka på ↻ Synka för att hämta från EduAdmin.
+            {/* Contact persons */}
+            {contactPersons.length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2"
+                  style={{ color: "var(--frost-dark)" }}>
+                  <UserIcon /> Kontaktpersoner ({contactPersons.length})
+                </h3>
+                <PersonTable
+                  persons={contactPersons}
+                  editingId={editingId}
+                  form={form}
+                  setForm={setForm}
+                  onEdit={startEdit}
+                  onSave={handleSave}
+                  onCancel={cancelEdit}
+                  saving={saving}
+                  members={members}
+                  userEmail={userEmail}
+                  getMemberForPerson={getMemberForPerson}
+                  onSendInvite={handleSendInvite}
+                  onChangeRole={handleChangeRole}
+                  onRemoveAccess={handleRemoveAccess}
+                  highlight
+                />
+              </div>
+            )}
+
+            {/* Participants */}
+            {participants.length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2"
+                  style={{ color: "var(--slate-light)" }}>
+                  <UserIcon /> Deltagare ({participants.length})
+                </h3>
+                <PersonTable
+                  persons={participants}
+                  editingId={editingId}
+                  form={form}
+                  setForm={setForm}
+                  onEdit={startEdit}
+                  onSave={handleSave}
+                  onCancel={cancelEdit}
+                  saving={saving}
+                  members={members}
+                  userEmail={userEmail}
+                  getMemberForPerson={getMemberForPerson}
+                  onSendInvite={handleSendInvite}
+                  onChangeRole={handleChangeRole}
+                  onRemoveAccess={handleRemoveAccess}
+                />
+              </div>
+            )}
+
+            {filtered.length === 0 && !showAdd && (
+              <div className="py-16 text-center rounded-xl border" style={{ color: "var(--slate-light)", borderColor: "var(--border)", background: "#fff" }}>
+                {search ? "Inga personer matchar din sökning" : "Inga personer registrerade ännu. Klicka ↻ Synka för att hämta från EduAdmin."}
               </div>
             )}
           </>
         )}
       </div>
+
       <SiteFooter />
     </div>
   );
 }
 
-type PersonForm = { firstName: string; lastName: string; email: string; phone: string; mobile: string; jobTitle: string; civicRegistrationNumber: string; isContactPerson: boolean };
+/* ─── Section title ─── */
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <h2 className="font-condensed font-bold uppercase text-lg" style={{ color: "var(--navy)" }}>
+        {children}
+      </h2>
+      <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+    </div>
+  );
+}
 
-const ROLE_LABELS: Record<string, string> = {
-  company_admin: "Admin",
-  contact_person: "Kontaktperson",
-  participant: "Deltagare",
-};
-
-function PersonSection({
-  title, persons, members, userEmail,
-  editingPerson, personForm, setPersonForm,
-  onEdit, onCancelEdit, onSaveEdit,
-  onDelete, onToggleContact, onSendInvite, onChangeRole, getMemberForPerson, saving, highlight,
+/* ─── Info section (row-based within parent card) ─── */
+function InfoSection({
+  icon, title, items, onEdit, last,
 }: {
+  icon: React.ReactNode;
   title: string;
-  persons: SupabasePerson[];
+  items: Array<{ label: string; value: string }>;
+  onEdit?: () => void;
+  last?: boolean;
+}) {
+  return (
+    <div className="px-6 py-5" style={!last ? { borderBottom: "1px solid var(--border)" } : undefined}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span style={{ color: "var(--frost)" }}>{icon}</span>
+          <h3 className="text-sm font-bold" style={{ color: "var(--slate-deep)" }}>{title}</h3>
+        </div>
+        {onEdit && (
+          <button onClick={onEdit} className="text-xs font-semibold px-2.5 py-1 rounded-md transition-colors hover:bg-gray-50" style={{ color: "var(--frost)" }}>
+            Ändra
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-2">
+        {items.map((item) => (
+          <div key={item.label} className="min-w-0">
+            <span className="block text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--slate-light)" }}>
+              {item.label}
+            </span>
+            <span className="block text-sm truncate" style={{ color: item.value ? "var(--slate-deep)" : "var(--slate-light)" }}>
+              {item.value || "—"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Form field ─── */
+function FormField({ label, value, onChange, type = "text" }: {
+  label: string; value: string; onChange: (v: string) => void; type?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-[11px] font-medium uppercase tracking-wider mb-1" style={{ color: "var(--slate-light)" }}>
+        {label}
+      </label>
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} className="form-input text-sm" />
+    </div>
+  );
+}
+
+/* ─── Person table (row-based with team actions) ─── */
+function PersonTable({
+  persons, editingId, form, setForm, onEdit, onSave, onCancel, saving,
+  members, userEmail, getMemberForPerson, onSendInvite, onChangeRole, onRemoveAccess,
+  highlight,
+}: {
+  persons: Person[];
+  editingId: number | null;
+  form: typeof emptyPerson;
+  setForm: (f: typeof emptyPerson) => void;
+  onEdit: (p: Person) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
   members: Member[];
   userEmail: string;
-  editingPerson: SupabasePerson | null;
-  personForm: PersonForm;
-  setPersonForm: (f: PersonForm) => void;
-  onEdit: (p: SupabasePerson) => void;
-  onCancelEdit: () => void;
-  onSaveEdit: () => void;
-  onDelete: (p: SupabasePerson) => void;
-  onToggleContact: (p: SupabasePerson) => void;
-  onSendInvite: (p: SupabasePerson) => void;
+  getMemberForPerson: (p: Person) => Member | undefined;
+  onSendInvite: (p: Person) => void;
   onChangeRole: (member: Member, role: string) => void;
-  getMemberForPerson: (p: SupabasePerson) => Member | undefined;
-  saving: boolean;
+  onRemoveAccess: (p: Person) => void;
   highlight?: boolean;
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  if (persons.length === 0) return null;
-
   return (
-    <div className="mb-6">
-      <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>
-        <UserIcon /> {title} ({persons.length})
-      </h2>
-      <div className="rounded-lg border bg-white" style={{ borderColor: "var(--border)" }}>
-        {persons.map((person, i) => {
-          const member = getMemberForPerson(person);
-          const isCurrentUser = person.email?.toLowerCase() === userEmail.toLowerCase();
-          const hasAccount = !!member;
-          const isEditing = editingPerson?.edu_person_id === person.edu_person_id;
-          const isExpanded = expandedId === person.edu_person_id;
+    <div className="rounded-xl border bg-white overflow-hidden" style={{ borderColor: "var(--border)" }}>
+      {/* Table header */}
+      <div className="hidden sm:grid grid-cols-[2.5fr_2fr_1.5fr_1.5fr_auto] gap-2 px-5 py-2.5 text-[10px] font-medium uppercase tracking-wider"
+        style={{ color: "var(--slate-light)", borderBottom: "1px solid var(--border)", background: "#fafbfc" }}>
+        <span>Namn</span>
+        <span>E-post</span>
+        <span>Telefon</span>
+        <span>Personnummer</span>
+        <span className="w-20" />
+      </div>
 
+      {persons.map((person, i) => {
+        const member = getMemberForPerson(person);
+        const isCurrentUser = person.email?.toLowerCase() === userEmail.toLowerCase();
+        const hasAccount = !!member;
+        const isExpanded = expandedId === person.edu_person_id;
+
+        if (editingId === person.edu_person_id) {
           return (
-            <div key={person.edu_person_id} style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}>
-              {isEditing ? (
-                <div className="px-5 py-4 space-y-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <input className="form-input text-sm" value={personForm.firstName} onChange={e => setPersonForm({ ...personForm, firstName: e.target.value })} placeholder="Förnamn *" autoFocus />
-                    <input className="form-input text-sm" value={personForm.lastName} onChange={e => setPersonForm({ ...personForm, lastName: e.target.value })} placeholder="Efternamn *" />
-                    <input className="form-input text-sm" value={personForm.civicRegistrationNumber} onChange={e => setPersonForm({ ...personForm, civicRegistrationNumber: e.target.value })} placeholder="Personnummer" />
-                    <input type="email" className="form-input text-sm" value={personForm.email} onChange={e => setPersonForm({ ...personForm, email: e.target.value })} placeholder="E-post" />
-                    <input type="tel" className="form-input text-sm" value={personForm.phone} onChange={e => setPersonForm({ ...personForm, phone: e.target.value })} placeholder="Telefon" />
-                    <input type="tel" className="form-input text-sm" value={personForm.mobile} onChange={e => setPersonForm({ ...personForm, mobile: e.target.value })} placeholder="Mobil" />
-                    <input className="form-input text-sm" value={personForm.jobTitle} onChange={e => setPersonForm({ ...personForm, jobTitle: e.target.value })} placeholder="Befattning" />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex gap-2">
-                      {([
-                        { label: "Deltagare", value: false },
-                        { label: "Kontaktperson", value: true },
-                      ] as const).map(opt => (
-                        <button
-                          key={String(opt.value)}
-                          type="button"
-                          onClick={() => setPersonForm({ ...personForm, isContactPerson: opt.value })}
-                          className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-all"
-                          style={{
-                            borderColor: personForm.isContactPerson === opt.value ? "var(--frost)" : "var(--border)",
-                            backgroundColor: personForm.isContactPerson === opt.value ? "var(--frost-light)" : "#fff",
-                            color: personForm.isContactPerson === opt.value ? "var(--frost-dark)" : "var(--slate-light)",
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="ml-auto flex gap-2">
-                      <button onClick={onCancelEdit} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
-                        <XIcon /> Avbryt
-                      </button>
-                      <button onClick={onSaveEdit} disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
-                        <CheckIcon /> {saving ? "Sparar..." : "Spara"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <button
-                    onClick={() => setExpandedId(isExpanded ? null : person.edu_person_id)}
-                    className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-gray-50"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                      style={{ backgroundColor: highlight ? "var(--frost-light)" : "#f0f0f0", color: highlight ? "var(--frost-dark)" : "var(--slate-light)" }}>
-                      <UserIcon />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
-                          {person.first_name} {person.last_name}
-                        </span>
-                        {isCurrentUser && <span className="badge text-[10px]" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>Du</span>}
-                        {person.is_contact_person && <span className="badge badge-available text-[10px]">Kontaktperson</span>}
-                        {hasAccount && <span className="badge text-[10px]" style={{ backgroundColor: "#ecfdf5", color: "var(--success)" }}>Har konto</span>}
-                        {member && <RoleBadge role={member.role} />}
-                      </div>
-                      <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--slate-light)" }}>
-                        {person.email && <span>{person.email}</span>}
-                        {(person.phone || person.mobile) && <span>{person.phone || person.mobile}</span>}
-                        {person.job_title && <span>{person.job_title}</span>}
-                      </div>
-                    </div>
-                    <svg
-                      className="h-4 w-4 shrink-0 transition-transform"
-                      style={{ color: "var(--slate-light)", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  {/* Expanded actions */}
-                  {isExpanded && (
-                    <div className="flex flex-wrap items-center gap-2 px-5 pb-3.5 pt-0">
-                      <button
-                        onClick={() => { setExpandedId(null); onEdit(person); }}
-                        className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
-                        style={{ borderColor: "var(--frost)", color: "var(--frost)" }}
-                      >
-                        Ändra uppgifter
-                      </button>
-                      <button
-                        onClick={() => onToggleContact(person)}
-                        className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
-                        style={{ borderColor: "var(--border)", color: person.is_contact_person ? "var(--warning)" : "var(--slate-deep)" }}
-                      >
-                        {person.is_contact_person ? "Ta bort som kontaktperson" : "Gör till kontaktperson"}
-                      </button>
-                      {!hasAccount && person.email && !isCurrentUser && (
-                        <button
-                          onClick={() => onSendInvite(person)}
-                          className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
-                          style={{ borderColor: "var(--frost)", color: "var(--frost)" }}
-                        >
-                          Bjud in till portalen
-                        </button>
-                      )}
-                      {member && !isCurrentUser && (
-                        <select
-                          value={member.role}
-                          onChange={e => onChangeRole(member, e.target.value)}
-                          className="rounded-lg border px-2 py-1.5 text-xs font-medium"
-                          style={{ borderColor: "var(--border)", color: "var(--slate-deep)", backgroundColor: "#fff" }}
-                          title="Ändra portalroll"
-                        >
-                          {Object.entries(ROLE_LABELS).map(([val, label]) => (
-                            <option key={val} value={val}>{label}</option>
-                          ))}
-                        </select>
-                      )}
-                      {!isCurrentUser && (
-                        <button
-                          onClick={() => onDelete(person)}
-                          className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
-                          style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
-                        >
-                          Ta bort
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+            <div key={person.edu_person_id} className="p-5" style={{ borderBottom: i < persons.length - 1 ? "1px solid var(--border)" : undefined, backgroundColor: "var(--frost-light)" }}>
+              <h3 className="text-sm font-bold mb-4" style={{ color: "var(--slate-deep)" }}>
+                Redigera — {person.first_name} {person.last_name}
+              </h3>
+              <PersonFormFields form={form} setForm={setForm} />
+              <div className="flex justify-end gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--border)" }}>
+                <button onClick={onCancel} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--slate-light)" }}>
+                  <XIcon /> Avbryt
+                </button>
+                <button onClick={onSave} disabled={saving} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--frost)" }}>
+                  <CheckIcon /> {saving ? "Sparar..." : "Spara"}
+                </button>
+              </div>
             </div>
           );
-        })}
-      </div>
+        }
+
+        const initials = `${person.first_name?.charAt(0) || ""}${person.last_name?.charAt(0) || ""}`.toUpperCase();
+
+        return (
+          <div key={person.edu_person_id} style={i < persons.length - 1 ? { borderBottom: "1px solid var(--border)" } : undefined}>
+            {/* Main row */}
+            <div
+              className="grid grid-cols-1 sm:grid-cols-[2.5fr_2fr_1.5fr_1.5fr_auto] gap-1 sm:gap-2 items-center px-5 py-3 transition-colors hover:bg-gray-50/50 cursor-pointer"
+              onClick={() => setExpandedId(isExpanded ? null : person.edu_person_id)}
+            >
+              {/* Name + badges */}
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                  style={{
+                    backgroundColor: highlight ? "var(--frost-light)" : "#f0f3f7",
+                    color: highlight ? "var(--frost-dark)" : "var(--slate-light)",
+                  }}
+                >
+                  {initials}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-semibold truncate" style={{ color: "var(--slate-deep)" }}>
+                      {person.first_name?.trim()} {person.last_name?.trim()}
+                    </span>
+                    {isCurrentUser && (
+                      <span className="badge text-[9px] px-1.5 py-0.5" style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}>Du</span>
+                    )}
+                    {hasAccount && (
+                      <span className="badge text-[9px] px-1.5 py-0.5" style={{ backgroundColor: "#ecfdf5", color: "var(--success)" }}>Konto</span>
+                    )}
+                    {member && (
+                      <span
+                        className="badge text-[9px] px-1.5 py-0.5"
+                        style={{
+                          backgroundColor: member.role === "company_admin" ? "var(--frost)" : "var(--frost-light)",
+                          color: member.role === "company_admin" ? "#fff" : "var(--frost-dark)",
+                        }}
+                      >
+                        {ROLE_LABELS[member.role] ?? member.role}
+                      </span>
+                    )}
+                  </div>
+                  {person.job_title && (
+                    <span className="text-[11px] block truncate" style={{ color: "var(--slate-light)" }}>{person.job_title}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Email */}
+              <span className="text-sm truncate" style={{ color: person.email ? "var(--slate-deep)" : "var(--slate-light)" }}>
+                <span className="sm:hidden text-[10px] font-medium uppercase tracking-wider mr-2" style={{ color: "var(--slate-light)" }}>E-post</span>
+                {person.email || "—"}
+              </span>
+
+              {/* Phone */}
+              <span className="text-sm truncate" style={{ color: (person.phone || person.mobile) ? "var(--slate-deep)" : "var(--slate-light)" }}>
+                <span className="sm:hidden text-[10px] font-medium uppercase tracking-wider mr-2" style={{ color: "var(--slate-light)" }}>Tel</span>
+                {person.phone || person.mobile || "—"}
+              </span>
+
+              {/* Civic reg number */}
+              <span className="text-sm truncate" style={{ color: person.civic_registration_number ? "var(--slate-deep)" : "var(--slate-light)" }}>
+                <span className="sm:hidden text-[10px] font-medium uppercase tracking-wider mr-2" style={{ color: "var(--slate-light)" }}>Persnr</span>
+                {person.civic_registration_number || "—"}
+              </span>
+
+              {/* Expand chevron */}
+              <div className="w-20 flex justify-end">
+                <svg
+                  className="h-4 w-4 shrink-0 transition-transform"
+                  style={{ color: "var(--slate-light)", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Expanded actions */}
+            {isExpanded && (
+              <div className="flex flex-wrap items-center gap-2 px-5 pb-3.5 pt-0">
+                <button
+                  onClick={() => { setExpandedId(null); onEdit(person); }}
+                  className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-gray-50"
+                  style={{ borderColor: "var(--frost)", color: "var(--frost)" }}
+                >
+                  Ändra uppgifter
+                </button>
+                {!hasAccount && person.email && !isCurrentUser && (
+                  <button
+                    onClick={() => onSendInvite(person)}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-gray-50"
+                    style={{ borderColor: "var(--frost)", color: "var(--frost)" }}
+                  >
+                    Bjud in till portalen
+                  </button>
+                )}
+                {member && !isCurrentUser && (
+                  <select
+                    value={member.role}
+                    onChange={e => { e.stopPropagation(); onChangeRole(member, e.target.value); }}
+                    className="rounded-lg border px-2 py-1.5 text-xs font-medium"
+                    style={{ borderColor: "var(--border)", color: "var(--slate-deep)", backgroundColor: "#fff" }}
+                    title="Ändra portalroll"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {Object.entries(ROLE_LABELS).map(([val, label]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
+                )}
+                {hasAccount && !isCurrentUser && (
+                  <button
+                    onClick={() => onRemoveAccess(person)}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-red-50"
+                    style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
+                  >
+                    <span className="flex items-center gap-1"><TrashIcon /> Ta bort åtkomst</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+/* ─── Person form fields ─── */
+function PersonFormFields({ form, setForm }: {
+  form: typeof emptyPerson;
+  setForm: (f: typeof emptyPerson) => void;
+}) {
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <FormField label="Förnamn *" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} />
+        <FormField label="Efternamn *" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} />
+        <FormField label="Personnummer" value={form.civicRegistrationNumber} onChange={v => setForm({ ...form, civicRegistrationNumber: v })} />
+        <FormField label="E-post" value={form.email} onChange={v => setForm({ ...form, email: v })} type="email" />
+        <FormField label="Telefon" value={form.phone} onChange={v => setForm({ ...form, phone: v })} type="tel" />
+        <FormField label="Mobil" value={form.mobile} onChange={v => setForm({ ...form, mobile: v })} type="tel" />
+        <FormField label="Befattning" value={form.jobTitle} onChange={v => setForm({ ...form, jobTitle: v })} />
+      </div>
+      <div className="flex gap-2 mt-3">
+        {([
+          { label: "Deltagare", value: false },
+          { label: "Kontaktperson", value: true },
+        ] as const).map(opt => (
+          <button
+            key={String(opt.value)}
+            type="button"
+            onClick={() => setForm({ ...form, isContactPerson: opt.value })}
+            className="rounded-lg border px-4 py-2 text-xs font-medium transition-all"
+            style={{
+              borderColor: form.isContactPerson === opt.value ? "var(--frost)" : "var(--border)",
+              backgroundColor: form.isContactPerson === opt.value ? "var(--frost-light)" : "#fff",
+              color: form.isContactPerson === opt.value ? "var(--frost-dark)" : "var(--slate-light)",
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
