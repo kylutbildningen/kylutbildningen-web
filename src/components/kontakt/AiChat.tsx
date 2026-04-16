@@ -382,18 +382,7 @@ export function AiChat({ compact = false, userContext, onNewMessage }: Props) {
                                     )
                                   }
                                   const isBooking = href?.startsWith('/boka/')
-                                  if (isBooking && !userContext) {
-                                    return (
-                                      <button
-                                        onClick={() => window.dispatchEvent(new Event('open-auth-modal'))}
-                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold no-underline transition-colors hover:opacity-80 cursor-pointer"
-                                        style={{ background: 'var(--navy)', color: '#00C4FF', border: 'none' }}
-                                      >
-                                        🔒 Logga in
-                                      </button>
-                                    )
-                                  }
-                                  if (isBooking && userContext) {
+                                  if (isBooking) {
                                     return (
                                       <a
                                         href={href}
