@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
     const isCompany = formData.customerType === 'company'
     const contactEmail = isCompany ? formData.company.contactEmail : formData.private.email
     const participantCount = formData.participants.length
-    const unitPriceKr = eventData.eventCard.lowestPrice ?? 0
+    const unitPriceExVat = eventData.eventCard.lowestPrice ?? 0
+    const unitPriceIncVat = Math.round(unitPriceExVat * 1.25 * 100) // 25% moms, i ören
 
     const session = await getStripe().checkout.sessions.create({
       payment_method_types: ['card'],
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
             name: eventData.eventCard.courseName ?? 'Kursplats',
             description: `${eventData.eventCard.city ?? ''} — ${new Date(eventData.eventCard.startDate).toLocaleDateString('sv-SE')} – ${new Date(eventData.eventCard.endDate).toLocaleDateString('sv-SE')}`,
           },
-          unit_amount: Math.round(unitPriceKr * 100),
+          unit_amount: unitPriceIncVat,
         },
         quantity: 1,
       })),
