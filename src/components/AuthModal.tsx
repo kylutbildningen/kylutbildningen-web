@@ -24,7 +24,7 @@ export function AuthModal() {
     setEmail("");
     setSent(false);
     setError(null);
-    setOtp(["", "", "", "", "", "", "", ""]);
+    setOtp(["", "", "", "", "", ""]);
     setOpen(true);
   }, []);
 
@@ -86,12 +86,12 @@ export function AuthModal() {
     setOtp(newOtp);
 
     // Auto-advance to next input
-    if (digit && index < 7) {
+    if (digit && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto-submit when all 8 digits are filled
-    if (digit && index === 7 && newOtp.every((d) => d)) {
+    // Auto-submit when all 6 digits are filled
+    if (digit && index === 5 && newOtp.every((d) => d)) {
       verifyOtp(newOtp.join(""));
     }
   }
@@ -104,16 +104,16 @@ export function AuthModal() {
 
   function handleOtpPaste(e: React.ClipboardEvent) {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 8);
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
     if (!pasted) return;
     const newOtp = [...otp];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 6; i++) {
       newOtp[i] = pasted[i] || "";
     }
     setOtp(newOtp);
     // Focus the next empty or last input
     const nextEmpty = newOtp.findIndex((d) => !d);
-    inputRefs.current[nextEmpty === -1 ? 7 : nextEmpty]?.focus();
+    inputRefs.current[nextEmpty === -1 ? 5 : nextEmpty]?.focus();
     // Auto-submit if all filled
     if (newOtp.every((d) => d)) {
       verifyOtp(newOtp.join(""));
@@ -143,7 +143,7 @@ export function AuthModal() {
         setOpen(false);
       }
     } catch (err) {
-      setOtp(["", "", "", "", "", "", "", ""]);
+      setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
       setError(
         err instanceof Error ? err.message : "Ogiltig kod. Försök igen.",
@@ -156,7 +156,7 @@ export function AuthModal() {
   async function handleResend() {
     setLoading(true);
     setError(null);
-    setOtp(["", "", "", "", "", "", "", ""]);
+    setOtp(["", "", "", "", "", ""]);
 
     try {
       const supabase = createSupabaseBrowser();
@@ -226,7 +226,7 @@ export function AuthModal() {
                 className="leading-relaxed text-sm"
                 style={{ color: "var(--slate-light)" }}
               >
-                Vi har skickat en 8-siffrig kod till{" "}
+                Vi har skickat en 6-siffrig kod till{" "}
                 <strong style={{ color: "var(--slate-deep)" }}>{email}</strong>.
                 Ange koden nedan för att logga in.
               </p>
@@ -257,7 +257,7 @@ export function AuthModal() {
                     onChange={(e) => handleOtpChange(i, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(i, e)}
                     disabled={verifying}
-                    className="h-12 w-10 rounded-lg border-2 text-center text-lg font-semibold transition-colors focus:outline-none"
+                    className="h-14 w-12 rounded-lg border-2 text-center text-xl font-semibold transition-colors focus:outline-none"
                     style={{
                       borderColor: digit ? "var(--frost)" : "#e2e8f0",
                       color: "var(--slate-deep)",
@@ -297,7 +297,7 @@ export function AuthModal() {
                   onClick={() => {
                     setSent(false);
                     setError(null);
-                    setOtp(["", "", "", "", "", "", "", ""]);
+                    setOtp(["", "", "", "", "", ""]);
                   }}
                   className="text-sm font-medium underline"
                   style={{ color: "var(--slate-light)" }}
