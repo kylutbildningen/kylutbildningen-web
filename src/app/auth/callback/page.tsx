@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { routeUser } from "@/lib/route-user";
 
 function getHashError(): { code: string; description: string } | null {
   if (typeof window === "undefined") return null;
@@ -65,9 +66,6 @@ function AuthCallbackContent() {
     const callbackNext = pendingNext || next || "/dashboard";
     const { error: resendError } = await supabase.auth.signInWithOtp({
       email: pendingEmail,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext)}`,
-      },
     });
     setResendingFromError(false);
     if (!resendError) {
@@ -89,8 +87,8 @@ function AuthCallbackContent() {
         if (hashError.code === "otp_expired") {
           setError(
             pendingEmail
-              ? `Inloggningslänken har gått ut. Klicka nedan för att få en ny länk till ${pendingEmail}.`
-              : "Inloggningslänken har gått ut. Försök logga in igen för att få en ny länk."
+              ? `Inloggningskoden har gått ut. Klicka nedan för att få en ny kod till ${pendingEmail}.`
+              : "Inloggningskoden har gått ut. Försök logga in igen."
           );
         } else {
           setError(`Inloggningen misslyckades: ${hashError.description}`);
@@ -133,15 +131,12 @@ function AuthCallbackContent() {
             const callbackNext = pendingNext || next || "/dashboard";
             const { error: resendError } = await supabase.auth.signInWithOtp({
               email: pendingEmail,
-              options: {
-                emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(callbackNext)}`,
-              },
             });
             if (!resendError) {
               return; // Stay in "resending" state — shows the confirmation UI
             }
           }
-          setError("Inloggningen misslyckades. Försök skicka en ny länk.");
+          setError("Inloggningen misslyckades. Försök logga in igen.");
           return;
         }
         localStorage.removeItem("pending_auth_email");
@@ -182,9 +177,9 @@ function AuthCallbackContent() {
             E-post verifierad!
           </h2>
           <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
-            Vi har skickat en ny inloggningslänk till{" "}
+            Vi har skickat en ny inloggningskod till{" "}
             {pendingEmail && <strong style={{ color: "var(--slate-deep)" }}>{pendingEmail}</strong>}
-            . Kolla din inkorg och klicka på länken för att logga in.
+            . Gå tillbaka och ange koden för att logga in.
           </p>
         </div>
       </div>
@@ -212,12 +207,12 @@ function AuthCallbackContent() {
               color: "var(--slate-deep)",
             }}
           >
-            Ny länk skickad!
+            Ny kod skickad!
           </h2>
           <p className="text-sm leading-relaxed" style={{ color: "var(--slate-light)" }}>
-            Vi har skickat en ny inloggningslänk till{" "}
+            Vi har skickat en ny inloggningskod till{" "}
             {pendingEmail && <strong style={{ color: "var(--slate-deep)" }}>{pendingEmail}</strong>}
-            . Kolla din inkorg och klicka på länken för att logga in.
+            . Gå tillbaka och ange koden för att logga in.
           </p>
         </div>
       </div>
@@ -239,7 +234,7 @@ function AuthCallbackContent() {
               color: "var(--slate-deep)",
             }}
           >
-            Länken har gått ut
+            Koden har gått ut
           </h2>
           <p className="mb-6 text-sm" style={{ color: "var(--slate-light)" }}>
             {error}
@@ -251,7 +246,7 @@ function AuthCallbackContent() {
               className="inline-block rounded-lg px-6 py-3 text-sm font-semibold text-white"
               style={{ backgroundColor: "var(--frost)", opacity: resendingFromError ? 0.7 : 1 }}
             >
-              {resendingFromError ? "Skickar..." : "Skicka ny inloggningslänk"}
+              {resendingFromError ? "Skickar..." : "Skicka ny inloggningskod"}
             </button>
           ) : (
             <a
@@ -270,58 +265,3 @@ function AuthCallbackContent() {
   return <Loading />;
 }
 
-async function routeUser(
-  supabase: ReturnType<typeof createSupabaseBrowser>,
-  user: { id: string; email?: string },
-  next: string | null,
-  invite: string | null,
-  router: ReturnType<typeof useRouter>,
-) {
-  if (invite) {
-    router.replace(`/onboarding/invite?token=${invite}`);
-    return;
-  }
-
-  if (next) {
-    router.replace(next);
-    return;
-  }
-
-  // Check memberships
-  const { data: memberships } = await supabase
-    .from("company_memberships")
-    .select("id, role")
-    .eq("user_id", user.id)
-    .limit(1);
-
-  if (memberships && memberships.length > 0) {
-    const role = memberships[0].role;
-    router.replace(role === "participant" ? "/dashboard/mina-kurser" : "/dashboard");
-    return;
-  }
-
-  // No membership — try auto-creating a participant membership from persons table
-  if (user.email) {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      const res = await fetch("/api/auth/create-participant-membership", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ userId: user.id, email: user.email }),
-      });
-      if (res.ok) {
-        const data = await res.json() as { found: boolean };
-        if (data.found) {
-          router.replace("/dashboard/mina-kurser");
-          return;
-        }
-      }
-    }
-  }
-
-  // Fall through to onboarding for contact persons
-  router.replace("/onboarding/company");
-}
