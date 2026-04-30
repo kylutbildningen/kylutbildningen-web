@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/boka/', '/api/', '/logga-in', '/onboarding', '/dashboard', '/studio'],
+      disallow: ['/api/', '/logga-in', '/onboarding', '/dashboard', '/studio'],
     },
     sitemap: 'https://kylutbildningen.se/sitemap.xml',
   }
