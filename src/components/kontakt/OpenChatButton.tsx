@@ -1,6 +1,12 @@
 'use client'
 
+import { useEffect } from 'react'
+
 export function OpenChatButton() {
+  useEffect(() => {
+    window.dispatchEvent(new Event('open-chat-widget'))
+  }, [])
+
   return (
     <button
       type="button"
