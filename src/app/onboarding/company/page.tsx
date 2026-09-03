@@ -413,6 +413,27 @@ export default function CompanyPage() {
                       )}
                     </button>
                   )}
+
+                  {/* Always allow adding a brand-new company */}
+                  <div className="pt-2">
+                    <div className="relative flex items-center py-3">
+                      <div className="flex-grow border-t" style={{ borderColor: "var(--border)" }} />
+                      <span className="mx-3 text-[11px] uppercase tracking-wide" style={{ color: "var(--slate-light)" }}>
+                        eller
+                      </span>
+                      <div className="flex-grow border-t" style={{ borderColor: "var(--border)" }} />
+                    </div>
+                    <button
+                      onClick={() => setShowRegistration(true)}
+                      className="w-full rounded-lg border py-3 text-sm font-semibold transition-colors hover:bg-gray-50"
+                      style={{ borderColor: "var(--border)", color: "var(--slate-deep)" }}
+                    >
+                      + Lägg till nytt bolag
+                    </button>
+                    <p className="mt-2 text-center text-xs" style={{ color: "var(--slate-light)" }}>
+                      Om bolaget inte finns i listan ovan
+                    </p>
+                  </div>
                 </div>
               )}
             </>
