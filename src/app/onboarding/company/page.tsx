@@ -28,6 +28,7 @@ export default function CompanyPage() {
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyMatch[]>([]);
+  const [existingCustomerIds, setExistingCustomerIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<CompanyMatch | null>(null);
   const [creating, setCreating] = useState(false);
@@ -75,6 +76,15 @@ export default function CompanyPage() {
         const res = await fetch(`/api/auth/companies-by-email?email=${encodeURIComponent(user.email)}`);
         if (res.ok) setCompanies(await res.json());
       } catch { /* show empty state */ }
+
+      // Load existing memberships so we can mark already-added companies
+      const { data: mems } = await supabase
+        .from("company_memberships")
+        .select("edu_customer_id")
+        .eq("user_id", user.id);
+      if (mems) {
+        setExistingCustomerIds(new Set(mems.map((m) => m.edu_customer_id)));
+      }
 
       setLoading(false);
     }
@@ -336,30 +346,47 @@ export default function CompanyPage() {
                   </h2>
                   {companies.map((company) => {
                     const isSelected = selected?.customerId === company.customerId;
+                    const isExisting = existingCustomerIds.has(company.customerId);
                     return (
                       <button
                         key={company.customerId}
-                        onClick={() => setSelected(isSelected ? null : company)}
+                        onClick={() => {
+                          if (isExisting) return;
+                          setSelected(isSelected ? null : company);
+                        }}
+                        disabled={isExisting}
                         className="w-full rounded-lg border bg-white p-4 text-left transition-all"
                         style={{
                           borderColor: isSelected ? "var(--frost)" : "var(--border)",
                           boxShadow: isSelected ? "0 0 0 1px var(--frost)" : undefined,
+                          opacity: isExisting ? 0.55 : 1,
+                          cursor: isExisting ? "not-allowed" : "pointer",
                         }}
                       >
                         <div className="flex items-center gap-3">
                           <div
                             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                             style={{
-                              backgroundColor: isSelected ? "var(--frost-light)" : "#f0f0f0",
-                              color: isSelected ? "var(--frost-dark)" : "var(--slate-light)",
+                              backgroundColor: isSelected || isExisting ? "var(--frost-light)" : "#f0f0f0",
+                              color: isSelected || isExisting ? "var(--frost-dark)" : "var(--slate-light)",
                             }}
                           >
-                            {isSelected ? <CheckIcon /> : <BuildingIcon />}
+                            {isSelected || isExisting ? <CheckIcon /> : <BuildingIcon />}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <span className="block text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
-                              {company.customerName}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="block text-sm font-medium" style={{ color: "var(--slate-deep)" }}>
+                                {company.customerName}
+                              </span>
+                              {isExisting && (
+                                <span
+                                  className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                                  style={{ backgroundColor: "var(--frost-light)", color: "var(--frost-dark)" }}
+                                >
+                                  Redan tillagt
+                                </span>
+                              )}
+                            </div>
                             <span className="block text-xs" style={{ color: "var(--slate-light)" }}>
                               {company.organisationNumber && `Org.nr: ${company.organisationNumber} · `}
                               {company.isContactPerson ? "Kontaktperson" : "Deltagare"}

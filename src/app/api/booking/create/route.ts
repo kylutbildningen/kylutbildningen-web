@@ -119,32 +119,21 @@ export async function POST(request: Request) {
 
     // 4. Save in Supabase too (for our dashboard)
     let userId: string | null = null;
-    let eduCustomerId = 0;
 
+    const supabaseAdmin = createSupabaseAdmin();
     const authHeader = request.headers.get("Authorization");
     if (authHeader) {
-      const supabaseAdmin = createSupabaseAdmin();
       const { data: { user } } = await supabaseAdmin.auth.getUser(
         authHeader.replace("Bearer ", ""),
       );
-      if (user) {
-        userId = user.id;
-        const { data: membership } = await supabaseAdmin
-          .from("company_memberships")
-          .select("edu_customer_id")
-          .eq("user_id", user.id)
-          .limit(1)
-          .single();
-        eduCustomerId = membership?.edu_customer_id ?? 0;
-      }
+      if (user) userId = user.id;
     }
 
-    const supabaseAdmin = createSupabaseAdmin();
     const unitPrice = eventData.eventCard.lowestPrice ?? 0;
 
     await supabaseAdmin.from("bookings").insert({
       user_id: userId,
-      edu_customer_id: eduCustomerId || eduResult.CustomerId,
+      edu_customer_id: eduResult.CustomerId ?? 0,
       event_id: body.eventId,
       course_name: eventData.eventCard.courseName,
       event_date: formatCompactDateRange(eventData.eventCard.startDate, eventData.eventCard.endDate),

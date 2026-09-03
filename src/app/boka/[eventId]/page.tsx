@@ -63,6 +63,17 @@ export default function BookingPage() {
   const [myCustomerId, setMyCustomerId] = useState<number | null>(null);
   const [alreadyBooked, setAlreadyBooked] = useState(false);
 
+  // Memberships — user may belong to several companies
+  type MembershipLite = {
+    edu_customer_id: number;
+    company_name: string;
+    org_number: string | null;
+    role: string;
+  };
+  const [memberships, setMemberships] = useState<MembershipLite[]>([]);
+  const [activeCustomerId, setActiveCustomerId] = useState<number | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
   // Company persons from Supabase (for participant picker)
   const [companyPersons, setCompanyPersons] = useState<SupabasePerson[]>([]);
   const [showPersonPicker, setShowPersonPicker] = useState(false);
@@ -111,7 +122,7 @@ export default function BookingPage() {
     control,
   } = form;
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "participants",
   });
@@ -119,33 +130,13 @@ export default function BookingPage() {
   const customerType = watch("customerType");
   const isCompany = customerType === "company";
 
-  // ─── Auth check + prefill from EduAdmin ───
-  useEffect(() => {
-    async function checkAuthAndPrefill() {
-      const supabase = createSupabaseBrowser();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        // Not logged in → redirect to onboarding with return URL
-        router.replace(`/onboarding?redirect=/boka/${eventId}`);
-        return;
-      }
-
-      // Get membership
-      const { data: membership } = await supabase
-        .from("company_memberships")
-        .select("edu_customer_id, company_name, org_number, role")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (!membership) {
-        router.replace(`/onboarding/company?redirect=/boka/${eventId}`);
-        return;
-      }
+  // ─── Prefill form for a specific membership (company) ───
+  const prefillForMembership = useCallback(
+    async (membership: MembershipLite, email: string | null) => {
+      // Reset participant/person state
+      setCompanyPersons([]);
+      setMyPersonId(null);
+      setAlreadyBooked(false);
 
       // Fetch customer details from EduAdmin
       try {
@@ -154,7 +145,6 @@ export default function BookingPage() {
         );
         if (custRes.ok) {
           const custData = await custRes.json();
-          // Prefill company fields
           setValue("company.organizationNumber", custData.OrganisationNumber || "");
           setValue("company.companyName", custData.CustomerName || "");
           setValue("company.streetAddress",
@@ -162,7 +152,14 @@ export default function BookingPage() {
           setValue("company.postalCode", custData.Zip || "");
           setValue("company.city", custData.City || "");
 
-          // Prefill fakturauppgifter från EduAdmin BillingInfo
+          // Clear alternate invoice address by default, then reapply if present
+          setValue("company.invoiceEmail", "");
+          setValue("company.invoiceReference", "");
+          setValue("company.useAlternateInvoiceAddress", false);
+          setValue("company.invoiceStreetAddress", "");
+          setValue("company.invoicePostalCode", "");
+          setValue("company.invoiceCity", "");
+
           if (custData.BillingInfo) {
             const bi = custData.BillingInfo;
             if (bi.Email) setValue("company.invoiceEmail", bi.Email);
@@ -186,9 +183,8 @@ export default function BookingPage() {
           const persons: SupabasePerson[] = await persRes.json();
           setCompanyPersons(persons);
 
-          // Find the logged-in user's person record and prefill as contact
           const myPerson = persons.find(
-            (p) => p.email?.toLowerCase() === user.email?.toLowerCase(),
+            (p) => p.email?.toLowerCase() === email?.toLowerCase(),
           );
           if (myPerson) {
             setValue("company.contactFirstName", myPerson.first_name || "");
@@ -196,7 +192,6 @@ export default function BookingPage() {
             setValue("company.contactEmail", myPerson.email || "");
             setValue("company.contactPhone", myPerson.phone || myPerson.mobile || "");
 
-            // Prefill first participant as the contact person
             setValue("participants.0.firstName", myPerson.first_name || "");
             setValue("participants.0.lastName", myPerson.last_name || "");
             setValue("participants.0.email", myPerson.email || "");
@@ -205,18 +200,69 @@ export default function BookingPage() {
             setValue("participants.0.isPrimaryContact", true);
           }
 
-          // Store participant restriction state
           setIsParticipantUser(membership.role === "participant");
           setMyPersonId(myPerson?.edu_person_id ?? null);
           setMyCustomerId(membership.edu_customer_id);
         }
       } catch { /* continue */ }
+    },
+    [setValue],
+  );
 
+  // ─── Auth check + initial load ───
+  useEffect(() => {
+    async function checkAuthAndPrefill() {
+      const supabase = createSupabaseBrowser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace(`/onboarding?redirect=/boka/${eventId}`);
+        return;
+      }
+      setUserEmail(user.email ?? null);
+
+      // Fetch ALL memberships (user may belong to multiple companies)
+      const { data: mems } = await supabase
+        .from("company_memberships")
+        .select("edu_customer_id, company_name, org_number, role")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (!mems || mems.length === 0) {
+        router.replace(`/onboarding/company?redirect=/boka/${eventId}`);
+        return;
+      }
+
+      setMemberships(mems);
+
+      // Determine active company: sessionStorage > first membership
+      const stored = sessionStorage.getItem("selected_company");
+      const storedId = stored ? parseInt(stored) : NaN;
+      const active = mems.find((m) => m.edu_customer_id === storedId) ?? mems[0];
+      setActiveCustomerId(active.edu_customer_id);
+
+      await prefillForMembership(active, user.email ?? null);
       setAuthChecked(true);
     }
 
     checkAuthAndPrefill();
-  }, [eventId, router, setValue]);
+  }, [eventId, router, prefillForMembership]);
+
+  // ─── Handle company switch ───
+  const handleCompanyChange = useCallback(
+    async (customerId: number) => {
+      const membership = memberships.find((m) => m.edu_customer_id === customerId);
+      if (!membership || customerId === activeCustomerId) return;
+      setActiveCustomerId(customerId);
+      sessionStorage.setItem("selected_company", String(customerId));
+      // Reset participants to a single empty row; prefill will fill in contact person
+      replace([{ ...emptyParticipant, isPrimaryContact: true }]);
+      await prefillForMembership(membership, userEmail);
+    },
+    [memberships, activeCustomerId, prefillForMembership, userEmail, replace],
+  );
 
   // Fetch event data
   useEffect(() => {
@@ -506,6 +552,35 @@ export default function BookingPage() {
               showToast(pnrErr.civicRegistrationNumber.message);
             }
           })} className="space-y-8">
+            {/* Company picker — only if user belongs to multiple companies */}
+            {memberships.length > 1 && isCompany && (
+              <div className="rounded-lg border p-4" style={{ borderColor: "var(--border)", backgroundColor: "#F8F9FB" }}>
+                <label
+                  htmlFor="active-company"
+                  className="mb-2 block text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--slate-light)" }}
+                >
+                  Boka för
+                </label>
+                <select
+                  id="active-company"
+                  value={activeCustomerId ?? ""}
+                  onChange={(e) => handleCompanyChange(parseInt(e.target.value))}
+                  className="form-input w-full"
+                >
+                  {memberships.map((m) => (
+                    <option key={m.edu_customer_id} value={m.edu_customer_id}>
+                      {m.company_name}
+                      {m.org_number ? ` (${m.org_number})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs" style={{ color: "var(--slate-light)" }}>
+                  Byter du företag laddas företagsuppgifter och personer om.
+                </p>
+              </div>
+            )}
+
             {/* Customer type tabs */}
             <div className="flex gap-2">
               <button type="button" onClick={() => setValue("customerType", "company")}
