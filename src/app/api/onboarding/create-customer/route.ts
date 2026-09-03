@@ -42,14 +42,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get the authenticated user from Supabase
+    // Get the authenticated user from the Authorization header
     const supabase = createSupabaseAdmin()
-
-    // Look up user by email
-    const { data: { users } } = await supabase.auth.admin.listUsers()
-    const authUser = users.find(u => u.email === email)
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Ej inloggad' }, { status: 401 })
+    }
+    const { data: { user: authUser } } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', ''),
+    )
     if (!authUser) {
-      return NextResponse.json({ error: 'Ingen inloggad användare hittades' }, { status: 401 })
+      return NextResponse.json({ error: 'Ogiltig session' }, { status: 401 })
     }
 
     let customerId: number

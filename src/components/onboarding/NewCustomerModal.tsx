@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 type CustomerType = 'company' | 'private' | null
 
@@ -105,9 +106,14 @@ export function NewCustomerModal({ email, onClose }: Props) {
             customerType: 'private',
           }
 
+      const supabase = createSupabaseBrowser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`
+
       const res = await fetch('/api/onboarding/create-customer', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
       })
 
