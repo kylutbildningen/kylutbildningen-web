@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { z } from 'zod'
 import { getUpcomingEvents } from '@/lib/eduadmin'
+import { escapeHtml } from '@/lib/escape-html'
+import { getClientIp, isRateLimited, DAY, HOUR } from '@/lib/rate-limit'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -35,8 +38,27 @@ function courseMatches(courseName: string, query: string): boolean {
   return false
 }
 
+const reminderSchema = z.object({
+  email: z.string().trim().email().max(254),
+  course: z.string().trim().max(100).nullish(),
+})
+
 export async function POST(req: NextRequest) {
-  const { email, course } = await req.json()
+  const parsed = reminderSchema.safeParse(await req.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Ogiltig e-postadress' }, { status: 400 })
+  }
+  const { email } = parsed.data
+  const course = parsed.data.course ?? ''
+
+  // Limit per sender IP and per recipient, so this can't be used to spam
+  // arbitrary addresses from our domain
+  if (
+    isRateLimited(`reminder-ip:${getClientIp(req)}`, [{ windowMs: HOUR, max: 5 }]) ||
+    isRateLimited(`reminder-to:${email.toLowerCase()}`, [{ windowMs: DAY, max: 3 }])
+  ) {
+    return NextResponse.json({ error: 'För många förfrågningar. Försök igen senare.' }, { status: 429 })
+  }
 
   const allEvents = await getUpcomingEvents()
   const isAll = !course || course === 'alla kurser'
@@ -61,7 +83,8 @@ export async function POST(req: NextRequest) {
       eventId: e.eventId,
     }))
 
-  const courseLabel = isAll ? 'alla kurser' : course
+  const courseLabel = isAll ? 'alla kurser' : course.replace(/[\r\n]+/g, ' ')
+  const courseLabelHtml = escapeHtml(courseLabel)
 
   const datesHtml = dates.length > 0
     ? dates.map(d => `
@@ -80,7 +103,7 @@ export async function POST(req: NextRequest) {
           </td>
         </tr>`).join('')
     : `<tr><td colspan="4" style="padding:16px;text-align:center;color:#888">
-        Inga kommande datum hittades för ${courseLabel} just nu.
+        Inga kommande datum hittades för ${courseLabelHtml} just nu.
         Kontakta oss så hjälper vi dig!
       </td></tr>`
 
@@ -97,7 +120,7 @@ export async function POST(req: NextRequest) {
         </div>
         <div style="padding:24px;background:white;border:1px solid #DDE4ED;border-top:none">
           <p style="color:#333;margin-top:0;font-size:15px">
-            Hej! Här är kommande datum för <strong>${courseLabel}</strong>:
+            Hej! Här är kommande datum för <strong>${courseLabelHtml}</strong>:
           </p>
           <table style="width:100%;border-collapse:collapse;font-size:14px">
             <thead>

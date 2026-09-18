@@ -52,21 +52,28 @@ export async function POST(req: NextRequest) {
 
     const supabase = createSupabaseAdmin()
 
+    // Atomically claim the session (pending → completed) so concurrent or
+    // repeated deliveries of the same event can never create two bookings.
     const { data: ourSession } = await supabase
       .from('stripe_sessions')
-      .select('*')
+      .update({ status: 'completed' })
       .eq('stripe_session_id', session.id)
-      .single()
+      .eq('status', 'pending')
+      .select('*')
+      .maybeSingle()
 
     if (!ourSession) {
-      console.error('Stripe webhook: session not found in DB', session.id)
+      // Unknown session, or already handled by another delivery
+      console.log('Stripe webhook: session not pending, skipping', session.id)
       return NextResponse.json({ ok: true })
     }
 
-    // Idempotency check
-    if (ourSession.status === 'completed') {
-      return NextResponse.json({ ok: true })
-    }
+    // Release the claim so Stripe's retry can process it again
+    const releaseClaim = () =>
+      supabase
+        .from('stripe_sessions')
+        .update({ status: 'pending' })
+        .eq('stripe_session_id', session.id)
 
     const formData = ourSession.form_data
     const isCompany = formData.customerType === 'company'
@@ -115,8 +122,12 @@ export async function POST(req: NextRequest) {
       },
     }
 
+    // 1. Create the booking. If this fails nothing was created, so release the
+    //    claim and return 500 — Stripe retries the webhook for up to 3 days.
+    let token: string
+    let eduResult: { BookingId?: number; CustomerId?: number; TotalPriceExVat?: number }
     try {
-      const token = await getToken()
+      token = await getToken()
       const eduRes = await fetch(`${API_URL}/v1/Booking`, {
         method: 'POST',
         headers: {
@@ -127,14 +138,25 @@ export async function POST(req: NextRequest) {
       })
 
       if (!eduRes.ok) {
-        const errorText = await eduRes.text()
-        console.error('EduAdmin booking failed in Stripe webhook:', eduRes.status, errorText)
-        return NextResponse.json({ ok: true })
+        throw new Error(`EduAdmin ${eduRes.status}: ${await eduRes.text()}`)
       }
+      eduResult = await eduRes.json()
+    } catch (err) {
+      console.error('EduAdmin booking failed in Stripe webhook, will retry:', err)
+      await releaseClaim()
+      return NextResponse.json({ error: 'Booking failed' }, { status: 500 })
+    }
 
-      const eduResult = await eduRes.json()
-      const bookingId = eduResult.BookingId
-      console.log('Stripe webhook: EduAdmin booking created:', bookingId)
+    // 2. Booking exists — from here on, never ask Stripe to retry (that would
+    //    create a duplicate). Log follow-up failures instead.
+    const bookingId = eduResult.BookingId
+    console.log('Stripe webhook: EduAdmin booking created:', bookingId)
+
+    try {
+      await supabase
+        .from('stripe_sessions')
+        .update({ booking_id: bookingId })
+        .eq('stripe_session_id', session.id)
 
       // Mark booking as paid in EduAdmin
       if (bookingId) {
@@ -174,17 +196,8 @@ export async function POST(req: NextRequest) {
         booking_number: String(bookingId),
         status: 'confirmed',
       })
-
-      // Mark Stripe session as completed
-      await supabase
-        .from('stripe_sessions')
-        .update({
-          status: 'completed',
-          booking_id: bookingId,
-        })
-        .eq('stripe_session_id', session.id)
     } catch (err) {
-      console.error('Stripe webhook booking error:', err)
+      console.error(`Stripe webhook follow-up failed for booking ${bookingId}:`, err)
     }
   }
 

@@ -1,14 +1,32 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { getClientIp, isRateLimited, HOUR, MINUTE } from '@/lib/rate-limit'
 
 const client = new Anthropic()
 
-export async function POST(req: NextRequest) {
-  const { messages } = await req.json()
+const summarizeSchema = z.object({
+  messages: z.array(z.object({
+    role: z.string(),
+    content: z.string().max(4_000),
+  })).min(1).max(40),
+})
 
-  const chatText = messages
-    .map((m: { role: string; content: string }) =>
-      `${m.role === 'user' ? 'Kund' : 'Assistent'}: ${m.content}`)
+export async function POST(req: NextRequest) {
+  if (isRateLimited(`summarize:${getClientIp(req)}`, [
+    { windowMs: 10 * MINUTE, max: 5 },
+    { windowMs: HOUR, max: 10 },
+  ])) {
+    return NextResponse.json({ error: 'För många förfrågningar. Försök igen senare.' }, { status: 429 })
+  }
+
+  const parsed = summarizeSchema.safeParse(await req.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Ogiltig förfrågan' }, { status: 400 })
+  }
+
+  const chatText = parsed.data.messages
+    .map((m) => `${m.role === 'user' ? 'Kund' : 'Assistent'}: ${m.content}`)
     .join('\n')
 
   const response = await client.messages.create({

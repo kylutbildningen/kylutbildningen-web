@@ -2,6 +2,11 @@ import { createSupabaseBrowser } from "@/lib/supabase-browser";
 
 type Router = { replace: (url: string) => void };
 
+/** Only allow same-site relative paths ("/x"), never "//host" or "/\host". */
+export function isSafeRedirectPath(path: string | null): path is string {
+  return !!path && path.startsWith("/") && !path.startsWith("//") && !path.startsWith("/\\");
+}
+
 export async function routeUser(
   supabase: ReturnType<typeof createSupabaseBrowser>,
   user: { id: string; email?: string },
@@ -10,11 +15,11 @@ export async function routeUser(
   router: Router,
 ) {
   if (invite) {
-    router.replace(`/onboarding/invite?token=${invite}`);
+    router.replace(`/onboarding/invite?token=${encodeURIComponent(invite)}`);
     return;
   }
 
-  if (next) {
+  if (isSafeRedirectPath(next)) {
     router.replace(next);
     return;
   }

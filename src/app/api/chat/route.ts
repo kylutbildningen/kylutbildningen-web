@@ -1,34 +1,44 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { ApifyClient } from 'apify-client'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getUpcomingEvents } from '@/lib/eduadmin'
+import { getClientIp, isRateLimited, HOUR, MINUTE } from '@/lib/rate-limit'
 
 const client = new Anthropic()
 const apify = new ApifyClient({ token: process.env.APIFY_API_TOKEN })
 
-// --- Rate limiter ---
-const RATE_LIMIT = { perMinute: 10, perHour: 40 }
-const hits = new Map<string, number[]>()
+const MAX_TOOL_ROUNDS = 3
+// search_web may only fetch these hosts (and their subdomains)
+const ALLOWED_SEARCH_HOSTS = ['incert.se']
 
-// Clean old entries every 10 minutes
-setInterval(() => {
-  const cutoff = Date.now() - 3600_000
-  for (const [ip, timestamps] of hits) {
-    const fresh = timestamps.filter(t => t > cutoff)
-    if (fresh.length === 0) hits.delete(ip)
-    else hits.set(ip, fresh)
+const chatSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string().max(4_000),
+  })).min(1).max(40),
+  userContext: z.object({
+    name: z.string().nullish(),
+    email: z.string().nullish(),
+    phone: z.string().nullish(),
+    company: z.string().nullish(),
+    orgNumber: z.string().nullish(),
+  }).nullish(),
+})
+
+/** Single-line, length-capped value for interpolation into the system prompt. */
+function promptSafe(value: string | null | undefined, max = 100): string {
+  return (value ?? '').replace(/[\r\n]+/g, ' ').trim().slice(0, max)
+}
+
+function isAllowedSearchUrl(url: string): boolean {
+  try {
+    const { protocol, hostname } = new URL(url)
+    return protocol === 'https:' &&
+      ALLOWED_SEARCH_HOSTS.some(h => hostname === h || hostname.endsWith(`.${h}`))
+  } catch {
+    return false
   }
-}, 600_000)
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now()
-  const timestamps = hits.get(ip) || []
-  const lastMinute = timestamps.filter(t => now - t < 60_000).length
-  const lastHour = timestamps.filter(t => now - t < 3600_000).length
-  if (lastMinute >= RATE_LIMIT.perMinute || lastHour >= RATE_LIMIT.perHour) return true
-  timestamps.push(now)
-  hits.set(ip, timestamps)
-  return false
 }
 
 const SYSTEM_PROMPT = `Du är en hjälpsam kursassistent för Kylutbildningen i Göteborg AB. Svara ALLTID på svenska. Var kortfattad och tydlig.
@@ -218,49 +228,55 @@ ${lines.join('\n')}`
 }
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    || req.headers.get('x-real-ip')
-    || 'unknown'
-
-  if (isRateLimited(ip)) {
+  if (isRateLimited(`chat:${getClientIp(req)}`, [
+    { windowMs: MINUTE, max: 10 },
+    { windowMs: HOUR, max: 40 },
+  ])) {
     return NextResponse.json(
       { error: 'För många förfrågningar. Försök igen om en stund.' },
       { status: 429 }
     )
   }
 
-  const { messages, userContext } = await req.json()
+  const parsed = chatSchema.safeParse(await req.json().catch(() => null))
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Ogiltig förfrågan' }, { status: 400 })
+  }
+  const { messages, userContext } = parsed.data
 
   const catalog = await buildCatalog()
   let systemPrompt = SYSTEM_PROMPT + catalog
 
-  if (userContext?.name) {
+  const userName = promptSafe(userContext?.name)
+  if (userName) {
+    const company = promptSafe(userContext?.company)
     systemPrompt += `
 
 INLOGGAD ANVÄNDARE:
-Namn: ${userContext.name}
-E-post: ${userContext.email || '—'}
-Telefon: ${userContext.phone || '—'}
-Företag: ${userContext.company || '—'}
-Org.nr: ${userContext.orgNumber || '—'}
+Namn: ${userName}
+E-post: ${promptSafe(userContext?.email) || '—'}
+Telefon: ${promptSafe(userContext?.phone) || '—'}
+Företag: ${company || '—'}
+Org.nr: ${promptSafe(userContext?.orgNumber) || '—'}
 
-VIKTIGT: Hälsa användaren med förnamnet i ditt första svar. Ex: "Hej ${userContext.name.split(' ')[0]}! ..."
+VIKTIGT: Hälsa användaren med förnamnet i ditt första svar. Ex: "Hej ${userName.split(' ')[0]}! ..."
 
 Om användaren vill boka en kurs:
 - Du vet redan deras uppgifter — bekräfta dem istället för att fråga
-- Ex: "Vill du boka som ${userContext.company || 'ditt företag'}? Dina uppgifter fylls i automatiskt på bokningssidan."
+- Ex: "Vill du boka som ${company || 'ditt företag'}? Dina uppgifter fylls i automatiskt på bokningssidan."
 - Länka direkt till bokningssidan: [Boka denna kurs](/boka/EVENT_ID)`
   }
 
-  // Agentic loop — AI kan anropa verktyg flera gånger
-  let currentMessages = [...messages]
+  // Agentic loop — AI kan anropa verktyg ett begränsat antal gånger
+  const currentMessages: Anthropic.MessageParam[] = [...messages]
 
-  while (true) {
+  for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       system: systemPrompt,
-      tools,
+      // Last round: no tools, so the model must answer
+      ...(round < MAX_TOOL_ROUNDS ? { tools } : {}),
       messages: currentMessages,
     })
 
@@ -312,7 +328,9 @@ Om användaren vill boka en kurs:
 
       if (toolUse.name === 'search_web') {
         const input = toolUse.input as { url: string; query: string }
-        const result = await searchWeb(input.url, input.query)
+        const result = isAllowedSearchUrl(input.url)
+          ? await searchWeb(input.url, input.query)
+          : 'Sökning är bara tillåten på incert.se.'
 
         currentMessages.push({
           role: 'user' as const,

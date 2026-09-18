@@ -2,14 +2,30 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getEvent } from '@/lib/eduadmin'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
+import { bookingStep1Schema } from '@/lib/validation'
 
 export async function POST(req: NextRequest) {
   try {
-    const { eventId, formData } = await req.json()
+    const body = await req.json()
+    const eventId = Number(body.eventId)
+    const parsed = bookingStep1Schema.safeParse(body.formData)
+    if (!Number.isInteger(eventId) || eventId <= 0 || !parsed.success) {
+      return NextResponse.json({ error: 'Ogiltiga bokningsuppgifter' }, { status: 400 })
+    }
+    const formData = parsed.data
 
     const eventData = await getEvent(eventId)
     if (!eventData) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+    }
+    if (eventData.eventCard.isFullyBooked) {
+      return NextResponse.json({ error: 'Kursen är fullbokad' }, { status: 409 })
+    }
+    if (formData.participants.length > eventData.eventCard.spotsLeft) {
+      return NextResponse.json(
+        { error: `Endast ${eventData.eventCard.spotsLeft} platser kvar` },
+        { status: 409 },
+      )
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!
