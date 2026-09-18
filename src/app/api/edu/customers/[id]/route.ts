@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import { eduAdminFetch } from "@/lib/eduadmin/client";
 import { updateCustomer } from "@/lib/eduadmin/customers";
+import { requireMembership, STAFF_ROLES } from "@/lib/auth/api-guard";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const customerId = parseInt(id, 10);
-
-  if (isNaN(customerId)) {
-    return NextResponse.json({ error: "Ogiltigt kund-ID" }, { status: 400 });
-  }
+  const guard = await requireMembership(id, STAFF_ROLES);
+  if ("error" in guard) return guard.error;
+  const { customerId } = guard;
 
   try {
     const customer = await eduAdminFetch(
@@ -33,11 +32,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const customerId = parseInt(id, 10);
-
-  if (isNaN(customerId)) {
-    return NextResponse.json({ error: "Ogiltigt kund-ID" }, { status: 400 });
-  }
+  const guard = await requireMembership(id, STAFF_ROLES);
+  if ("error" in guard) return guard.error;
+  const { customerId } = guard;
 
   try {
     const body = await request.json();

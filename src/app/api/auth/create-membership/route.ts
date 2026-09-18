@@ -6,11 +6,11 @@ import { syncPersonsFromEduAdmin } from "@/lib/supabase-persons";
 
 export async function POST(request: Request) {
   try {
-    const { customerId, userId, email } = await request.json();
+    const { customerId, userId } = await request.json();
 
-    if (!customerId || !userId || !email) {
+    if (!customerId || !userId) {
       return NextResponse.json(
-        { error: "customerId, userId och email krävs" },
+        { error: "customerId och userId krävs" },
         { status: 400 },
       );
     }
@@ -29,12 +29,13 @@ export async function POST(request: Request) {
       error: authError,
     } = await supabaseAdmin.auth.getUser(authHeader.replace("Bearer ", ""));
 
-    if (authError || !user || user.id !== userId) {
+    if (authError || !user || user.id !== userId || !user.email) {
       return NextResponse.json({ error: "Ogiltig session" }, { status: 401 });
     }
 
-    // Re-verify against EduAdmin server-side
-    const verification = await verifyEmailOnCustomer(email, customerId);
+    // Re-verify against EduAdmin server-side — always with the session's own
+    // email, never one from the request body.
+    const verification = await verifyEmailOnCustomer(user.email, customerId);
 
     if (!verification.verified) {
       return NextResponse.json(

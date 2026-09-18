@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { logBookingEvent } from "@/lib/booking-events";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { requireMembership, requireUser } from "@/lib/auth/api-guard";
+import { canModifyBooking, canViewCompany } from "@/lib/auth/permissions";
 
 const API_URL = process.env.EDUADMIN_API_BASE ?? "https://api.eduadmin.se";
 const API_USER = process.env.EDUADMIN_USERNAME ?? "";
@@ -23,19 +25,73 @@ async function getToken(): Promise<string> {
   return cachedToken!;
 }
 
-// PATCH — update booking (notes, reference, payment method etc.)
+interface EduBooking {
+  PaymentMethodId: number;
+  Customer?: { CustomerId: number };
+  ContactPerson?: { PersonId: number };
+  Participants?: Array<{ ParticipantId: number; PersonId: number; Canceled: boolean }>;
+}
+
+/**
+ * Load the booking from EduAdmin and verify the logged-in user is a member
+ * of the company that owns it. All actor/customer data comes from here —
+ * never from the request body.
+ */
+async function authorizeBooking(id: string) {
+  if (!/^\d+$/.test(id)) {
+    return { error: NextResponse.json({ error: "Ogiltigt boknings-ID" }, { status: 400 }) };
+  }
+  // Reject anonymous callers before touching EduAdmin
+  const auth = await requireUser();
+  if ("error" in auth) return auth;
+
+  const token = await getToken();
+  const res = await fetch(
+    `${API_URL}/v1/odata/Bookings(${id})?$expand=Customer,ContactPerson,Participants`,
+    { headers: { Authorization: `bearer ${token}` } },
+  );
+  if (!res.ok) {
+    return { error: NextResponse.json({ error: "Bokningen hittades inte" }, { status: 404 }) };
+  }
+  const booking = await res.json() as EduBooking;
+
+  const guard = await requireMembership(booking.Customer?.CustomerId);
+  if ("error" in guard) return guard;
+
+  return {
+    token,
+    booking,
+    customerId: guard.customerId,
+    membership: guard.membership,
+    actorEmail: guard.user.email,
+    actorUserId: guard.user.id,
+  };
+}
+
+function forbidden() {
+  return NextResponse.json({ error: "Åtkomst nekad" }, { status: 403 });
+}
+
+// PATCH — update booking notes/reference
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
-    const body = await request.json();
-    const token = await getToken();
+    const auth = await authorizeBooking(id);
+    if ("error" in auth) return auth.error;
+    if (!canViewCompany(auth.membership.role)) return forbidden();
+
+    const body = await request.json() as { Notes?: string; Reference?: string };
+    const updates: Record<string, unknown> = {};
+    if (body.Notes !== undefined) updates.Notes = body.Notes;
+    if (body.Reference !== undefined) updates.Reference = body.Reference;
+
     const res = await fetch(`${API_URL}/v1/Booking/${id}`, {
       method: "PATCH",
-      headers: { Authorization: `bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: { Authorization: `bearer ${auth.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
     });
     if (!res.ok) {
       const text = await res.text();
@@ -54,15 +110,13 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    const body = await request.json().catch(() => ({})) as {
-      customerId?: number;
-      actorEmail?: string;
-      actorUserId?: string;
-    };
-    const token = await getToken();
+    const auth = await authorizeBooking(id);
+    if ("error" in auth) return auth.error;
+    if (!canViewCompany(auth.membership.role)) return forbidden();
+
     const res = await fetch(`${API_URL}/v1/Booking/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `bearer ${token}` },
+      headers: { Authorization: `bearer ${auth.token}` },
     });
     if (!res.ok) {
       const text = await res.text();
@@ -76,15 +130,13 @@ export async function DELETE(
       .eq("booking_number", id);
 
     // Fire-and-forget logging
-    if (body.customerId) {
-      logBookingEvent({
-        eduCustomerId: body.customerId,
-        bookingId: id,
-        action: "cancelled_booking",
-        actorEmail: body.actorEmail,
-        actorUserId: body.actorUserId,
-      }).catch(() => {});
-    }
+    logBookingEvent({
+      eduCustomerId: auth.customerId,
+      bookingId: id,
+      action: "cancelled_booking",
+      actorEmail: auth.actorEmail,
+      actorUserId: auth.actorUserId,
+    }).catch(() => {});
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
@@ -102,21 +154,32 @@ export async function POST(
     participantId?: number;
     participants?: unknown[];
     newEventId?: number;
-    personId?: number;
-    customerId?: number;
-    contactPersonId?: number;
-    paymentMethodId?: number;
     participantName?: string;
     fromEventId?: number;
-    actorEmail?: string;
-    actorUserId?: string;
   };
 
   try {
-    const token = await getToken();
+    const auth = await authorizeBooking(id);
+    if ("error" in auth) return auth.error;
+    const { token, booking, membership } = auth;
+    const isStaff = canViewCompany(membership.role);
+
+    // Participant being cancelled/moved must belong to this booking, and
+    // non-staff may only act on themselves.
+    const targetParticipant = body.participantId
+      ? booking.Participants?.find((p) => p.ParticipantId === body.participantId)
+      : undefined;
+    if (body.participantId) {
+      if (!targetParticipant) {
+        return NextResponse.json({ error: "Deltagaren finns inte på bokningen" }, { status: 404 });
+      }
+      if (!canModifyBooking(membership.role, targetParticipant.PersonId === membership.edu_contact_id)) {
+        return forbidden();
+      }
+    }
 
     // Cancel a participant
-    if (body.action === "cancelParticipant" && body.participantId) {
+    if (body.action === "cancelParticipant" && targetParticipant) {
       const res = await fetch(`${API_URL}/v1/Participant/${body.participantId}/Cancel`, {
         method: "POST",
         headers: { Authorization: `bearer ${token}`, "Content-Type": "application/json" },
@@ -156,23 +219,22 @@ export async function POST(
       } catch { /* ignore — participant is already cancelled */ }
 
       // Fire-and-forget logging
-      if (body.customerId) {
-        logBookingEvent({
-          eduCustomerId: body.customerId,
-          bookingId: id,
-          participantId: body.participantId,
-          participantName: body.participantName,
-          action: bookingDeleted ? "cancelled_booking" : "cancelled_participant",
-          fromEventId: body.fromEventId,
-          actorEmail: body.actorEmail,
-          actorUserId: body.actorUserId,
-        }).catch(() => {});
-      }
+      logBookingEvent({
+        eduCustomerId: auth.customerId,
+        bookingId: id,
+        participantId: body.participantId,
+        participantName: body.participantName,
+        action: bookingDeleted ? "cancelled_booking" : "cancelled_participant",
+        fromEventId: body.fromEventId,
+        actorEmail: auth.actorEmail,
+        actorUserId: auth.actorUserId,
+      }).catch(() => {});
       return NextResponse.json({ success: true, bookingDeleted });
     }
 
     // Add participants
     if (body.action === "addParticipants" && body.participants) {
+      if (!isStaff) return forbidden();
       const res = await fetch(`${API_URL}/v1/Booking/${id}/Participants`, {
         method: "POST",
         headers: { Authorization: `bearer ${token}`, "Content-Type": "application/json" },
@@ -183,23 +245,21 @@ export async function POST(
         return NextResponse.json({ error: text }, { status: res.status });
       }
       // Fire-and-forget logging
-      if (body.customerId) {
-        logBookingEvent({
-          eduCustomerId: body.customerId,
-          bookingId: id,
-          participantName: body.participantName,
-          action: "added_participant",
-          actorEmail: body.actorEmail,
-          actorUserId: body.actorUserId,
-        }).catch(() => {});
-      }
+      logBookingEvent({
+        eduCustomerId: auth.customerId,
+        bookingId: id,
+        participantName: body.participantName,
+        action: "added_participant",
+        actorEmail: auth.actorEmail,
+        actorUserId: auth.actorUserId,
+      }).catch(() => {});
       return NextResponse.json({ success: true });
     }
 
     // Move single participant to a new event
     // 1. Cancel participant on current booking
     // 2. Create new booking on new event with just this participant
-    if (body.action === "moveParticipant" && body.participantId && body.newEventId) {
+    if (body.action === "moveParticipant" && targetParticipant && body.newEventId) {
       // Cancel participant from current booking
       const cancelRes = await fetch(`${API_URL}/v1/Participant/${body.participantId}/Cancel`, {
         method: "POST",
@@ -214,12 +274,12 @@ export async function POST(
       // Create new booking on new event with this person
       const newBooking: Record<string, unknown> = {
         EventId: body.newEventId,
-        PaymentMethodId: body.paymentMethodId || 1,
-        Customer: { CustomerId: body.customerId },
-        ContactPerson: body.contactPersonId
-          ? { PersonId: body.contactPersonId }
+        PaymentMethodId: booking.PaymentMethodId || 1,
+        Customer: { CustomerId: auth.customerId },
+        ContactPerson: booking.ContactPerson?.PersonId
+          ? { PersonId: booking.ContactPerson.PersonId }
           : undefined,
-        Participants: [{ PersonId: body.personId }],
+        Participants: [{ PersonId: targetParticipant.PersonId }],
         SendConfirmationEmail: {
           SendToCustomerContact: true,
           SendToParticipants: true,
@@ -238,19 +298,17 @@ export async function POST(
       const newResult = await createRes.json() as { BookingId: number };
 
       // Fire-and-forget logging
-      if (body.customerId) {
-        logBookingEvent({
-          eduCustomerId: body.customerId,
-          bookingId: id,
-          participantId: body.participantId,
-          participantName: body.participantName,
-          action: "moved_participant",
-          fromEventId: body.fromEventId,
-          toEventId: body.newEventId,
-          actorEmail: body.actorEmail,
-          actorUserId: body.actorUserId,
-        }).catch(() => {});
-      }
+      logBookingEvent({
+        eduCustomerId: auth.customerId,
+        bookingId: id,
+        participantId: body.participantId,
+        participantName: body.participantName,
+        action: "moved_participant",
+        fromEventId: body.fromEventId,
+        toEventId: body.newEventId,
+        actorEmail: auth.actorEmail,
+        actorUserId: auth.actorUserId,
+      }).catch(() => {});
 
       return NextResponse.json({
         success: true,
@@ -260,18 +318,7 @@ export async function POST(
 
     // Move entire booking (all participants) to a new event
     if (body.action === "move" && body.newEventId) {
-      const detailRes = await fetch(`${API_URL}/v1/odata/Bookings(${id})?$expand=Customer,ContactPerson,Participants`, {
-        headers: { Authorization: `bearer ${token}` },
-      });
-      if (!detailRes.ok) {
-        return NextResponse.json({ error: "Kunde inte hämta bokning" }, { status: 500 });
-      }
-      const booking = await detailRes.json() as {
-        PaymentMethodId: number;
-        Customer?: { CustomerId: number };
-        ContactPerson?: { PersonId: number };
-        Participants?: Array<{ Canceled: boolean; PersonId: number }>;
-      };
+      if (!isStaff) return forbidden();
 
       const newBooking = {
         EventId: body.newEventId,

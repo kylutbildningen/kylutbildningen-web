@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPerson } from "@/lib/eduadmin/persons";
 import { getPersonsFromSupabase, upsertPerson } from "@/lib/supabase-persons";
+import { requireMembership, STAFF_ROLES } from "@/lib/auth/api-guard";
 
 export async function GET(request: NextRequest) {
   const customerId = request.nextUrl.searchParams.get("customerId");
@@ -8,8 +9,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "customerId krävs" }, { status: 400 });
   }
 
+  const guard = await requireMembership(customerId, STAFF_ROLES);
+  if ("error" in guard) return guard.error;
+
   try {
-    const persons = await getPersonsFromSupabase(parseInt(customerId));
+    const persons = await getPersonsFromSupabase(guard.customerId);
     return NextResponse.json(persons);
   } catch (error) {
     console.error("Failed to fetch persons:", error);
@@ -24,13 +28,16 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
+    const guard = await requireMembership(body.customerId, STAFF_ROLES);
+    if ("error" in guard) return guard.error;
+
     // 1. Create in EduAdmin — get back PersonId
-    const created = await createPerson(body);
+    const created = await createPerson({ ...body, customerId: guard.customerId });
 
     // 2. Save to Supabase with EduAdmin's PersonId
     await upsertPerson({
       eduPersonId: created.PersonId,
-      eduCustomerId: created.CustomerId || body.customerId,
+      eduCustomerId: guard.customerId,
       firstName: created.FirstName?.trim() || "",
       lastName: created.LastName?.trim() || "",
       email: created.Email || undefined,

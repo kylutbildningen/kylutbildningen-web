@@ -13,9 +13,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ej inloggad" }, { status: 401 });
     }
 
-    const { userId, email } = await request.json();
-    if (!userId || !email) {
-      return NextResponse.json({ error: "userId och email krävs" }, { status: 400 });
+    const { userId } = await request.json();
+    if (!userId) {
+      return NextResponse.json({ error: "userId krävs" }, { status: 400 });
     }
 
     const supabaseAdmin = createSupabaseAdmin();
@@ -24,15 +24,15 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
       authHeader.replace("Bearer ", ""),
     );
-    if (authError || !user || user.id !== userId) {
+    if (authError || !user || user.id !== userId || !user.email) {
       return NextResponse.json({ error: "Ogiltig session" }, { status: 401 });
     }
 
-    // Find person record by email
+    // Find person record by the session's own email
     const { data: person } = await supabaseAdmin
       .from("persons")
       .select("edu_person_id, edu_customer_id, is_contact_person")
-      .eq("email", email.toLowerCase())
+      .eq("email", user.email.toLowerCase())
       .limit(1)
       .single();
 

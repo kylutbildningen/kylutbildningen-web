@@ -11,6 +11,9 @@ export async function GET(request: NextRequest) {
 
   // If courseTemplateId is provided, return raw events for that course
   if (courseTemplateId) {
+    if (!/^\d+$/.test(courseTemplateId)) {
+      return NextResponse.json({ error: "Ogiltigt kurs-ID" }, { status: 400 });
+    }
     try {
       const data = await eduAdminFetch<ODataResponse<Record<string, unknown>>>(
         "/v1/odata/Events",

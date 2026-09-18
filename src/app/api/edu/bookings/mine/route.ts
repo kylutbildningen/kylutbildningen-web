@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eduAdminFetch } from "@/lib/eduadmin/client";
+import { requireMembership } from "@/lib/auth/api-guard";
+import { isParticipant } from "@/lib/auth/permissions";
 
 interface ODataResponse<T> { value: T[] }
 
@@ -10,9 +12,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "personId och customerId krävs" }, { status: 400 });
   }
 
+  const guard = await requireMembership(customerId);
+  if ("error" in guard) return guard.error;
+
+  const pid = parseInt(personId);
+  // Participants may only see their own bookings
+  if (isParticipant(guard.membership.role) && pid !== guard.membership.edu_contact_id) {
+    return NextResponse.json({ error: "Åtkomst nekad" }, { status: 403 });
+  }
+
   try {
-    const pid = parseInt(personId);
-    const cid = parseInt(customerId);
+    const cid = guard.customerId;
 
     // Use same approach as admin bookings: no OData filter (CustomerId is not
     // a filterable property), expand Customer + Participants, filter client-side

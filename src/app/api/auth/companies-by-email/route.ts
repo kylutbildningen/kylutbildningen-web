@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { findCompaniesByEmail } from "@/lib/eduadmin/verify-contact";
+import { requireUser } from "@/lib/auth/api-guard";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const email = searchParams.get("email");
+// Only looks up the logged-in user's own email — the query param is ignored.
+export async function GET() {
+  const auth = await requireUser();
+  if ("error" in auth) return auth.error;
 
+  const email = auth.user.email;
   if (!email) {
     return NextResponse.json({ error: "E-post krävs" }, { status: 400 });
   }

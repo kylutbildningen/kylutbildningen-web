@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchCustomers } from "@/lib/eduadmin/customers";
+import { requireUser } from "@/lib/auth/api-guard";
 
 export async function GET(request: NextRequest) {
+  const auth = await requireUser();
+  if ("error" in auth) return auth.error;
+
   const query = request.nextUrl.searchParams.get("q");
 
   if (!query || query.length < 2) {

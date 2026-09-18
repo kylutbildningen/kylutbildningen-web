@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eduAdminFetch } from "@/lib/eduadmin/client";
+import { requireMembership, STAFF_ROLES } from "@/lib/auth/api-guard";
 
 interface ODataResponse<T> { value: T[] }
 
@@ -9,8 +10,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "customerId krävs" }, { status: 400 });
   }
 
+  const guard = await requireMembership(customerId, STAFF_ROLES);
+  if ("error" in guard) return guard.error;
+
   try {
-    const cid = parseInt(customerId);
+    const cid = guard.customerId;
 
     // Fetch bookings filtered by customer ID
     const data = await eduAdminFetch<ODataResponse<Record<string, unknown>>>(

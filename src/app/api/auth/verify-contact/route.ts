@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { verifyEmailOnCustomer } from "@/lib/eduadmin/verify-contact";
+import { requireUser } from "@/lib/auth/api-guard";
 
+// Verifies the logged-in user's own email — any email in the body is ignored.
 export async function POST(request: Request) {
+  const auth = await requireUser();
+  if ("error" in auth) return auth.error;
+
   try {
-    const { email, customerId } = await request.json();
+    const { customerId } = await request.json();
+    const email = auth.user.email;
 
     if (!email || !customerId) {
       return NextResponse.json(

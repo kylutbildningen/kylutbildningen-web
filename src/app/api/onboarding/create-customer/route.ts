@@ -60,10 +60,14 @@ export async function POST(req: NextRequest) {
 
     if (!isPrivate && orgNumber) {
       // 1. Check if customer already exists by org number
-      const clean = orgNumber.replace(/\D/g, '')
-      const withDash = clean.length === 10
-        ? `${clean.slice(0, 6)}-${clean.slice(6)}`
-        : orgNumber
+      const clean = String(orgNumber).replace(/\D/g, '')
+      if (clean.length !== 10) {
+        return NextResponse.json(
+          { error: 'Ogiltigt organisationsnummer' },
+          { status: 400 },
+        )
+      }
+      const withDash = `${clean.slice(0, 6)}-${clean.slice(6)}`
 
       const existingCustomers = await eduAdminFetch<ODataResponse<EduAdminCustomer>>(
         '/v1/odata/Customers',
@@ -74,7 +78,15 @@ export async function POST(req: NextRequest) {
       )
 
       if (existingCustomers.value.length > 0) {
-        customerId = existingCustomers.value[0].CustomerId
+        // Never grant access to an existing company here — anyone could type
+        // in a known org number. Existing contacts join via /api/auth/create-membership,
+        // which verifies their email against the company in EduAdmin.
+        return NextResponse.json(
+          {
+            error: 'Företaget finns redan registrerat hos oss. Välj det i listan om din e-post finns hos företaget, be företagets administratör bjuda in dig, eller kontakta oss på info@kylutbildningen.se.',
+          },
+          { status: 409 },
+        )
       } else {
         const newCustomer = await eduAdminFetch<EduAdminNewCustomer>('/v1/Customer', {
           __method: 'POST',
