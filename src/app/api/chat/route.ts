@@ -1,16 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { ApifyClient } from 'apify-client'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getUpcomingEvents } from '@/lib/eduadmin'
+import { fetchIncertText } from '@/lib/incert'
 import { getClientIp, isRateLimited, HOUR, MINUTE } from '@/lib/rate-limit'
 
 const client = new Anthropic()
-const apify = new ApifyClient({ token: process.env.APIFY_API_TOKEN })
 
 const MAX_TOOL_ROUNDS = 3
-// search_web may only fetch these hosts (and their subdomains)
-const ALLOWED_SEARCH_HOSTS = ['incert.se']
 
 const chatSchema = z.object({
   messages: z.array(z.object({
@@ -31,16 +28,6 @@ function promptSafe(value: string | null | undefined, max = 100): string {
   return (value ?? '').replace(/[\r\n]+/g, ' ').trim().slice(0, max)
 }
 
-function isAllowedSearchUrl(url: string): boolean {
-  try {
-    const { protocol, hostname } = new URL(url)
-    return protocol === 'https:' &&
-      ALLOWED_SEARCH_HOSTS.some(h => hostname === h || hostname.endsWith(`.${h}`))
-  } catch {
-    return false
-  }
-}
-
 const SYSTEM_PROMPT = `Du är en hjälpsam kursassistent för Kylutbildningen i Göteborg AB. Svara ALLTID på svenska. Var kortfattad och tydlig.
 
 SPRÅKREGLER:
@@ -58,7 +45,7 @@ ANVÄND INTE sökning för:
 
 VIKTIGA URLs att söka på vid behov:
 - https://incert.se/teknikomraden/koldmedier/ (certifieringskrav)
-- https://incert.se/prislista (aktuella priser)
+- https://incert.se/wp-content/uploads/2026/01/Prislista-2026-for-hemsida-ver-2026-01-12_-5.pdf (INCERT:s aktuella prislista — avgifter för certifikat, exkl. moms)
 - https://incert.se/examinationscentra-2/ (examinationscenters)
 
 OM FÖRETAGET:
@@ -165,13 +152,13 @@ Exempel:
 const tools: Anthropic.Tool[] = [
   {
     name: 'search_web',
-    description: 'Hämtar aktuell information från en webbsida. Använd för INCERT-priser och certifieringskrav.',
+    description: 'Hämtar aktuell information från en sida eller PDF på incert.se. Använd för INCERT-priser och certifieringskrav.',
     input_schema: {
       type: 'object' as const,
       properties: {
         url: {
           type: 'string',
-          description: 'URL att hämta information från',
+          description: 'URL på incert.se att hämta information från',
         },
         query: {
           type: 'string',
@@ -182,26 +169,6 @@ const tools: Anthropic.Tool[] = [
     },
   },
 ]
-
-async function searchWeb(url: string, query: string): Promise<string> {
-  try {
-    const run = await apify.actor('apify/rag-web-browser').call({
-      startUrls: [{ url }],
-      query,
-      maxCrawlPages: 1,
-    })
-
-    const { items } = await apify.dataset(run.defaultDatasetId).listItems()
-    if (items.length === 0) return 'Ingen information hittades.'
-
-    const item = items[0] as Record<string, unknown>
-    const text = item.text as string | undefined
-    return text?.substring(0, 2000) || 'Kunde inte läsa sidan.'
-  } catch (err) {
-    console.error('Apify error:', err)
-    return 'Kunde inte hämta information just nu.'
-  }
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('sv-SE', {
@@ -328,9 +295,7 @@ Om användaren vill boka en kurs:
 
       if (toolUse.name === 'search_web') {
         const input = toolUse.input as { url: string; query: string }
-        const result = isAllowedSearchUrl(input.url)
-          ? await searchWeb(input.url, input.query)
-          : 'Sökning är bara tillåten på incert.se.'
+        const result = await fetchIncertText(input.url, input.query)
 
         currentMessages.push({
           role: 'user' as const,
