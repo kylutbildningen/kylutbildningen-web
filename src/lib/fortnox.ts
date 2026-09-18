@@ -37,65 +37,6 @@ interface FortnoxCustomer {
   WWW?: string;
 }
 
-export interface CompanyLookupResult {
-  found: boolean;
-  source: "fortnox" | "external";
-  companyName: string;
-  streetAddress: string;
-  postalCode: string;
-  city: string;
-  email: string;
-  phone: string;
-  contactFirstName: string;
-  contactLastName: string;
-  contactEmail: string;
-  contactPhone: string;
-}
-
-/**
- * Look up a company by organisation number in Fortnox.
- * Returns company details if found, null otherwise.
- */
-export async function lookupCompany(
-  organizationNumber: string,
-): Promise<CompanyLookupResult | null> {
-  if (!FORTNOX_TOKEN) {
-    return null;
-  }
-
-  try {
-    const search = await fortnoxFetch(
-      `/3/customers?organisationnumber=${encodeURIComponent(organizationNumber)}`,
-    );
-    const customers: FortnoxCustomer[] = search.Customers ?? [];
-
-    if (customers.length === 0) return null;
-
-    const c = customers[0];
-    // Split name for contact if possible (last word = last name)
-    const nameParts = (c.YourReference || c.Name || "").trim().split(/\s+/);
-    const contactLast = nameParts.length > 1 ? nameParts.pop()! : "";
-    const contactFirst = nameParts.join(" ");
-
-    return {
-      found: true,
-      source: "fortnox",
-      companyName: c.Name || "",
-      streetAddress: c.Address1 || "",
-      postalCode: c.ZipCode || "",
-      city: c.City || "",
-      email: c.Email || "",
-      phone: c.Phone1 || "",
-      contactFirstName: contactFirst,
-      contactLastName: contactLast,
-      contactEmail: c.Email || "",
-      contactPhone: c.Phone1 || "",
-    };
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Preflight: ensure customer exists in Fortnox, return customer number.
  */
