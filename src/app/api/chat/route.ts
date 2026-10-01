@@ -45,7 +45,7 @@ ANVÄND INTE sökning för:
 
 VIKTIGA URLs att söka på vid behov:
 - https://incert.se/teknikomraden/koldmedier/ (certifieringskrav)
-- https://incert.se/wp-content/uploads/2026/01/Prislista-2026-for-hemsida-ver-2026-01-12_-5.pdf (INCERT:s aktuella prislista — avgifter för certifikat, exkl. moms)
+- https://incert.se/prislista/ (INCERT:s aktuella prislista — avgifter för certifikat, exkl. moms)
 - https://incert.se/examinationscentra-2/ (examinationscenters)
 
 OM FÖRETAGET:

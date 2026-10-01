@@ -30,20 +30,8 @@ function fetchIncert(url: string) {
   });
 }
 
-/**
- * The price list is a PDF whose URL changes every year. Find the current one
- * from the "Prislista" link in incert.se's navigation.
- */
-async function findCurrentPriceListUrl(): Promise<string | null> {
-  const res = await fetchIncert("https://incert.se/");
-  if (!res.ok) return null;
-  const html = await res.text();
-  const links = [...html.matchAll(/href="(https:\/\/incert\.se\/[^"]*prislista[^"]*\.pdf)"/gi)]
-    .map((m) => m[1]);
-  // Upload paths are dated (/wp-content/uploads/YYYY/MM/), so the last one
-  // in sort order is the newest
-  return links.sort().at(-1) ?? null;
-}
+/** The price list is a regular web page (it used to be a yearly PDF). */
+const PRICE_LIST_URL = "https://incert.se/prislista/";
 
 function htmlToText(html: string): string {
   return html
@@ -78,10 +66,9 @@ export async function fetchIncertText(url: string, query: string): Promise<strin
   try {
     let res = await fetchIncert(url);
 
-    // Outdated price-list link → look up the current PDF and retry
-    if (res.status === 404 && /prislista/i.test(url)) {
-      const current = await findCurrentPriceListUrl();
-      if (current) res = await fetchIncert(current);
+    // Outdated price-list link (e.g. an old PDF) → use the current page
+    if (res.status === 404 && /prislista/i.test(url) && url !== PRICE_LIST_URL) {
+      res = await fetchIncert(PRICE_LIST_URL);
     }
     if (!res.ok) return "Kunde inte läsa sidan.";
 
