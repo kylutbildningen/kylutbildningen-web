@@ -35,6 +35,14 @@ export async function POST(req: NextRequest) {
     const unitPriceExVat = eventData.eventCard.lowestPrice ?? 0
     const unitPriceIncVat = Math.round(unitPriceExVat * 1.25 * 100) // 25% moms, i ören
 
+    // Momssatsen (25 %, inklusive) måste finnas för att momsen ska synas på Stripes kvitto
+    const momsTaxRate = process.env.STRIPE_TAX_RATE_MOMS25
+    if (!momsTaxRate) {
+      throw new Error(
+        'Miljövariabeln STRIPE_TAX_RATE_MOMS25 saknas (id för Stripe Tax Rate "Moms" 25 %, inklusive)',
+      )
+    }
+
     const session = await getStripe().checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
@@ -51,6 +59,7 @@ export async function POST(req: NextRequest) {
           unit_amount: unitPriceIncVat,
         },
         quantity: 1,
+        tax_rates: [momsTaxRate],
       })),
       payment_intent_data: {
         receipt_email: contactEmail,
