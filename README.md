@@ -20,6 +20,16 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Miljövariabler
+
+### `STRIPE_TAX_RATE_MOMS25`
+
+Id (`txr_...`) för den Tax Rate i Stripe som anger svensk moms: display name "Moms", 25 %, inklusive (`inclusive: true`), land `SE`. Används av `src/app/api/stripe/create-checkout/route.ts`, som sätter den på varje rad i Checkout-sessionen så att momsen står med på kvittot som Stripe mejlar till kunden. Priset som skickas till Stripe är redan inklusive moms, så beloppet kunden betalar ändras inte.
+
+- Variabeln är obligatorisk. Saknas den går det inte att skapa en kortbetalning; anropet svarar med ett fel som namnger variabeln.
+- En Tax Rate finns bara i den miljö där den skapades. Id:t måste därför höra till samma miljö (test eller live) som `STRIPE_SECRET_KEY`.
+- Sätt variabeln både i `.env.local` och i Vercel (Production och Preview).
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
